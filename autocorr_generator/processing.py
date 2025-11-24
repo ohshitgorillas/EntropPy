@@ -1,0 +1,135 @@
+"""Word processing and collision resolution."""
+
+from wordfreq import word_frequency
+
+from .boundaries import determine_boundaries
+from .config import BoundaryType, Correction
+from .exclusions import ExclusionMatcher
+from .typos import generate_all_typos
+
+
+def process_word(
+    word: str,
+    validation_set: set[str],
+    source_words: set[str],
+    typo_freq_threshold: float,
+    extra_letters_map: dict[str, str] | None,
+) -> list[Correction]:
+    """Process a single word and generate all valid corrections."""
+    corrections = []
+    typos = generate_all_typos(word, extra_letters_map)
+
+    for typo in typos:
+        if typo == word:
+            continue
+
+        if typo in validation_set:
+            continue
+
+        if typo_freq_threshold > 0.0:
+            typo_freq = word_frequency(typo, "en")
+            if typo_freq >= typo_freq_threshold:
+                continue
+
+        boundary_type = determine_boundaries(typo, validation_set, source_words)
+        if boundary_type is not None:
+            corrections.append((typo, word, boundary_type))
+
+    return corrections
+
+
+def choose_strictest_boundary(boundaries: list[BoundaryType]) -> BoundaryType:
+    """Choose the strictest boundary type."""
+    if BoundaryType.BOTH in boundaries:
+        return BoundaryType.BOTH
+    if BoundaryType.LEFT in boundaries and BoundaryType.RIGHT in boundaries:
+        return BoundaryType.BOTH
+    if BoundaryType.LEFT in boundaries:
+        return BoundaryType.LEFT
+    if BoundaryType.RIGHT in boundaries:
+        return BoundaryType.RIGHT
+    return BoundaryType.NONE
+
+
+def resolve_collisions(
+    typo_map: dict[str, list[tuple[str, BoundaryType]]],
+    freq_ratio: float,
+    min_typo_length: int,
+    user_words: set[str],
+    exclusion_matcher: ExclusionMatcher,
+) -> tuple[list[Correction], list, list]:
+    """Resolve collisions where multiple words map to same typo."""
+    final_corrections = []
+    skipped_collisions = []
+    skipped_short = []
+
+    for typo, word_boundary_list in typo_map.items():
+        unique_pairs = list(set(word_boundary_list))
+        unique_words = list(set(w for w, _ in unique_pairs))
+
+        if len(unique_words) == 1:
+            word = unique_words[0]
+            boundaries = [b for w, b in unique_pairs if w == word]
+            boundary = choose_strictest_boundary(boundaries)
+
+            if word in user_words and len(word) == 2:
+                boundary = BoundaryType.BOTH
+
+            if len(typo) < min_typo_length:
+                skipped_short.append((typo, word, len(typo)))
+            else:
+                correction = (typo, word, boundary)
+                if not exclusion_matcher.should_exclude(correction):
+                    final_corrections.append(correction)
+        else:
+            word_freqs = [(w, word_frequency(w, "en")) for w in unique_words]
+            word_freqs.sort(key=lambda x: x[1], reverse=True)
+
+            most_common = word_freqs[0]
+            second_most = word_freqs[1] if len(word_freqs) > 1 else (None, 0)
+
+            ratio = (
+                most_common[1] / second_most[1] if second_most[1] > 0 else float("inf")
+            )
+
+            if ratio > freq_ratio:
+                word = most_common[0]
+                boundaries = [b for w, b in unique_pairs if w == word]
+                boundary = choose_strictest_boundary(boundaries)
+
+                if word in user_words and len(word) == 2:
+                    boundary = BoundaryType.BOTH
+
+                if len(typo) < min_typo_length:
+                    skipped_short.append((typo, word, len(typo)))
+                else:
+                    correction = (typo, word, boundary)
+                    if not exclusion_matcher.should_exclude(correction):
+                        final_corrections.append(correction)
+            else:
+                skipped_collisions.append((typo, unique_words, ratio))
+
+    return final_corrections, skipped_collisions, skipped_short
+
+
+def remove_substring_conflicts(corrections: list[Correction]) -> list[Correction]:
+    """Remove corrections where one typo is substring of another."""
+    typo_to_correction = {corr[0]: corr for corr in corrections}
+    typos_to_remove = set()
+    typo_list = list(typo_to_correction.keys())
+
+    for i, typo1 in enumerate(typo_list):
+        if typo1 in typos_to_remove:
+            continue
+        for typo2 in typo_list[i + 1 :]:
+            if typo2 in typos_to_remove:
+                continue
+
+            if typo1 in typo2:
+                typos_to_remove.add(typo2)
+            elif typo2 in typo1:
+                typos_to_remove.add(typo1)
+
+    return [
+        typo_to_correction[t] for t in typo_to_correction if t not in typos_to_remove
+    ]
