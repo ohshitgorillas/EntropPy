@@ -1,0 +1,12 @@
+{
+    "top_n": 2500,
+    "output": "corrections",
+    "min_typo_length": 3,
+    "min_word_length": 3,
+    "max_word_length": 10,
+    "verbose": true,
+    "typo_freq_threshold": 1e-8,
+    "include": "settings/include.txt",
+    "exclude": "settings/exclude.txt",
+    "adjacent_letters": "settings/adjacent.txt"
+}

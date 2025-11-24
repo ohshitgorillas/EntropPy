@@ -1,0 +1,13 @@
+# do not match typos to these words
+
+# shorthand for Raspberry Pi
+rpi
+
+# not a sports fan myself
+*ball
+
+# uncommon words like "tehsildar" prevent the more common typo "teh" from being converted to "the"
+*teh*
+
+# this prevents chemistry terms like "allantoin" from blocking the far more common transposition typo "*toin -> *tion"
+*toin

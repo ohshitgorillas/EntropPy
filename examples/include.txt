@@ -1,0 +1,12 @@
+# these are words that you want typos/autocorrections generated for
+
+# technical terms
+software
+python
+github
+gitignore
+commit
+
+# hobby terms
+mechanical
+keyboard

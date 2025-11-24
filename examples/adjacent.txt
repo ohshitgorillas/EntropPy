@@ -1,0 +1,8 @@
+# letters you intended -> letters you hit instead/in addition
+b -> vn
+p -> o
+o -> pi
+i -> uo
+c -> v
+e -> w
+n -> bm
