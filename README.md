@@ -177,8 +177,8 @@ e -> wrd
 * **Replacement:** `e -> w` generates `wxample` and `examplw` for `example`.
 * **Insertion:** `e -> w` generates `wexample`, `ewxample`, `examplwe`, and `examplew`.
 
-### Include File
-Allows the user to specify words for which typos should be generated.
+### Include File (`--include`)
+Allows the user to specify words for which corrections should be generated.
 
 ```text
 # words to generate typos and corrections for
@@ -188,7 +188,7 @@ mechanical
 keyboard
 ```
 
-### Exclusion File (`--exclude-file`)
+### Exclusion File (`--exclude`)
 The script will not generate autocorrect rules for these correctly spelled words. Supports wildcards (`*`) and spaces (`:`).
 
 ```text
