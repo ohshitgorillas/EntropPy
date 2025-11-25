@@ -151,23 +151,63 @@ def resolve_collisions(
 
 
 def remove_substring_conflicts(corrections: list[Correction]) -> list[Correction]:
-    """Remove corrections where one typo is a substring of another.
-    
-    If we have both 'teh' and 'tehir', we keep only 'teh' because the longer
-    typo will never be triggered.
+    """Remove corrections where one typo is a substring of another WITH THE SAME BOUNDARY.
+
+    When Espanso sees a typo, it triggers on the first (shortest) match from left to right.
+
+    Example 1: If we have 'teh' → 'the' and 'tehir' → 'their' (both no boundary):
+    - When typing "tehir", Espanso sees "teh" first and corrects to "the"
+    - User continues typing "ir", getting "their"
+    - The "tehir" correction is unreachable, so remove it
+
+    Example 2: If we have 'toin' (no boundary) → 'ton' and 'toin' (right_word) → 'tion':
+    - These have DIFFERENT boundaries, so they DON'T conflict
+    - 'toin' (no boundary) matches standalone "toin"
+    - 'toin' (right_word) matches as a suffix in "*toin"
+    - Both can coexist
+
+    Example 3: If we have 'toin' → 'tion' and 'atoin' → 'ation' (both RIGHT):
+    - Both would match at end of "information"
+    - "toin" makes "atoin" redundant—the "a" is useless
+    - Remove "atoin" in favor of shorter "toin"
     """
-    # Sort by length ascending so we process shorter typos first
-    corrections.sort(key=lambda c: len(c[0]))
+    # Group by boundary type - process each separately
+    by_boundary = {}
+    for correction in corrections:
+        _, _, boundary = correction
+        if boundary not in by_boundary:
+            by_boundary[boundary] = []
+        by_boundary[boundary].append(correction)
 
     final_corrections = []
-    kept_typos = set()
 
-    for typo, word, boundary in corrections:
-        # Check if any already-kept typo is a substring of this one
-        is_compound = any(kept_typo in typo for kept_typo in kept_typos if kept_typo != typo)
-        
-        if not is_compound:
-            final_corrections.append((typo, word, boundary))
-            kept_typos.add(typo)
+    # Process each boundary group separately
+    for boundary, group in by_boundary.items():
+        typo_to_correction = {c[0]: c for c in group}
+        all_typos = set(typo_to_correction.keys())
+
+        # Find substring relationships within this boundary group
+        substring_groups = {}
+        for short_typo in all_typos:
+            containing = [
+                long_typo
+                for long_typo in all_typos
+                if short_typo in long_typo and short_typo != long_typo
+            ]
+            if containing:
+                substring_groups[short_typo] = containing
+
+        typos_to_remove = set()
+
+        for short_typo, long_typos in substring_groups.items():
+            if short_typo in typos_to_remove:
+                continue
+
+            # Espanso triggers on shortest match first (left-to-right greedy)
+            # So always keep shorter typo, remove longer ones that contain it
+            typos_to_remove.update(long_typos)
+
+        # Add corrections from this boundary group that weren't removed
+        final_corrections.extend([c for c in group if c[0] not in typos_to_remove])
 
     return final_corrections
