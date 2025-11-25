@@ -30,7 +30,7 @@ def organize_by_letter(corrections: list[Correction]) -> dict[str, list[dict]]:
     by_letter = defaultdict(list)
 
     for correction in corrections:
-        typo, word, boundary = correction
+        _, word, _ = correction
 
         first_char = word[0].lower() if word else ""
 
@@ -96,7 +96,7 @@ def estimate_ram_usage(
     }
 
     if verbose:
-        print(f"\n# RAM Usage Estimate:", file=sys.stderr)
+        print("\n# RAM Usage Estimate:", file=sys.stderr)
         print(f"#   {estimate['entries']} corrections", file=sys.stderr)
         print(
             f"#   ~{estimate['per_entry_bytes']:.0f} bytes per entry", file=sys.stderr
@@ -105,7 +105,7 @@ def estimate_ram_usage(
             f"#   Total: {estimate['total_kb']:.1f} KB ({estimate['total_mb']:.2f} MB)",
             file=sys.stderr,
         )
-        print(f"#   (Espanso runtime overhead not included)", file=sys.stderr)
+        print("#   (Espanso runtime overhead not included)", file=sys.stderr)
 
     return estimate
 
