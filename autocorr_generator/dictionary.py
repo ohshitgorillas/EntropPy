@@ -40,19 +40,18 @@ def load_validation_dictionary(
 
     if not word_exclusion_patterns:
         if verbose:
-            print(f"Loaded {len(words)} words for validation (no exclusions applied).", file=sys.stderr)
+            print(
+                f"Loaded {len(words)} words for validation (no exclusions applied).",
+                file=sys.stderr,
+            )
         return words
 
     # Compile all patterns into regexes
-    compiled_patterns = [
-        compile_wildcard_regex(p) for p in word_exclusion_patterns
-    ]
+    compiled_patterns = [compile_wildcard_regex(p) for p in word_exclusion_patterns]
 
     # Use a generator expression for memory efficiency, then build the set to remove
     words_to_remove = {
-        word
-        for word in words
-        if any(pat.match(word) for pat in compiled_patterns)
+        word for word in words if any(pat.match(word) for pat in compiled_patterns)
     }
 
     validation_set = words - words_to_remove
@@ -164,6 +163,5 @@ def load_source_words(config: Config, verbose: bool = False) -> list[str]:
 
     # Take the top N valid words
     filtered = list(itertools.islice(valid_words, config.top_n))
-
 
     return filtered
