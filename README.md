@@ -1,31 +1,31 @@
 # Autocorrect Dictionary Generator for Espanso
 
-This is a Python module which generates a personalized autocorrect dictionary for use with the [Espanso](https://espanso.org/) text expander.
+This is a Python module which generates a personalized autocorrect dictionary for use with the [Espanso](https://espanso.org/) text expander software.
 
-It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of common "fat finger" typing errors mapped them to their correct spellings.
+It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of common "fat finger" typing errors mapped to their correct spellings.
 
-It generates the following types of typos:
-* **Transpositions**: Swaps adjacent characters (e.g., `word` -> `wrod`).
-* **Omissions**: Removes single characters (e.g., `because` -> `becuse`).
-* **Duplication**: Duplicates each letter in the word (e.g., `word` -> `worrd`). 
-* **Replacements**: Replaces a character with an adjacent key (e.g., `apple` -> `applw` via `e->w` map).
-* **Insertions**: Inserts adjacent keys before/after target letters (e.g., `apple` -> `applew` via `e->w`).
+It generates five types of typos:
+* **Transpositions**: Swaps adjacent characters (e.g., `word` → `wrod`).
+* **Omissions**: Removes single characters (e.g., `because` → `becuse`).
+* **Duplications**: Duplicates each letter in the word (e.g., `word` → `worrd`). 
+* **Replacements**: Replaces a character with an adjacent key (e.g., `apple` → `applw` via `e→w` map).
+* **Insertions**: Inserts adjacent keys before/after target letters (e.g., `apple` → `applew` via `e→w`).
 
 ## Inspiration / Why Espanso?
 
-This project originated as a tool for [QMK Firmware](https://qmk.fm/) and still has a [sibling for generating QMK dictionaries](https://github.com/ohshitgorillas/qmk_userspace/tree/main/autocorrect/ac_generator). I was dissatisfied with existing autocorrect dictionaries, which were bloated with spelling mistakes caused by genuine lack of knowledge rather than mechanical typing errors (e.g., `definately -> definitely`). I know how to spell, I just have fat fingers.
+This project originated as a tool for [QMK Firmware](https://qmk.fm/) and still has a [sibling for generating QMK dictionaries](https://github.com/ohshitgorillas/qmk_userspace/tree/main/autocorrect/ac_generator). I was dissatisfied with existing autocorrect dictionaries, which were bloated with spelling mistakes caused by genuine lack of knowledge rather than mechanical typing errors (e.g., `definately` → `definitely`). I know how to spell, I just have fat fingers.
 
 After manually entering my own mistakes for a while, I realized I didn't need a pre-existing dictionary—I could generate an arbitrarily large corpus of typos algorithmically. This insight led to the creation of this project.
 
-However, keyboard microcontrollers have limited storage capacity. My personal QMK keyboard can only store about 1,100 corrections, while we can algorithmically generate 20,000+ corrections in minutes. Espanso runs on the host OS and supports arbitrarily large dictionaries, making it the perfect platform for this comprehensive dataset.
+However, keyboard microcontrollers have limited storage capacity. My personal QMK keyboard can only store about 1,100 corrections, while we can algorithmically generate 20,000+ unique corrections in minutes. Espanso runs on the host OS and supports arbitrarily large dictionaries, making it the perfect platform for this project.
 
 ## Features
 
-* **Smart Boundary Detection**: Automatically assigns Espanso word boundaries (`word: true`, `left_word: true`, etc.) to prevent typos from triggering inside other valid words (e.g., prevents `no` -> `on` from triggering inside the word `noon`).
-* **Collision Resolution**: If a typo maps to multiple valid words (e.g., `thn` could be `then`, `than`, or `thin`), the script uses frequency analysis to pick the statistically likely correction or discards it if it is ambiguous (`then` and `than` are far more frequent than `thin`, but themselves have a frequency ratio close to 1, so `thn` is considered ambiguous and skipped.)
+* **Smart Boundary Detection**: Automatically assigns Espanso word boundaries (`word: true`, `left_word: true`, etc.) to prevent typos from triggering inside other valid words (e.g., prevents `no` → `on` from triggering inside the word `noon`).
+* **Collision Resolution**: If a typo maps to multiple valid words (e.g., `thn` could be `then`, `than`, or `thin`), the script uses frequency analysis to pick the statistically likely correction or discards it if ambiguous. (`then` and `than` are far more frequent than `thin`, but themselves have a frequency ratio close to 1, so `thn` is considered ambiguous and skipped.)
 * **Espanso Optimization**: Outputs split YAML files (`typos_a.yml`, `typos_b.yml`, etc.) to keep file sizes manageable and organization clean.
 * **Highly Configurable**: Customize input lists, exclusion patterns, adjacent key mappings, and frequency thresholds.
-* **Estimates RAM Usage**: Estimates the total RAM consumed by putting the dictionary in Espanso (~21,500 entries → 1.5MB).
+* **Estimates RAM Usage**: Estimates the total RAM consumed by the dictionary in Espanso (~21,500 entries → 1.5MB).
 
 ---
 
@@ -46,37 +46,37 @@ cd /path/to/project
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# set up the autocorrect generator environment (optional)
+# Set up directories (optional)
 mkdir corrections
 mkdir settings
 
 # Install dependencies
-pip install -r requirements.txt # install dependencies
+pip install -r requirements.txt
 ```
 
 ### 3. Directory Structure
 ```text
 project_root/
-└── autocorr_generator/ <-- The package directory
-    ├── __init__.py
-    ├── __main__.py
-    ├── ... (other .py files)
-└── corrections         <-- recommended location to write corrections to
-    ├── typos_a.yml
-    ├── typos_b.yml
-    ├── ...
-└── examples            <-- example files
-    ├── adjacent.txt
-    ├── config.json
-    ├── exclude.txt
-    ├── include.txt
-└── settings            <-- recommended location for personalization files
-    ├── adjacent.txt    (optional)
-    ├── config.json     (optional)
-    ├── exclude.txt     (optional)
-    ├── include.txt     (optional)
-└── README.md           <-- this file
-└── requirements.txt    <-- dependencies
+├── autocorr_generator/        <-- The package directory
+│   ├── __init__.py
+│   ├── __main__.py
+│   └── ... (other .py files)
+├── corrections/        <-- Recommended location to write corrections to
+│   ├── typos_a.yml
+│   ├── typos_b.yml
+│   └── ...
+├── examples/           <-- Example files
+│   ├── adjacent.txt
+│   ├── config.json
+│   ├── exclude.txt
+│   └── include.txt
+├── settings/           <-- Recommended location for personalization files
+│   ├── adjacent.txt    (optional)
+│   ├── config.json     (optional)
+│   ├── exclude.txt     (optional)
+│   └── include.txt     (optional)
+├── README.md           <-- This file
+└── requirements.txt    <-- Dependencies
 ```
 
 ---
@@ -88,13 +88,13 @@ It's recommended to generate the dictionaries into the local `corrections` folde
 Once you're satisfied with the generated corrections, copy the files to your Espanso configuration directory and restart Espanso.
 
 ### Basic Generation
-Generate transpositions, deletions, and duplications for the top 1,000 most common English words and output to a local folder:
+Generate transpositions, omissions, and duplications for the top 1,000 most common English words and output to a local folder:
 
 ```bash
 python -m autocorr_generator --top-n 1000 --output corrections
 ```
 
-### generating directly to Espanso
+### Generating Directly to Espanso
 You can output directly to your Espanso `match` directory.
 
 **Linux/macOS:**
@@ -119,10 +119,10 @@ python -m autocorr_generator \
     --typo-freq-threshold 1e-8 \
     --max-word-length 12 \
     --adjacent-letters settings/qwerty_map.txt \
-    --output ./espanso_matches \
+    --output ./espanso_matches
 ```
 
-Using `--typo-freq-threshold` is recommended to catch conjugations and other transformations of words that may not otherwise occur in `english-words`. The word `juts` for example, both a transposition of `just` *and* a conjugation of the verb `jut`, does not occur in `english-words` (only `jut`), but does occur in `wordfreq` with a frequency of ~2e-7. Without this option, the script would (incorrectly) generate the correction `juts -> just`.
+Using `--typo-freq-threshold` is recommended to catch conjugations and other transformations of words that may not otherwise occur in `english-words`. The word `juts`, for example, both a transposition of `just` *and* a conjugation of the verb `jut`, does not occur in `english-words` (only `jut`), but does occur in `wordfreq` with a frequency of ~2e-7. Without this option, the script would (incorrectly) generate the correction `juts` → `just`. Lower values catch less common words.
 
 ---
 
@@ -139,10 +139,11 @@ You can configure the generator via Command Line Arguments or a `config.json` fi
 | `--exclude` | `None` | File containing exclusion patterns (see below). |
 | `--adjacent-letters` | `None` | File mapping keys to neighbors for replacement/insertion typos. |
 | `--freq-ratio` | `10.0` | Minimum frequency ratio required to resolve a collision. |
-| `--min-typo-length` | `4` | Minimum length of a generated typo to be included. |
+| `--min-typo-length` | `5` | Minimum length of a generated typo to be included. |
 | `--min-word-length` | `3` | Minimum word length to generate typos for. |
 | `--max-word-length` | `10` | Maximum word length to generate typos for. |
 | `--typo-freq-threshold` | `0.0` | Skip typos with a `wordfreq` frequency above this. |
+| `--max-entries-per-file`| `500` | Maximum number of corrections per YAML file. |
 | `--verbose`, `-v` | `False` | Print statistics, RAM estimates, and dropped typos. |
 
 ### JSON Configuration
@@ -153,7 +154,7 @@ Instead of long CLI strings, you can use a `config.json`:
   "top_n": 5000,
   "output": "corrections",
   "min_typo_length": 4,
-  "exclude_file": "settings/exclusions.txt",
+  "exclude": "settings/exclusions.txt",
   "adjacent_letters": "settings/qwerty.txt",
   "verbose": true
 }
@@ -164,6 +165,8 @@ Run with:
 python -m autocorr_generator --config settings/config.json
 ```
 
+The `config.json` file supports all configuration options, just convert `-` into `_`, e.g., `--typo-freq-threshold 1e-8` becomes `"typo_freq_threshold": 1e-8`.
+
 ---
 
 ## File Formats
@@ -173,21 +176,22 @@ Defines which keys are next to each other to generate **Replacement** and **Inse
 Format: `key -> neighbors`
 
 ```text
-# the letter you wanted -> the letter you got
+# The character you wanted -> the character you got
 a -> s
 s -> ad
 e -> wrd
+l -> k;
 ```
 * **Replacement:** `e -> w` generates `wxample` and `examplw` for `example`.
 * **Insertion:** `e -> w` generates `wexample`, `ewxample`, `examplwe`, and `examplew`.
 
-Symbols can also be replacements/insertions, e.g., `l -> k;:`.
+Note that this option is required to generate replacement and insertion typos.
 
 ### Include File (`--include`)
 Allows the user to specify words for which corrections should be generated.
 
 ```text
-# words to generate typos and corrections for
+# Words to generate typos and corrections for
 espanso
 software
 mechanical
@@ -195,43 +199,64 @@ keyboard
 ```
 
 ### Exclusion File (`--exclude`)
-The script will not generate autocorrect rules for these correctly spelled words. Supports wildcards (`*`) and spaces (`:`).
+The script will not generate autocorrect rules for these typo patterns. Supports wildcards (`*`).
 
 ```text
-# Exact word exclusion
-football    # not a sports fan
+# Exact typo exclusion
+rpi         # Don't correct "rpi" to anything
 
-# Wildcards (skip word families)
-pre*        # Skip words starting with pre
+# Wildcards (skip typo families)
+pre*        # Skip typos starting with "pre"
+*ball       # Skip typos ending with "ball"
 
-# The following wildcard prevents chemistry terms like "allantoin" from blocking the correction *toin -> tion.
+# The following wildcard prevents chemistry terms like "allantoin" 
+# from blocking the correction *toin -> tion.
 *toin
-
-# Pattern exclusion (prevents specific mapping)
-in: -> ing  # Don't auto-correct "fixin " to "fixing"
 ```
+
+**How Exclusions Work:**
+1. Typos matching patterns won't generate corrections (e.g., `rpi` won't correct to anything)
+2. Dictionary words matching patterns won't block typo boundary detection (e.g., `*toin` prevents "allantoin" from blocking "toin" as a valid typo)
 
 ---
 
 ## Output Structure
 
-The script generates multiple YAML files organized by the starting letter of the **correct** word. This ensures Espanso can load them efficiently and allows for easier manual debugging.
-
-```text
-output_dir/
-├── typos_a.yml
-├── typos_b.yml
-...
-├── typos_z.yml
-└── typos_symbols.yml
-```
+The script generates multiple YAML files, organized alphabetically by the corrected words they contain. This keeps individual files compact and manageable. Use `--max-entries-per-file` (up to 1000) to generate fewer, larger files if preferred.
 
 **Example YAML Entry:**
 ```yaml
+matches:
   - trigger: wrod
     replace: word
-    word: true  # match must be an isolated word; will not match inside other strings
+    right_word: true    # Must be at the word end or isolated
+    propagate_case: true
+
+  - trigger: becuse
+    replace: because
+    left_word: true     # Must be at word start or isolated
+    propagate_case: true
+
+  - trigger: teh
+    replace: the
+    word: true          # Must be an isolated word
+    propagate_case: true
 ```
+
+---
+
+## Boundary Detection
+
+The generator automatically determines which boundary constraints are needed:
+
+- **`word: true`** - Typo must be standalone (e.g., `tht` → `that`, but not inside `aththe`)
+- **`left_word: true`** - Typo must be at word start (e.g., `hte` → `the` at start only)
+- **`right_word: true`** - Typo must be at word end (e.g., `teh` → `the` at end only)
+- **No boundary** - Typo can trigger anywhere (e.g., `taht` → `that`)
+
+This prevents false corrections like `no` → `on` triggering inside `noon`.
+
+---
 
 ## License
 
