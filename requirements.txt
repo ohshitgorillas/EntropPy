@@ -1,3 +1,4 @@
 english-words
 wordfreq
 pyyaml
+tqdm
