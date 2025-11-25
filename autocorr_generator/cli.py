@@ -20,10 +20,15 @@ Examples:
   # Mix both (CLI overrides JSON)
   %(prog)s --config config.json --top-n 500 -v
   
-  # With custom words
+  # With the top 1000 most common English words and my custom words
   %(prog)s --top-n 1000 --include mywords.txt -o ~/.config/espanso/match/
 
-Output will be organized into typos_a.yml, typos_b.yml, ..., typos_z.yml, and typos_symbols.yml
+  # With custom words only, do not use english-words dictionary
+  %(prog)s --include mywords.txt -o ~/.config/espanso/match/
+
+Output files are organized alphabetically in the output directory:
+- If corrections exceed max_entries_per_file: typos_<first_word>_to_<last_word>.yml
+- Otherwise: typos_<letter>.yml or typos_symbols.yml
 
 Example config.json:
 {
@@ -32,6 +37,8 @@ Example config.json:
   "min_word_length": 3,
   "min_typo_length": 5,
   "freq_ratio": 10.0,
+  "max_entries_per_file": 750,
+  "typo_freq_threshold": 1e-8,
   "output": "~/.config/espanso/match/",
   "verbose": true,
   "jobs": 4
