@@ -335,11 +335,15 @@ def run_pipeline(config: Config) -> None:
     )
 
     if report_data:
+        if verbose:
+            print(f"# Writing {len(final_corrections)} corrections to YAML files", file=sys.stderr)
         report_data.stage_times["Writing YAML files"] = time.time() - stage_start
         report_data.total_corrections = len(final_corrections)
 
     # Generate reports if enabled
     if config.reports:
+        if verbose:
+            print(f"# Generating reports in {config.reports}", file=sys.stderr)
         generate_reports(report_data, config.reports, verbose)
 
     # Print total time
