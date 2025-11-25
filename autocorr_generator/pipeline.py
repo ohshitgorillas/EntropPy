@@ -69,9 +69,7 @@ def run_pipeline(config: Config) -> None:
     verbose = config.verbose
 
     # Load dictionaries and mappings
-    validation_set = load_validation_dictionary(
-        config.exclude, config.include, verbose
-    )
+    validation_set = load_validation_dictionary(config.exclude, config.include, verbose)
     exclusions = load_exclusions(config.exclude, verbose)
     exclusion_matcher = ExclusionMatcher(exclusions)
 
@@ -177,7 +175,7 @@ def run_pipeline(config: Config) -> None:
 
     # Generalize patterns
     patterns, to_remove = generalize_patterns(
-        final_corrections, validation_set, config.min_typo_length
+        final_corrections, filtered_validation_set, config.min_typo_length
     )
 
     # Remove original corrections that have been generalized
@@ -212,4 +210,6 @@ def run_pipeline(config: Config) -> None:
             )
 
     # Generate output
-    generate_espanso_yaml(final_corrections, config.output, verbose, config.max_entries_per_file)
+    generate_espanso_yaml(
+        final_corrections, config.output, verbose, config.max_entries_per_file
+    )
