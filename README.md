@@ -23,7 +23,7 @@ However, keyboard microcontrollers have limited storage capacity. My personal QM
 
 * **Smart Boundary Detection**: Automatically assigns Espanso word boundaries (`word: true`, `left_word: true`, etc.) to prevent typos from triggering inside other valid words (e.g., prevents `no` → `on` from triggering inside the word `noon`).
 * **Collision Resolution**: If a typo maps to multiple valid words (e.g., `thn` could be `then`, `than`, or `thin`), the script uses frequency analysis to pick the statistically likely correction or discards it if ambiguous. (`then` and `than` are far more frequent than `thin`, but themselves have a frequency ratio close to 1, so `thn` is considered ambiguous and skipped.)
-* **Espanso Optimization**: Outputs split YAML files (`typos_a.yml`, `typos_b.yml`, etc.) to keep file sizes manageable and organization clean.
+* **Espanso Optimization**: Outputs alphabetically organized YAML files to keep sizes manageable and organization clean.
 * **Highly Configurable**: Customize input lists, exclusion patterns, adjacent key mappings, and frequency thresholds.
 * **Estimates RAM Usage**: Estimates the total RAM consumed by the dictionary in Espanso (~21,500 entries → 1.5MB).
 
