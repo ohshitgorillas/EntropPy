@@ -22,43 +22,52 @@ def generate_deletions(word: str) -> list[str]:
     return typos
 
 
-def generate_extra_letters(word: str, extra_map: dict[str, str]) -> list[str]:
-    """Generate typos by inserting extra letters."""
-    if not extra_map:
+def generate_duplications(word: str) -> list[str]:
+    """Generate typos by duplicating each letter."""
+    typos = []
+    for i in range(len(word)):
+        typo = word[:i] + word[i] + word[i:]
+        typos.append(typo)
+    return typos
+
+
+def generate_insertions(word: str, adj_letters_map: dict[str, str]) -> list[str]:
+    """Generate typos by inserting adjacent letters."""
+    if not adj_letters_map:
         return []
 
     typos = []
     for i, char in enumerate(word):
-        if char in extra_map:
-            for extra in extra_map[char]:
-                typos.append(word[: i + 1] + extra + word[i + 1 :])
-                typos.append(word[:i] + extra + word[i:])
+        if char in adj_letters_map:
+            for adj in adj_letters_map[char]:
+                typos.append(word[: i + 1] + adj + word[i + 1 :])
+                typos.append(word[:i] + adj + word[i:])
 
     return typos
 
 
-def generate_replacements(word: str, extra_map: dict[str, str]) -> list[str]:
+def generate_replacements(word: str, adj_letters_map: dict[str, str]) -> list[str]:
     """Generate typos by replacing characters with adjacent keys."""
-    if not extra_map:
+    if not adj_letters_map:
         return []
 
     typos = []
     for i, char in enumerate(word):
-        if char in extra_map:
-            for replacement in extra_map[char]:
+        if char in adj_letters_map:
+            for replacement in adj_letters_map[char]:
                 typos.append(word[:i] + replacement + word[i + 1 :])
 
     return typos
 
 
 def generate_all_typos(
-    word: str, extra_letters_map: dict[str, str] | None = None
+    word: str, adj_letters_map: dict[str, str] | None = None
 ) -> list[str]:
     """Generate all types of typos for a word."""
-    typos = generate_transpositions(word) + generate_deletions(word)
+    typos = generate_transpositions(word) + generate_deletions(word) + generate_duplications(word)
 
-    if extra_letters_map:
-        typos.extend(generate_extra_letters(word, extra_letters_map))
-        typos.extend(generate_replacements(word, extra_letters_map))
+    if adj_letters_map:
+        typos.extend(generate_insertions(word, adj_letters_map))
+        typos.extend(generate_replacements(word, adj_letters_map))
 
     return typos
