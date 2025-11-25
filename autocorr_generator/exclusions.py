@@ -65,6 +65,24 @@ class ExclusionMatcher:
 
         return False
 
+    def get_matching_rule(self, correction: Correction) -> str:
+        """Get the exclusion rule that matches this correction (for reporting)."""
+        typo, word, _ = correction
+
+        # Check for exact typo -> word match
+        if self.exact_typo_map.get(typo) == word:
+            return f"{typo} -> {word}"
+
+        # Check for wildcard typo -> word match
+        for typo_re, word_pat in self.wildcard_typo_map:
+            if typo_re.match(typo) and self._match_wildcard(word, word_pat):
+                # Find the original pattern that created this regex
+                for pattern in self.wildcards:
+                    if "->" in pattern:
+                        return pattern
+
+        return "unknown rule"
+
     def should_ignore_in_validation(self, word: str) -> bool:
         """
         Check if a validation word should be ignored during boundary detection.

@@ -23,6 +23,7 @@ from .processing import (
     remove_substring_conflicts,
     resolve_collisions,
 )
+from .reports import ReportData, generate_reports
 
 # Global state for multiprocessing workers
 _VALIDATION_SET = None
@@ -75,7 +76,13 @@ def run_pipeline(config: Config) -> None:
     start_time = time.time()
     verbose = config.verbose
 
+    # Initialize report data if reports are enabled
+    report_data = None
+    if config.reports:
+        report_data = ReportData(start_time=start_time)
+
     # Load dictionaries and mappings
+    stage_start = time.time()
     validation_set = load_validation_dictionary(config.exclude, config.include, verbose)
     exclusions = load_exclusions(config.exclude, verbose)
     exclusion_matcher = ExclusionMatcher(exclusions)
@@ -108,10 +115,17 @@ def run_pipeline(config: Config) -> None:
             file=sys.stderr,
         )
 
+    if report_data:
+        report_data.stage_times["Loading dictionaries"] = time.time() - stage_start
+        report_data.words_processed = len(source_words)
+
     if verbose:
-        print(f"\nProcessing {len(source_words)} words...\n", file=sys.stderr)
+        print(f"\nGenerating typos for {len(source_words)} words...\n", file=sys.stderr)
 
     source_words_set = set(source_words)
+
+    # Start typo generation stage
+    stage_start = time.time()
 
     # Process words to generate typos
     typo_map = defaultdict(list)
@@ -165,15 +179,28 @@ def run_pipeline(config: Config) -> None:
             for typo, correction_word, boundary_type in corrections:
                 typo_map[typo].append((correction_word, boundary_type))
 
+    if report_data:
+        report_data.stage_times["Generating typos"] = time.time() - stage_start
+
     # Resolve collisions
-    final_corrections, skipped_collisions, skipped_short = resolve_collisions(
-        typo_map,
-        config.freq_ratio,
-        config.min_typo_length,
-        config.min_word_length,
-        user_words_set,
-        exclusion_matcher,
+    stage_start = time.time()
+    final_corrections, skipped_collisions, skipped_short, excluded_corrections = (
+        resolve_collisions(
+            typo_map,
+            config.freq_ratio,
+            config.min_typo_length,
+            config.min_word_length,
+            user_words_set,
+            exclusion_matcher,
+        )
     )
+
+    if report_data:
+        report_data.stage_times["Resolving collisions"] = time.time() - stage_start
+        report_data.skipped_collisions = skipped_collisions
+        report_data.skipped_short = skipped_short
+        report_data.excluded_corrections = excluded_corrections
+        report_data.corrections_before_generalization = len(final_corrections)
 
     # Statistics
     if verbose:
@@ -195,7 +222,12 @@ def run_pipeline(config: Config) -> None:
                 print(f"#   {typo}: {words} (ratio: {ratio:.2f})", file=sys.stderr)
 
     # Generalize patterns
-    patterns, to_remove = generalize_patterns(
+    (
+        patterns,
+        to_remove,
+        pattern_replacements,
+        rejected_patterns,
+    ) = generalize_patterns(
         final_corrections,
         filtered_validation_set,
         set(source_words),
@@ -208,13 +240,16 @@ def run_pipeline(config: Config) -> None:
     final_corrections = [c for c in final_corrections if c not in to_remove]
     removed_count = pre_generalization_count - len(final_corrections)
 
+    if report_data:
+        report_data.stage_times["Generalizing patterns"] = time.time() - stage_start
+
     # Patterns need collision resolution - multiple words might generate same pattern
     pattern_typo_map = defaultdict(list)
     for typo, word, boundary in patterns:
         pattern_typo_map[typo].append((word, boundary))
 
     # Resolve collisions for patterns
-    resolved_patterns, _, _ = resolve_collisions(
+    resolved_patterns, _, _, _ = resolve_collisions(
         pattern_typo_map,
         config.freq_ratio,
         config.min_typo_length,
@@ -225,6 +260,16 @@ def run_pipeline(config: Config) -> None:
 
     # Add resolved patterns to final corrections
     final_corrections.extend(resolved_patterns)
+
+    if report_data:
+        report_data.corrections_after_generalization = len(final_corrections)
+        # Store pattern info with count of replacements
+        for typo, word, boundary in resolved_patterns:
+            pattern_key = (typo, word, boundary)
+            count = len(pattern_replacements.get(pattern_key, []))
+            report_data.generalized_patterns.append((typo, word, boundary, count))
+        report_data.pattern_replacements = pattern_replacements
+        report_data.rejected_patterns = rejected_patterns
 
     if verbose:
         if patterns:
@@ -238,10 +283,37 @@ def run_pipeline(config: Config) -> None:
         )
 
     # Remove substring conflicts
+    stage_start = time.time()
     pre_conflict_count = len(final_corrections)
+
+    # Track which corrections are removed by building a lookup
+    if report_data:
+        pre_conflict_corrections = {c: c for c in final_corrections}
+
     final_corrections = remove_substring_conflicts(
         final_corrections, config.jobs, verbose
     )
+
+    if report_data:
+        report_data.stage_times["Removing conflicts"] = time.time() - stage_start
+        report_data.corrections_after_conflicts = len(final_corrections)
+        # Find which corrections were removed
+        final_set = set(final_corrections)
+        for typo, word, boundary in pre_conflict_corrections.values():
+            if (typo, word, boundary) not in final_set:
+                # Find what blocked it (simple heuristic: find shorter typos)
+                blocking_typo = "unknown"
+                for other_typo, _, other_boundary in final_corrections:
+                    if (
+                        other_boundary == boundary
+                        and typo.startswith(other_typo)
+                        and typo != other_typo
+                    ):
+                        blocking_typo = other_typo
+                        break
+                report_data.removed_conflicts.append(
+                    (typo, word, blocking_typo, boundary)
+                )
 
     if verbose:
         conflicts_removed = pre_conflict_count - len(final_corrections)
@@ -252,9 +324,18 @@ def run_pipeline(config: Config) -> None:
             )
 
     # Generate output
+    stage_start = time.time()
     generate_espanso_yaml(
         final_corrections, config.output, verbose, config.max_entries_per_file
     )
+
+    if report_data:
+        report_data.stage_times["Writing YAML files"] = time.time() - stage_start
+        report_data.total_corrections = len(final_corrections)
+
+    # Generate reports if enabled
+    if config.reports:
+        generate_reports(report_data, config.reports, verbose)
 
     # Print total time
     elapsed_time = time.time() - start_time

@@ -40,6 +40,7 @@ Example config.json:
   "max_entries_per_file": 750,
   "typo_freq_threshold": 1e-8,
   "output": "~/.config/espanso/match/",
+  "reports": "./reports",
   "verbose": true,
   "jobs": 4
 }
@@ -57,6 +58,11 @@ Example config.json:
     # Output
     parser.add_argument(
         "-o", "--output", type=str, help="Output directory for YAML files"
+    )
+    parser.add_argument(
+        "--reports",
+        type=str,
+        help="Directory to generate detailed reports (creates timestamped subdirectories)",
     )
 
     # Word lists

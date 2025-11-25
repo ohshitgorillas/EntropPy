@@ -26,7 +26,7 @@ def process_word(
     Args:
         word: The word to generate typos for
         validation_set: Full validation dictionary (for checking if typo is a real word)
-        filtered_validation_set: Filtered validation set 
+        filtered_validation_set: Filtered validation set
             (for boundary detection, excludes exclusion patterns)
         source_words: Set of source words
         typo_freq_threshold: Frequency threshold for typos
@@ -99,11 +99,16 @@ def resolve_collisions(
     min_word_length: int,
     user_words: set[str],
     exclusion_matcher: ExclusionMatcher,
-) -> tuple[list[Correction], list, list]:
-    """Resolve collisions where multiple words map to same typo."""
+) -> tuple[list[Correction], list, list, list]:
+    """Resolve collisions where multiple words map to same typo.
+
+    Returns:
+        Tuple of (final_corrections, skipped_collisions, skipped_short, excluded_corrections)
+    """
     final_corrections = []
     skipped_collisions = []
     skipped_short = []
+    excluded_corrections = []
 
     for typo, word_boundary_list in typo_map.items():
         unique_pairs = list(set(word_boundary_list))
@@ -125,6 +130,10 @@ def resolve_collisions(
                 correction = (typo, word, boundary)
                 if not exclusion_matcher.should_exclude(correction):
                     final_corrections.append(correction)
+                else:
+                    # Track which rule excluded this correction
+                    matching_rule = exclusion_matcher.get_matching_rule(correction)
+                    excluded_corrections.append((typo, word, matching_rule))
         else:
             word_freqs = [(w, word_frequency(w, "en")) for w in unique_words]
             word_freqs.sort(key=lambda x: x[1], reverse=True)
@@ -152,10 +161,14 @@ def resolve_collisions(
                     correction = (typo, word, boundary)
                     if not exclusion_matcher.should_exclude(correction):
                         final_corrections.append(correction)
+                    else:
+                        # Track which rule excluded this correction
+                        matching_rule = exclusion_matcher.get_matching_rule(correction)
+                        excluded_corrections.append((typo, word, matching_rule))
             else:
                 skipped_collisions.append((typo, unique_words, ratio))
 
-    return final_corrections, skipped_collisions, skipped_short
+    return final_corrections, skipped_collisions, skipped_short, excluded_corrections
 
 
 def _process_boundary_group(
@@ -254,9 +267,7 @@ def remove_substring_conflicts(
         final_corrections = []
         groups_iter = boundary_groups
         if verbose and len(boundary_groups) > 1:
-            groups_iter = tqdm(
-                boundary_groups, desc="Removing conflicts", unit="group"
-            )
+            groups_iter = tqdm(boundary_groups, desc="Removing conflicts", unit="group")
 
         for boundary_group in groups_iter:
             final_corrections.extend(_process_boundary_group(boundary_group))
