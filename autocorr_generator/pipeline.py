@@ -66,7 +66,7 @@ def run_pipeline(config: Config) -> None:
 
     # Load dictionaries and mappings
     validation_set = load_validation_dictionary(config.exclude, verbose)
-    exclusions = load_exclusions(config.exclude_file, verbose)
+    exclusions = load_exclusions(config.exclude, verbose)
     exclusion_matcher = ExclusionMatcher(exclusions)
 
     # Filter validation set for boundary detection
