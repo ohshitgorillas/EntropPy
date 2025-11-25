@@ -23,7 +23,8 @@ def process_word(
     Args:
         word: The word to generate typos for
         validation_set: Full validation dictionary (for checking if typo is a real word)
-        filtered_validation_set: Filtered validation set (for boundary detection, excludes exclusion patterns)
+        filtered_validation_set: Filtered validation set 
+            (for boundary detection, excludes exclusion patterns)
         source_words: Set of source words
         typo_freq_threshold: Frequency threshold for typos
         adj_letters_map: Adjacent letters map for insertions/replacements
@@ -38,6 +39,10 @@ def process_word(
 
     for typo in typos:
         if typo == word:
+            continue
+
+        # Skip if typo is a source word (from includes file)
+        if typo in source_words:
             continue
 
         # Use full validation set to check if typo is a real word
@@ -192,7 +197,7 @@ def remove_substring_conflicts(corrections: list[Correction]) -> list[Correction
             containing = [
                 long_typo
                 for long_typo in all_typos
-                if short_typo in long_typo and short_typo != long_typo
+                if long_typo.startswith(short_typo) and short_typo != long_typo
             ]
             if containing:
                 substring_groups[short_typo] = containing
