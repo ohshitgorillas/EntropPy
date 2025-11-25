@@ -1,15 +1,17 @@
 # Autocorrect Dictionary Generator for Espanso
 
+**⚠️ Work in Progress**: This project is under active development. While somewhat functional, it contain bugs and the API is subject to change.
+
 This is a Python module which generates a personalized autocorrect dictionary for use with the [Espanso](https://espanso.org/) text expander software.
 
 It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of common "fat finger" typing errors mapped to their correct spellings.
 
 It generates five types of typos:
-* **Transpositions**: Swaps adjacent characters (e.g., `word` → `wrod`).
-* **Omissions**: Removes single characters (e.g., `because` → `becuse`).
-* **Duplications**: Duplicates each letter in the word (e.g., `word` → `worrd`). 
-* **Replacements**: Replaces a character with an adjacent key (e.g., `apple` → `applw` via `e→w` map).
-* **Insertions**: Inserts adjacent keys before/after target letters (e.g., `apple` → `applew` via `e→w`).
+* **Transpositions**: Swapped characters (e.g., `word` → `wrod`).
+* **Omissions**: Missing characters (e.g., `because` → `becuse`).
+* **Duplications**: Duplicate characters (e.g., `word` → `worrd`). 
+* **Replacements**: Wrong characters (e.g., `apple` → `applw` via `e→w` map).
+* **Insertions**: Additional characters (e.g., `apple` → `applew` via `e→w`).
 
 ## Inspiration / Why Espanso?
 
