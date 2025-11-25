@@ -1,5 +1,8 @@
 """Word processing and collision resolution."""
 
+from multiprocessing import Pool
+
+from tqdm import tqdm
 from wordfreq import word_frequency
 
 from .boundaries import determine_boundaries
@@ -155,7 +158,49 @@ def resolve_collisions(
     return final_corrections, skipped_collisions, skipped_short
 
 
-def remove_substring_conflicts(corrections: list[Correction]) -> list[Correction]:
+def _process_boundary_group(
+    args: tuple[BoundaryType, list[Correction]],
+) -> list[Correction]:
+    """Worker function to process a single boundary group.
+
+    Args:
+        args: Tuple of (boundary_type, list_of_corrections)
+
+    Returns:
+        List of corrections with substring conflicts removed
+    """
+    _, group = args
+    typo_to_correction = {c[0]: c for c in group}
+    all_typos = set(typo_to_correction.keys())
+
+    # Find substring relationships within this boundary group
+    substring_groups = {}
+    for short_typo in all_typos:
+        containing = [
+            long_typo
+            for long_typo in all_typos
+            if long_typo.startswith(short_typo) and short_typo != long_typo
+        ]
+        if containing:
+            substring_groups[short_typo] = containing
+
+    typos_to_remove = set()
+
+    for short_typo, long_typos in substring_groups.items():
+        if short_typo in typos_to_remove:
+            continue
+
+        # Espanso triggers on shortest match first (left-to-right greedy)
+        # So always keep shorter typo, remove longer ones that contain it
+        typos_to_remove.update(long_typos)
+
+    # Return corrections from this boundary group that weren't removed
+    return [c for c in group if c[0] not in typos_to_remove]
+
+
+def remove_substring_conflicts(
+    corrections: list[Correction], jobs: int = 1, verbose: bool = False
+) -> list[Correction]:
     """Remove corrections where one typo is a substring of another WITH THE SAME BOUNDARY.
 
     When Espanso sees a typo, it triggers on the first (shortest) match from left to right.
@@ -184,35 +229,36 @@ def remove_substring_conflicts(corrections: list[Correction]) -> list[Correction
             by_boundary[boundary] = []
         by_boundary[boundary].append(correction)
 
-    final_corrections = []
+    boundary_groups = list(by_boundary.items())
 
-    # Process each boundary group separately
-    for boundary, group in by_boundary.items():
-        typo_to_correction = {c[0]: c for c in group}
-        all_typos = set(typo_to_correction.keys())
+    # Process boundary groups in parallel if jobs > 1
+    if jobs > 1 and len(boundary_groups) > 1:
+        with Pool(processes=min(jobs, len(boundary_groups))) as pool:
+            if verbose:
+                # Use imap for progress tracking
+                results = list(
+                    tqdm(
+                        pool.imap(_process_boundary_group, boundary_groups),
+                        desc="Removing conflicts",
+                        unit="group",
+                        total=len(boundary_groups),
+                    )
+                )
+            else:
+                # Use map for efficiency when no progress bar needed
+                results = pool.map(_process_boundary_group, boundary_groups)
+        # Flatten results
+        final_corrections = [corr for group_result in results for corr in group_result]
+    else:
+        # Single-threaded processing
+        final_corrections = []
+        groups_iter = boundary_groups
+        if verbose and len(boundary_groups) > 1:
+            groups_iter = tqdm(
+                boundary_groups, desc="Removing conflicts", unit="group"
+            )
 
-        # Find substring relationships within this boundary group
-        substring_groups = {}
-        for short_typo in all_typos:
-            containing = [
-                long_typo
-                for long_typo in all_typos
-                if long_typo.startswith(short_typo) and short_typo != long_typo
-            ]
-            if containing:
-                substring_groups[short_typo] = containing
-
-        typos_to_remove = set()
-
-        for short_typo, long_typos in substring_groups.items():
-            if short_typo in typos_to_remove:
-                continue
-
-            # Espanso triggers on shortest match first (left-to-right greedy)
-            # So always keep shorter typo, remove longer ones that contain it
-            typos_to_remove.update(long_typos)
-
-        # Add corrections from this boundary group that weren't removed
-        final_corrections.extend([c for c in group if c[0] not in typos_to_remove])
+        for boundary_group in groups_iter:
+            final_corrections.extend(_process_boundary_group(boundary_group))
 
     return final_corrections
