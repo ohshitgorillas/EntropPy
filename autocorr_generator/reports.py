@@ -1,6 +1,5 @@
 """Report generation for autocorrect pipeline."""
 
-import os
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -29,8 +28,8 @@ class ReportData:
     )
     rejected_patterns: list[tuple[str, str, str]] = field(default_factory=list)
 
-    # Conflicts
-    removed_conflicts: list[tuple[str, str, str, BoundaryType]] = field(
+    # Conflicts: (long_typo, long_word, blocking_typo, blocking_word, boundary)
+    removed_conflicts: list[tuple[str, str, str, str, BoundaryType]] = field(
         default_factory=list
     )
 
@@ -156,10 +155,6 @@ def generate_collisions_report(data: ReportData, report_dir: Path) -> None:
         for typo, words, ratio in sorted_collisions:
             f.write(f"{typo} → {words}\n")
             f.write(f"  Ratio: {ratio:.2f}\n")
-            if len(words) == 2:
-                f.write(
-                    f"  Suggestion: Add '{typo} -> {words[1]}' to exclude.txt to prefer '{words[0]}'\n"
-                )
             f.write("\n")
 
 
@@ -207,38 +202,51 @@ def generate_patterns_report(data: ReportData, report_dir: Path) -> None:
 
 
 def generate_conflicts_report(data: ReportData, report_dir: Path) -> None:
-    """Generate substring conflicts report."""
+    """Generate substring conflicts reports (one per boundary type)."""
     if not data.removed_conflicts:
         return
 
-    filepath = report_dir / "conflicts.txt"
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write("=" * 70 + "\n")
-        f.write("SUBSTRING CONFLICTS REPORT\n")
-        f.write("=" * 70 + "\n")
-        f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        f.write("These corrections were removed because a shorter typo would trigger\n")
-        f.write("first, making them unreachable in Espanso.\n\n")
-        f.write(f"Total removed: {len(data.removed_conflicts)}\n")
-        f.write("=" * 70 + "\n\n")
+    # Group by boundary type
+    by_boundary = {}
+    for (
+        long_typo,
+        long_word,
+        short_typo,
+        short_word,
+        boundary,
+    ) in data.removed_conflicts:
+        if boundary not in by_boundary:
+            by_boundary[boundary] = []
+        by_boundary[boundary].append((long_typo, long_word, short_typo, short_word))
 
-        # Group by boundary type
-        by_boundary = {}
-        for long_typo, word, short_typo, boundary in data.removed_conflicts:
-            if boundary not in by_boundary:
-                by_boundary[boundary] = []
-            by_boundary[boundary].append((long_typo, word, short_typo))
+    # Create a separate file for each boundary type
+    boundary_file_map = {
+        BoundaryType.NONE: "conflicts_none.txt",
+        BoundaryType.LEFT: "conflicts_left.txt",
+        BoundaryType.RIGHT: "conflicts_right.txt",
+        BoundaryType.BOTH: "conflicts_both.txt",
+    }
 
-        for boundary, conflicts in sorted(by_boundary.items(), key=lambda x: str(x[0])):
-            f.write(f"\n{_format_boundary(boundary).upper()}\n")
-            f.write("-" * 70 + "\n")
-            for long_typo, word, short_typo in conflicts[:20]:
-                f.write(f"{long_typo} → {word}\n")
-                f.write(f"  Blocked by: {short_typo}\n")
-            remaining = len(conflicts) - 20
-            if remaining > 0:
-                f.write(f"\n... and {remaining} more\n")
-            f.write("\n")
+    for boundary, conflicts in by_boundary.items():
+        filename = boundary_file_map.get(boundary, f"conflicts_{boundary.value}.txt")
+        filepath = report_dir / filename
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("=" * 70 + "\n")
+            f.write(f"SUBSTRING CONFLICTS - {_format_boundary(boundary).upper()}\n")
+            f.write("=" * 70 + "\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(
+                "These corrections were removed because a shorter typo would trigger\n"
+            )
+            f.write("first, making them unreachable in Espanso.\n\n")
+            f.write(f"Total removed: {len(conflicts)}\n")
+            f.write("=" * 70 + "\n\n")
+
+            # Write all conflicts without truncation
+            for long_typo, long_word, short_typo, short_word in conflicts:
+                f.write(f"{long_typo} → {long_word}\n")
+                f.write(f"  Blocked by: {short_typo} → {short_word}\n\n")
 
 
 def generate_short_typos_report(data: ReportData, report_dir: Path) -> None:
@@ -352,4 +360,4 @@ def generate_reports(
     generate_statistics_csv(data, report_dir)
 
     if verbose:
-        print(f"✓ Reports generated successfully", file=sys.stderr)
+        print("✓ Reports generated successfully", file=sys.stderr)
