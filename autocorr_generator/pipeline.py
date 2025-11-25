@@ -4,6 +4,8 @@ import sys
 from collections import defaultdict
 from multiprocessing import Pool
 
+from tqdm import tqdm
+
 from .config import Config, Correction
 from .dictionary import (
     load_adjacent_letters,
@@ -28,6 +30,9 @@ _SOURCE_WORDS_SET = None
 _TYPO_FREQ_THRESHOLD = 0.0
 _ADJ_LETTERS_MAP = None
 _EXCLUSIONS_SET: set[str] | None = None
+
+
+# pylint: disable=global-statement, line-too-long
 
 
 def init_worker(
@@ -125,13 +130,27 @@ def run_pipeline(config: Config) -> None:
                 exclusions,
             ),
         ) as pool:
-            results = pool.map(process_word_worker, source_words)
+            results = pool.imap_unordered(process_word_worker, source_words)
 
-        for word, corrections in results:
-            for typo, correction_word, boundary_type in corrections:
-                typo_map[typo].append((correction_word, boundary_type))
+            # Wrap with progress bar
+            if verbose:
+                results = tqdm(
+                    results,
+                    total=len(source_words),
+                    desc="Processing words",
+                    unit="word",
+                )
+
+            for word, corrections in results:
+                for typo, correction_word, boundary_type in corrections:
+                    typo_map[typo].append((correction_word, boundary_type))
     else:
-        for word in source_words:
+        # Wrap with progress bar for single-threaded processing
+        words_iter = source_words
+        if verbose:
+            words_iter = tqdm(source_words, desc="Processing words", unit="word")
+
+        for word in words_iter:
             corrections = process_word(
                 word,
                 validation_set,
@@ -175,7 +194,11 @@ def run_pipeline(config: Config) -> None:
 
     # Generalize patterns
     patterns, to_remove = generalize_patterns(
-        final_corrections, filtered_validation_set, config.min_typo_length
+        final_corrections,
+        filtered_validation_set,
+        set(source_words),
+        config.min_typo_length,
+        verbose,
     )
 
     # Remove original corrections that have been generalized
@@ -183,13 +206,28 @@ def run_pipeline(config: Config) -> None:
     final_corrections = [c for c in final_corrections if c not in to_remove]
     removed_count = pre_generalization_count - len(final_corrections)
 
-    # Add the new generalized patterns
-    final_corrections.extend(patterns)
+    # Patterns need collision resolution - multiple words might generate same pattern
+    pattern_typo_map = defaultdict(list)
+    for typo, word, boundary in patterns:
+        pattern_typo_map[typo].append((word, boundary))
+
+    # Resolve collisions for patterns
+    resolved_patterns, _, _ = resolve_collisions(
+        pattern_typo_map,
+        config.freq_ratio,
+        config.min_typo_length,
+        config.min_word_length,
+        user_words_set,
+        exclusion_matcher,
+    )
+
+    # Add resolved patterns to final corrections
+    final_corrections.extend(resolved_patterns)
 
     if verbose:
         if patterns:
             print(
-                f"# Generalized {len(patterns)} patterns, removing {removed_count} specific corrections.",
+                f"# Generalized {len(resolved_patterns)} patterns, removing {removed_count} specific corrections.",
                 file=sys.stderr,
             )
         print(
