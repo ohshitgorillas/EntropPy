@@ -2,6 +2,7 @@
 
 import itertools
 import os
+import re
 import sys
 from english_words import get_english_words_set
 from wordfreq import top_n_list
@@ -10,17 +11,52 @@ from .config import Config
 
 
 def load_validation_dictionary(
-    exclude_words: list[str], verbose: bool = False
+    exclude_filepath: str | None, verbose: bool = False
 ) -> set[str]:
-    """Load english-words dictionary for validation."""
+    """Load english-words dictionary for validation.
+
+    Removes words from the `exclude` file.
+    Handles exact words and wildcard (*) patterns.
+    """
     if verbose:
         print("Loading English words dictionary...", file=sys.stderr)
 
     words = get_english_words_set(["web2", "gcide"], lower=True)
-    validation_set = words - set(exclude_words)
+
+    # Load exclusions from file
+    exclusion_patterns = load_exclusions(exclude_filepath)  # No verbose here
+
+    # Separate exact matches from wildcard patterns for efficiency
+    # Note: We ignore "->" patterns as they apply to (typo, word) pairs, not single words.
+    exact_matches = {p for p in exclusion_patterns if "*" not in p and "->" not in p}
+    wildcard_patterns = {p for p in exclusion_patterns if "*" in p and "->" not in p}
+
+    # First, remove exact matches using fast set difference
+    validation_set = words - exact_matches
+    removed_count = len(words) - len(validation_set)
+
+    # Then, filter the remaining words with wildcard patterns
+    if wildcard_patterns:
+        compiled_patterns = [
+            re.compile(f"^{re.escape(p).replace(r'\\*', '.*')}$")
+            for p in wildcard_patterns
+        ]
+        words_to_remove = set()
+        for word in validation_set:
+            for pat in compiled_patterns:
+                if pat.match(word):
+                    words_to_remove.add(word)
+                    break
+        validation_set -= words_to_remove
+        removed_count += len(words_to_remove)
 
     if verbose:
         print(f"Loaded {len(validation_set)} words for validation", file=sys.stderr)
+        if removed_count > 0:
+            print(
+                f"Removed {removed_count} words based on the exclude file (including wildcards).",
+                file=sys.stderr,
+            )
 
     return validation_set
 
