@@ -298,7 +298,6 @@ def remove_substring_conflicts(
     # The optimization is in the algorithm itself, not parallelization
     final_corrections = []
 
-    groups_iter = by_boundary.items()
     if verbose and len(by_boundary) > 1:
         groups_iter = tqdm(
             by_boundary.items(),
@@ -306,6 +305,8 @@ def remove_substring_conflicts(
             unit="boundary",
             total=len(by_boundary),
         )
+    else:
+        groups_iter = by_boundary.items()
 
     for boundary_group in groups_iter:
         final_corrections.extend(_process_boundary_group(boundary_group))
