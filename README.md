@@ -6,7 +6,7 @@ It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of Englis
 
 It generates the following types of typos:
 * **Transpositions**: Swaps adjacent characters (e.g., `word` -> `wrod`).
-* **Deletions**: Removes single characters (e.g., `because` -> `becuse`).
+* **Omissions**: Removes single characters (e.g., `because` -> `becuse`).
 * **Duplication**: Duplicates each letter in the word (e.g., `word` -> `worrd`). 
 * **Replacements**: Replaces a character with an adjacent key (e.g., `apple` -> `applw` via `e->w` map).
 * **Insertions**: Inserts adjacent keys before/after target letters (e.g., `apple` -> `applew` via `e->w`).
