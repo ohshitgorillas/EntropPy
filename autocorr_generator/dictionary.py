@@ -8,6 +8,7 @@ from english_words import get_english_words_set
 from wordfreq import top_n_list
 
 from .config import Config
+from .utils import compile_wildcard_regex
 
 
 def load_validation_dictionary(
@@ -26,29 +27,28 @@ def load_validation_dictionary(
     # Load exclusions from file
     exclusion_patterns = load_exclusions(exclude_filepath)  # No verbose here
 
-    # Separate exact matches from wildcard patterns for efficiency
-    # Note: We ignore "->" patterns as they apply to (typo, word) pairs, not single words.
-    exact_matches = {p for p in exclusion_patterns if "*" not in p and "->" not in p}
-    wildcard_patterns = {p for p in exclusion_patterns if "*" in p and "->" not in p}
+    # Filter out patterns that are for typo->word mapping, not single word exclusion
+    word_exclusion_patterns = {p for p in exclusion_patterns if "->" not in p}
 
-    # First, remove exact matches using fast set difference
-    validation_set = words - exact_matches
-    removed_count = len(words) - len(validation_set)
+    if not word_exclusion_patterns:
+        if verbose:
+            print(f"Loaded {len(words)} words for validation (no exclusions applied).", file=sys.stderr)
+        return words
 
-    # Then, filter the remaining words with wildcard patterns
-    if wildcard_patterns:
-        compiled_patterns = [
-            re.compile(f"^{re.escape(p).replace(r'\\*', '.*')}$")
-            for p in wildcard_patterns
-        ]
-        words_to_remove = set()
-        for word in validation_set:
-            for pat in compiled_patterns:
-                if pat.match(word):
-                    words_to_remove.add(word)
-                    break
-        validation_set -= words_to_remove
-        removed_count += len(words_to_remove)
+    # Compile all patterns into regexes
+    compiled_patterns = [
+        compile_wildcard_regex(p) for p in word_exclusion_patterns
+    ]
+
+    # Use a generator expression for memory efficiency, then build the set to remove
+    words_to_remove = {
+        word
+        for word in words
+        if any(pat.match(word) for pat in compiled_patterns)
+    }
+
+    validation_set = words - words_to_remove
+    removed_count = len(words_to_remove)
 
     if verbose:
         print(f"Loaded {len(validation_set)} words for validation", file=sys.stderr)
