@@ -59,9 +59,7 @@ Example config.json:
     parser.add_argument(
         "--include", type=str, help="File with additional words to include"
     )
-    parser.add_argument(
-        "--exclude", type=str, help="File with exclusion patterns"
-    )
+    parser.add_argument("--exclude", type=str, help="File with exclusion patterns")
     parser.add_argument(
         "--adjacent-letters", type=str, help="File mapping keys to adjacent letters"
     )
@@ -71,29 +69,31 @@ Example config.json:
         "--freq-ratio",
         type=float,
         help="Minimum frequency ratio for collision resolution",
-        default=10.0
+        default=10.0,
     )
     parser.add_argument(
-        "--max-word-length", type=int, help="Maximum word length to process",
-        default=10
+        "--max-word-length", type=int, help="Maximum word length to process", default=10
     )
     parser.add_argument(
-        "--min-word-length", type=int, help="Minimum source word length",
-        default=3
+        "--min-word-length", type=int, help="Minimum source word length", default=3
     )
     parser.add_argument(
-        "--min-typo-length", type=int, help="Minimum typo length to include in output",
-        default=4
+        "--min-typo-length",
+        type=int,
+        help="Minimum typo length to include in output",
+        default=4,
     )
     parser.add_argument(
-        "--max-entries-per-file", type=int, help="Maximum corrections per YAML file",
-        default=500
+        "--max-entries-per-file",
+        type=int,
+        help="Maximum corrections per YAML file",
+        default=500,
     )
     parser.add_argument(
         "--typo-freq-threshold",
         type=float,
         help="Skip typos with wordfreq frequency above this",
-        default=0.0
+        default=0.0,
     )
 
     # Flags
