@@ -234,9 +234,27 @@ def _process_boundary_group(
             if typo and typo[0] in prefixes_by_char:
                 for prefix in prefixes_by_char[typo[0]]:
                     if typo.startswith(prefix):
-                        typos_to_remove.add(typo)
-                        is_blocked = True
-                        break
+                        # Validate: check if removal would create correct result
+                        # Get corrections for both typos
+                        long_correction = typo_to_correction[
+                            typo
+                        ]  # (typo, word, boundary)
+                        short_correction = typo_to_correction[prefix]
+
+                        long_word = long_correction[1]
+                        short_word = short_correction[1]
+
+                        # Calculate what would happen when user types long_typo:
+                        # Espanso triggers on prefix → short_word at the start
+                        # Remaining suffix stays
+                        remaining_suffix = typo[len(prefix) :]
+                        expected_result = short_word + remaining_suffix
+
+                        # Only block if the result would be correct
+                        if expected_result == long_word:
+                            typos_to_remove.add(typo)
+                            is_blocked = True
+                            break
 
             if not is_blocked and typo:
                 prefixes_by_char[typo[0]].append(typo)
