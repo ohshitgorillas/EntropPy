@@ -27,6 +27,7 @@ _FILTERED_VALIDATION_SET = None
 _SOURCE_WORDS_SET = None
 _TYPO_FREQ_THRESHOLD = 0.0
 _ADJ_LETTERS_MAP = None
+_EXCLUSIONS_SET: set[str] | None = None
 
 
 def init_worker(
@@ -35,14 +36,16 @@ def init_worker(
     source_words_set,
     typo_freq_threshold,
     adj_letters_map,
+    exclusions_set,
 ):
     """Initialize worker process."""
-    global _VALIDATION_SET, _FILTERED_VALIDATION_SET, _SOURCE_WORDS_SET, _TYPO_FREQ_THRESHOLD, _ADJ_LETTERS_MAP
+    global _VALIDATION_SET, _FILTERED_VALIDATION_SET, _SOURCE_WORDS_SET, _TYPO_FREQ_THRESHOLD, _ADJ_LETTERS_MAP, _EXCLUSIONS_SET
     _VALIDATION_SET = validation_set
     _FILTERED_VALIDATION_SET = filtered_validation_set
     _SOURCE_WORDS_SET = source_words_set
     _TYPO_FREQ_THRESHOLD = typo_freq_threshold
     _ADJ_LETTERS_MAP = adj_letters_map
+    _EXCLUSIONS_SET = exclusions_set
 
 
 def process_word_worker(word: str) -> tuple[str, list[Correction]]:
@@ -56,6 +59,7 @@ def process_word_worker(word: str) -> tuple[str, list[Correction]]:
             _SOURCE_WORDS_SET,
             _TYPO_FREQ_THRESHOLD,
             _ADJ_LETTERS_MAP,
+            _EXCLUSIONS_SET,
         ),
     )
 
@@ -118,6 +122,7 @@ def run_pipeline(config: Config) -> None:
                 source_words_set,
                 config.typo_freq_threshold,
                 adjacent_letters_map,
+                exclusions,
             ),
         ) as pool:
             results = pool.map(process_word_worker, source_words)
@@ -134,6 +139,7 @@ def run_pipeline(config: Config) -> None:
                 source_words_set,
                 config.typo_freq_threshold,
                 adjacent_letters_map,
+                exclusions,
             )
             for typo, correction_word, boundary_type in corrections:
                 typo_map[typo].append((correction_word, boundary_type))
