@@ -101,7 +101,7 @@ def load_source_words(config: Config, verbose: bool = False) -> list[str]:
         print(f"Loading top {config.top_n} words from wordfreq...", file=sys.stderr)
 
     # Get words from wordfreq
-    all_words = top_n_list("en", config.top_n * 3)  # Get extra for filtering
+    all_words = top_n_list("en", config.top_n * 3)  # Get extra words for filtering
 
     # Filter by length and validate
     filtered = []

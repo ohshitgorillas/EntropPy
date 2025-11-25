@@ -13,11 +13,11 @@ def process_word(
     validation_set: set[str],
     source_words: set[str],
     typo_freq_threshold: float,
-    extra_letters_map: dict[str, str] | None,
+    adj_letters_map: dict[str, str] | None,
 ) -> list[Correction]:
     """Process a single word and generate all valid corrections."""
     corrections = []
-    typos = generate_all_typos(word, extra_letters_map)
+    typos = generate_all_typos(word, adj_letters_map)
 
     for typo in typos:
         if typo == word:

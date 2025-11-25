@@ -25,18 +25,18 @@ from .processing import (
 _VALIDATION_SET = None
 _SOURCE_WORDS_SET = None
 _TYPO_FREQ_THRESHOLD = 0.0
-_EXTRA_LETTERS_MAP = None
+_ADJ_LETTERS_MAP = None
 
 
 def init_worker(
-    validation_set, source_words_set, typo_freq_threshold, extra_letters_map
+    validation_set, source_words_set, typo_freq_threshold, adj_letters_map
 ):
     """Initialize worker process."""
-    global _VALIDATION_SET, _SOURCE_WORDS_SET, _TYPO_FREQ_THRESHOLD, _EXTRA_LETTERS_MAP
+    global _VALIDATION_SET, _SOURCE_WORDS_SET, _TYPO_FREQ_THRESHOLD, _ADJ_LETTERS_MAP
     _VALIDATION_SET = validation_set
     _SOURCE_WORDS_SET = source_words_set
     _TYPO_FREQ_THRESHOLD = typo_freq_threshold
-    _EXTRA_LETTERS_MAP = extra_letters_map
+    _ADJ_LETTERS_MAP = adj_letters_map
 
 
 def process_word_worker(word: str) -> tuple[str, list[Correction]]:
@@ -48,7 +48,7 @@ def process_word_worker(word: str) -> tuple[str, list[Correction]]:
             _VALIDATION_SET,
             _SOURCE_WORDS_SET,
             _TYPO_FREQ_THRESHOLD,
-            _EXTRA_LETTERS_MAP,
+            _ADJ_LETTERS_MAP,
         ),
     )
 
