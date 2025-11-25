@@ -36,6 +36,7 @@ class Config:
     adjacent_letters: str | None = None
     verbose: bool = False
     jobs: int = field(default_factory=cpu_count)
+    max_entries_per_file: int = 500
 
 
 def load_config(json_path: str | None, cli_args) -> Config:
@@ -89,5 +90,10 @@ def load_config(json_path: str | None, cli_args) -> Config:
             cli_args.jobs
             if cli_args.jobs is not None
             else json_config.get("jobs", cpu_count())
+        ),
+        max_entries_per_file=(
+            cli_args.max_entries_per_file
+            if cli_args.max_entries_per_file is not None
+            else json_config.get("max_entries_per_file", 500)
         ),
     )

@@ -30,7 +30,7 @@ def organize_by_letter(corrections: list[Correction]) -> dict[str, list[dict]]:
     by_letter = defaultdict(list)
 
     for correction in corrections:
-        _, word, _ = correction
+        typo, word, boundary = correction
 
         first_char = word[0].lower() if word else ""
 
@@ -45,12 +45,10 @@ def organize_by_letter(corrections: list[Correction]) -> dict[str, list[dict]]:
     return by_letter
 
 
-def estimate_ram_usage(
-    corrections: list[Correction], verbose: bool = False
-) -> dict[str, float]:
+def estimate_ram_usage(corrections: list[Correction], verbose: bool = False) -> dict[str, float]:
     """
     Estimate RAM usage of generated corrections.
-
+    
     Returns dict with:
         - per_entry_bytes: Average bytes per correction
         - total_kb: Total estimated KB
@@ -59,32 +57,28 @@ def estimate_ram_usage(
     # Estimate bytes per correction entry
     # Based on YAML structure:
     # - trigger: ~10 chars = 10 bytes
-    # - replace: ~10 chars = 10 bytes
+    # - replace: ~10 chars = 10 bytes  
     # - propagate_case: true = 20 bytes
     # - word/left_word/right_word = 15 bytes
     # - YAML overhead (spaces, newlines) = 25 bytes
     # Total: ~80 bytes per entry on average
-
-    avg_trigger_len = (
-        sum(len(c[0]) for c in corrections) / len(corrections) if corrections else 0
-    )
-    avg_replace_len = (
-        sum(len(c[1]) for c in corrections) / len(corrections) if corrections else 0
-    )
-
+    
+    avg_trigger_len = sum(len(c[0]) for c in corrections) / len(corrections) if corrections else 0
+    avg_replace_len = sum(len(c[1]) for c in corrections) / len(corrections) if corrections else 0
+    
     # Actual calculation
     per_entry_bytes = (
-        avg_trigger_len  # trigger string
-        + avg_replace_len  # replace string
-        + 20  # "propagate_case: true"
-        + 15  # boundary property if present
-        + 25  # YAML formatting overhead
+        avg_trigger_len +  # trigger string
+        avg_replace_len +  # replace string
+        20 +  # "propagate_case: true"
+        15 +  # boundary property if present
+        25    # YAML formatting overhead
     )
-
+    
     total_bytes = per_entry_bytes * len(corrections)
     total_kb = total_bytes / 1024
     total_mb = total_kb / 1024
-
+    
     estimate = {
         "entries": len(corrections),
         "avg_trigger_len": round(avg_trigger_len, 1),
@@ -94,71 +88,96 @@ def estimate_ram_usage(
         "total_kb": round(total_kb, 2),
         "total_mb": round(total_mb, 3),
     }
-
+    
     if verbose:
         print(f"\n# RAM Usage Estimate:", file=sys.stderr)
         print(f"#   {estimate['entries']} corrections", file=sys.stderr)
-        print(
-            f"#   ~{estimate['per_entry_bytes']:.0f} bytes per entry", file=sys.stderr
-        )
-        print(
-            f"#   Total: {estimate['total_kb']:.1f} KB ({estimate['total_mb']:.2f} MB)",
-            file=sys.stderr,
-        )
+        print(f"#   ~{estimate['per_entry_bytes']:.0f} bytes per entry", file=sys.stderr)
+        print(f"#   Total: {estimate['total_kb']:.1f} KB ({estimate['total_mb']:.2f} MB)", file=sys.stderr)
         print(f"#   (Espanso runtime overhead not included)", file=sys.stderr)
-
+    
     return estimate
 
 
 def write_yaml_files(
-    corrections_by_letter: dict[str, list[dict]], output_dir: str, verbose: bool
+    corrections_by_letter: dict[str, list[dict]], 
+    output_dir: str, 
+    verbose: bool,
+    max_entries_per_file: int = 500
 ) -> None:
-    """Write typos_X.yml files."""
+    """Write YAML files, splitting large files into word-range chunks."""
     output_dir = os.path.expanduser(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     total_entries = 0
+    total_files = 0
+    
     for letter, matches in sorted(corrections_by_letter.items()):
-        if letter == "symbols":
-            filename = os.path.join(output_dir, "typos_symbols.yml")
-        else:
-            filename = os.path.join(output_dir, f"typos_{letter}.yml")
-
-        yaml_output = {"matches": matches}
-
-        with open(filename, "w", encoding="utf-8") as f:
-            yaml.safe_dump(
-                yaml_output,
-                f,
-                allow_unicode=True,
-                default_flow_style=False,
-                sort_keys=False,
-                width=float("inf"),
-            )
-
-        total_entries += len(matches)
-        if verbose:
-            print(f"Wrote {len(matches)} corrections to {filename}", file=sys.stderr)
-
+        # Sort matches by the replacement word for consistent ordering
+        matches_sorted = sorted(matches, key=lambda m: m["replace"])
+        
+        # Chunk into groups of max_entries_per_file
+        for i in range(0, len(matches_sorted), max_entries_per_file):
+            chunk = matches_sorted[i:i + max_entries_per_file]
+            
+            # Get first and last word for filename
+            first_word = chunk[0]["replace"]
+            last_word = chunk[-1]["replace"]
+            
+            # Generate filename based on size
+            if letter == "symbols":
+                if len(matches_sorted) <= max_entries_per_file:
+                    filename = os.path.join(output_dir, "typos_symbols.yml")
+                else:
+                    chunk_num = i // max_entries_per_file + 1
+                    filename = os.path.join(output_dir, f"typos_symbols_{chunk_num:03d}.yml")
+            else:
+                if len(matches_sorted) <= max_entries_per_file:
+                    # Small enough, use simple letter naming
+                    filename = os.path.join(output_dir, f"typos_{letter}.yml")
+                else:
+                    # Use word range naming for large files
+                    filename = os.path.join(output_dir, f"typos_{first_word}_to_{last_word}.yml")
+            
+            yaml_output = {"matches": chunk}
+            
+            with open(filename, "w", encoding="utf-8") as f:
+                yaml.safe_dump(
+                    yaml_output,
+                    f,
+                    allow_unicode=True,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    width=float("inf"),
+                )
+            
+            total_entries += len(chunk)
+            total_files += 1
+            if verbose:
+                print(f"Wrote {len(chunk)} corrections to {os.path.basename(filename)}", file=sys.stderr)
+    
     if verbose:
         print(
-            f"\nTotal: {total_entries} corrections across {len(corrections_by_letter)} files",
+            f"\nTotal: {total_entries} corrections across {total_files} files",
             file=sys.stderr,
         )
 
 
 def generate_espanso_yaml(
-    corrections: list[Correction], output: str | None, verbose: bool
+    corrections: list[Correction], 
+    output: str | None, 
+    verbose: bool,
+    max_entries_per_file: int = 500
 ) -> None:
     """Generate Espanso YAML output."""
     sorted_corrections = sorted(corrections, key=lambda c: (c[1], c[0]))
-
+    
     # Estimate RAM usage
     estimate_ram_usage(sorted_corrections, verbose)
 
     if output:
         corrections_by_letter = organize_by_letter(sorted_corrections)
-        write_yaml_files(corrections_by_letter, output, verbose)
+        write_yaml_files(corrections_by_letter, output, verbose, max_entries_per_file)
     else:
         yaml_dicts = [correction_to_yaml_dict(c) for c in sorted_corrections]
         yaml_output = {"matches": yaml_dicts}

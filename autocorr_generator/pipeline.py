@@ -191,4 +191,4 @@ def run_pipeline(config: Config) -> None:
             )
 
     # Generate output
-    generate_espanso_yaml(final_corrections, config.output, verbose)
+    generate_espanso_yaml(final_corrections, config.output, verbose, config.max_entries_per_file)
