@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.1.4] - 2025-11-26
+
+### Changed
+
+- **Project renamed to EntropPy**: The project is now officially named "EntropPy" (a play on Python, entropy/chaos, and a spelling mistake).
+- **Streamlined progress indicators**: Progress bars are now only shown for truly long-running operations (word processing, conflict removal, report analysis). Quick operations (<5 seconds) show simple status messages instead of cluttering output with unnecessary progress bars.
+
+### Performance
+
+- **Parallelized YAML file writing**: YAML files are now written in parallel using the worker pool (controlled by `--jobs`), providing roughly 10-12x speedup with multiple workers.
+
+### Added
+
+- **Progress bar for report analysis**: Added progress tracking for the conflict analysis step during report generation, which was previously silent and could take minutes on large datasets.
+- **Status messages for output stages**: Added feedback for sorting, organizing corrections, pattern generalization, and YAML file writing to eliminate silent pauses.
+
+---
+
+## [0.1.3] - 2025-11-26
+
+### Changed
+
+- **Reverted v0.1.1 containment check**: Removed the boundary logic that forced `word: true` when typo/correction contained each other as substrings. Fast-typing issues appear to be an upstream Espanso bug rather than a dictionary generation issue.
+
+---
+
 ## [0.1.2] - 2025-11-26
 
 ### Fixed
@@ -113,6 +139,8 @@ This is the first beta release of the Autocorrect Dictionary Generator for Espan
 
 ## Version History
 
+- **0.1.4** (2025-11-26): Parallelized YAML file generation with progress tracking
+- **0.1.3** (2025-11-26): Reverted v0.1.1 containment check (Espanso bug, not generator issue)
 - **0.1.2** (2025-11-26): Fixed useless no-op pattern generation
 - **0.1.1** (2025-11-26): Critical bug fix for race conditions with fast typing
 - **0.1.0** (2025-11-26): Initial beta release
