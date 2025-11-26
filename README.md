@@ -1,5 +1,7 @@
 # Autocorrect Dictionary Generator for Espanso
 
+**Version 0.1.0 (Beta)** | [Changelog](CHANGELOG.md)
+
 This is a Python module which generates a personalized autocorrect dictionary for use with the [Espanso](https://espanso.org/) text expander software.
 
 It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of common "fat finger" typing errors mapped to their correct spellings.
@@ -449,6 +451,14 @@ Use the `--reports` flag to see detailed information about:
 - **`summary.txt`**: Overall statistics showing how many patterns and conflicts were found
 
 These reports are invaluable for understanding the generator's decisions and verifying correct behavior.
+
+---
+
+## Contributing
+
+This project is in active development. Bug reports, feature requests, and pull requests are welcome!
+
+Please check the [CHANGELOG.md](CHANGELOG.md) for planned features and known limitations.
 
 ---
 
