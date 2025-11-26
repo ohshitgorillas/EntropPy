@@ -1,8 +1,7 @@
 """Pattern generalization for typo corrections."""
 
+import sys
 from collections import defaultdict
-
-from tqdm import tqdm
 
 from .boundaries import would_trigger_at_end
 from .config import BoundaryType, Correction
@@ -59,17 +58,13 @@ def generalize_patterns(
     rejected_patterns = []
     suffix_patterns = find_suffix_patterns(corrections)
 
-    # Wrap with progress bar if verbose
-    pattern_items = suffix_patterns.items()
     if verbose:
-        pattern_items = tqdm(
-            pattern_items,
-            total=len(suffix_patterns),
-            desc="Generalizing patterns",
-            unit="pattern",
+        print(
+            f"Generalizing {len(suffix_patterns)} patterns...",
+            file=sys.stderr,
         )
 
-    for (typo_suffix, word_suffix, boundary), occurrences in pattern_items:
+    for (typo_suffix, word_suffix, boundary), occurrences in suffix_patterns.items():
         if len(occurrences) < 2:
             continue
 
