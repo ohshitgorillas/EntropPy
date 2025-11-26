@@ -1,12 +1,12 @@
-# Autocorrect Dictionary Generator for Espanso
+# EntropPy
 
-**Version 0.1.2 (Beta)** | [Changelog](CHANGELOG.md)
+**Version 0.1.4 (Beta)** | [Changelog](CHANGELOG.md)
 
-This is a Python module which generates a personalized autocorrect dictionary for use with the [Espanso](https://espanso.org/) text expander software.
+A Python-based autocorrect dictionary generator for the [Espanso](https://espanso.org/) text expander.
 
-It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of common "fat finger" typing errors mapped to their correct spellings.
+It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of typos mapped to their correct spellings.
 
-It generates five types of typos:
+It generates five types of typing errors:
 * **Transpositions**: Swapped characters (e.g., `word` → `wrod`).
 * **Omissions**: Missing characters (e.g., `because` → `becuse`).
 * **Duplications**: Doubled characters (e.g., `word` → `worrd`). 
@@ -27,10 +27,10 @@ I immediately found Espanso, and it's perfect. Espanso runs on any OS at the hos
 * **Smart Boundary Detection**: Automatically assigns Espanso word boundaries (`word: true`, `left_word: true`, etc.) to prevent typos from triggering inside other valid words (e.g., prevents `no` → `on` from triggering inside the word `noon`).
 * **Collision Resolution**: If a typo maps to multiple valid words (e.g., `thn` could be `then`, `than`, or `thin`), the script uses frequency analysis to pick the statistically likely correction or discards it if ambiguous. (`then` and `than` are far more frequent than `thin`, but themselves have a frequency ratio close to 1, so `thn` is considered ambiguous and skipped.)
 * **Pattern Generalization**: Automatically detects repeated patterns (e.g., `-atoin` → `-ation` and `-ntoin` → `-ntion` are simplified to `-toin` → `-tion`) and creates generalized rules, reducing dictionary size.
-* **Comprehensive Reporting**: Generate detailed reports showing collisions, pattern decisions, substring conflicts, and performance metrics—invaluable for understanding and tuning the generator.
+* **Comprehensive Reporting**: Generate detailed reports showing collisions, pattern decisions, substring conflicts, and performance metrics—invaluable for understanding and tuning EntropPy.
 * **Espanso Optimization**: Outputs alphabetically organized YAML files to keep sizes manageable and organization clean.
 * **Highly Configurable**: Customize input lists, exclusion patterns, adjacent key mappings, and frequency thresholds.
-* **Progress Tracking**: Real-time progress bars for word processing, pattern generalization, and conflict removal.
+* **Progress Tracking**: Real-time progress bars for word processing, pattern generalization, conflict removal, and YAML file writing.
 * **Estimates RAM Usage**: Estimates the total RAM consumed by the dictionary in Espanso (~21,500 entries → 1.5MB).
 
 ---
@@ -41,11 +41,11 @@ I immediately found Espanso, and it's perfect. Espanso runs on any OS at the hos
 Follow the instructions for your OS at [espanso.org/install](https://espanso.org/install/).
 
 ### 2. Environment Setup
-It is recommended to run this generator inside a virtual environment:
+It is recommended to run EntropPy inside a virtual environment:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ohshitgorillas/autocorrect_generator_espanso.git /path/to/project
+git clone https://github.com/ohshitgorillas/entroppy.git /path/to/project
 
 # Set up the virtual environment
 cd /path/to/project
@@ -62,7 +62,7 @@ pip install -r requirements.txt
 ### 3. Directory Structure
 ```text
 project_root/
-├── autocorr_generator/ <-- The package directory
+├── entroppy/           <-- The package directory
 │   ├── __init__.py
 │   ├── __main__.py
 │   └── ... (other .py files)
@@ -104,7 +104,7 @@ Once you're satisfied with the generated corrections, copy the files to your Esp
 Generate transpositions, omissions, and duplications for the top 1,000 most common English words and output to a local folder:
 
 ```bash
-python -m autocorr_generator --top-n 1000 --output corrections
+python -m entroppy --top-n 1000 --output corrections
 ```
 
 Once you've reviewed the reports for issues, move the YAML files to Espanso and restart:
@@ -121,20 +121,20 @@ You can output directly to your Espanso `match` directory.
 **Linux/macOS:**
 ```bash
 mkdir ~/.config/espanso/match/autocorrect
-python -m autocorr_generator --top-n 5000 --output "~/.config/espanso/match/autocorrect"
+python -m entroppy --top-n 5000 --output "~/.config/espanso/match/autocorrect"
 ```
 
 **Windows (PowerShell):**
 ```powershell
 mkdir "$env:APPDATA\espanso\match\autocorrect"
-python -m autocorr_generator --top-n 5000 --output "$env:APPDATA\espanso\match\autocorrect"
+python -m entroppy --top-n 5000 --output "$env:APPDATA\espanso\match\autocorrect"
 ```
 
 ### Advanced Usage
 Generate typos using a custom word list, a specific "fat finger" key map, and exclude specific patterns:
 
 ```bash
-python -m autocorr_generator \
+python -m entroppy \
     --verbose \
     --top-n 2000 \
     --include settings/my_custom_words.txt \
@@ -149,10 +149,10 @@ Using `--typo-freq-threshold` is recommended to catch conjugations and other tra
 
 ### Generating Reports
 
-Generate detailed reports to analyze what the generator is doing:
+Generate detailed reports to analyze what EntropPy is doing:
 
 ```bash
-python -m autocorr_generator \
+python -m entroppy \
     --top-n 5000 \
     --output corrections \
     --reports reports \
@@ -171,13 +171,13 @@ This creates a timestamped directory (e.g., `reports/2025-11-25_14-30-15/`) with
 - **`exclusions.txt`** - Corrections blocked by exclusion rules (if any)
 - **`statistics.csv`** - Machine-readable statistics for analysis
 
-Reports are invaluable for understanding the generator's decisions and fine-tuning your configuration.
+Reports are invaluable for understanding EntropPy's decisions and fine-tuning your configuration.
 
 ---
 
 ## Configuration Options
 
-You can configure the generator via Command Line Arguments or a `config.json` file.
+You can configure EntropPy via Command Line Arguments or a `config.json` file.
 
 ### Command Line Arguments
 
@@ -215,7 +215,7 @@ Instead of long CLI strings, you can use a `config.json`:
 
 Run with:
 ```bash
-python -m autocorr_generator --config settings/config.json
+python -m entroppy --config settings/config.json
 ```
 
 The `config.json` file supports all configuration options: just convert `-` into `_`; e.g., `--typo-freq-threshold 1e-8` becomes `"typo_freq_threshold": 1e-8`.
@@ -327,7 +327,7 @@ matches:
 
 ## Boundary Detection
 
-The generator automatically determines which boundary constraints are needed:
+EntropPy automatically determines which boundary constraints are needed:
 
 - **`word: true`** - Typo must be standalone (e.g., `tht` → `that`, but not inside `aththe`)
 - **`left_word: true`** - Typo must be at word start (e.g., `hte` → `the` at start only)
@@ -340,11 +340,11 @@ This prevents false corrections like `no` → `on` triggering inside `noon`.
 
 ## Pattern Generalization & Conflict Resolution
 
-The generator employs sophisticated algorithms to optimize the dictionary and prevent garbage corrections. These optimizations are critical for ensuring Espanso's left-to-right, greedy matching behavior produces correct results.
+EntropPy employs sophisticated algorithms to optimize the dictionary and prevent garbage corrections. These optimizations are critical for ensuring Espanso's left-to-right, greedy matching behavior produces correct results.
 
 ### Pattern Generalization
 
-When multiple corrections share a common suffix pattern, the generator attempts to create a single generalized rule instead of multiple specific corrections.
+When multiple corrections share a common suffix pattern, EntropPy attempts to create a single generalized rule instead of multiple specific corrections.
 
 **Example - Valid Generalization:**
 ```
@@ -362,7 +362,7 @@ This works because:
 
 **Validation Process:**
 
-The generator validates each pattern by checking if Espanso's mechanics would produce the correct result:
+EntropPy validates each pattern by checking if Espanso's mechanics would produce the correct result:
 
 ```python
 for each correction in pattern:
@@ -448,7 +448,7 @@ Use the `--reports` flag to see detailed information about:
 - **`conflicts_*.txt`**: Which corrections were removed as redundant and which blocking pattern caused each removal
 - **`summary.txt`**: Overall statistics showing how many patterns and conflicts were found
 
-These reports are invaluable for understanding the generator's decisions and verifying correct behavior.
+These reports are invaluable for understanding EntropPy's decisions and verifying correct behavior.
 
 ---
 
