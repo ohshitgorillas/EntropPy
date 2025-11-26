@@ -188,9 +188,6 @@ def generate_patterns_report(data: ReportData, report_dir: Path) -> None:
                     replacements = data.pattern_replacements[pattern_key][:10]
                     for typo, word, _ in replacements:
                         f.write(f"    - {typo} → {word}\n")
-                    remaining = len(data.pattern_replacements[pattern_key]) - 10
-                    if remaining > 0:
-                        f.write(f"    ... and {remaining} more\n")
                 f.write("\n")
 
         if data.rejected_patterns:
@@ -243,10 +240,25 @@ def generate_conflicts_report(data: ReportData, report_dir: Path) -> None:
             f.write(f"Total removed: {len(conflicts)}\n")
             f.write("=" * 70 + "\n\n")
 
-            # Write all conflicts without truncation
+            # Group by correction word for compact display
+            by_word = {}
             for long_typo, long_word, short_typo, short_word in conflicts:
-                f.write(f"{long_typo} → {long_word}\n")
-                f.write(f"  Blocked by: {short_typo} → {short_word}\n\n")
+                if long_word not in by_word:
+                    by_word[long_word] = []
+                by_word[long_word].append((long_typo, short_typo, short_word))
+
+            # Write grouped conflicts
+            for word in sorted(by_word.keys()):
+                entries = by_word[word]
+                f.write(
+                    f"{word} ({len(entries)} blocked typo{'s' if len(entries) != 1 else ''})\n"
+                )
+
+                # Show up to 20 typos, then summarize
+                for long_typo, short_typo, short_word in entries[:20]:
+                    f.write(f"  {long_typo} ← {short_typo} → {short_word}\n")
+
+                f.write("\n")
 
 
 def generate_short_typos_report(data: ReportData, report_dir: Path) -> None:

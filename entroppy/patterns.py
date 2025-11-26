@@ -26,7 +26,12 @@ def find_suffix_patterns(
             # Only extract suffix patterns from corrections
             # that are already suffix patterns (RIGHT boundary)
             if boundary == BoundaryType.RIGHT:
-                for length in range(2, len(word) + 1):
+                # Require at least 2 characters of prefix before the suffix
+                # This prevents extracting nonsensical patterns like "ayt → lay" from "layt → lay"
+                min_prefix_length = 2
+                max_suffix_length = len(word) - min_prefix_length
+
+                for length in range(2, max_suffix_length + 1):
                     if len(typo) < length:
                         continue
                     typo_suffix = typo[-length:]

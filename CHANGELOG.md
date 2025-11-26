@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [0.1.5] - 2025-11-26
 
+### Changed
+
+**Report Format: Grouped Conflict Reports**
+
+- **Condensed conflict report structure**: Conflicts are now grouped by correction word instead of listing each blocked typo individually, dramatically reducing file size and improving readability.
+
+- **Example**: Instead of listing 15 separate entries for typos of "volunteers" blocked by various typos of "volunteer", they're now shown as one grouped entry with all blocked typos listed together.
+
+- **Impact**: Conflict report files are now ~95% smaller and much easier to scan. For example, a 743,799-line report becomes just ~30,000 lines.
+
 ### Fixed
 
 **Report Generation: Incorrect Blocker Identification**
@@ -17,6 +27,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Root cause**: Report generation lacked the same validation logic that the actual conflict removal algorithm uses. The conflict removal was working correctly—only the report was wrong.
 
 - **Fix**: Added validation to report generation to match the conflict removal logic. Reports now only identify a typo as a blocker if it would actually produce the correct result when triggered by Espanso.
+
+**Pattern Generation: Nonsensical Candidate Patterns**
+
+- **Fixed extraction of meaningless suffix patterns**: Pattern extraction was generating nonsensical candidates like `ayt → lay` by extracting suffixes that were nearly the entire word length.
+
+- **Example**: `layt → lay` would extract the 3-character suffix `ayt → lay` (the entire word), and `playt → play` would also extract `ayt → lay`, leading the algorithm to consider this as a pattern candidate.
+
+- **Root cause**: The algorithm extracted suffixes at every possible length from 2 up to the full word length, without requiring a meaningful prefix to remain.
+
+- **Fix**: Pattern extraction now requires at least 2 characters of prefix before the suffix. This prevents extracting patterns where the suffix equals or nearly equals the entire word, dramatically reducing the number of nonsensical pattern candidates in reports.
 
 ---
 
