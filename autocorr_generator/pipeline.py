@@ -301,28 +301,45 @@ def run_pipeline(config: Config) -> None:
         report_data.corrections_after_conflicts = len(final_corrections)
         # Find which corrections were removed
         final_set = set(final_corrections)
-        for typo, word, boundary in pre_conflict_corrections.values():
-            if (typo, word, boundary) not in final_set:
-                # Find what blocked it and what it corrects to
-                blocking_typo = "unknown"
-                blocking_word = "unknown"
-                for other_typo, other_word, other_boundary in final_corrections:
-                    if other_boundary == boundary and typo != other_typo:
-                        # For RIGHT boundaries (suffixes), check if typo ends with shorter typo
-                        # For other boundaries, check if typo starts with shorter typo
-                        if boundary == BoundaryType.RIGHT:
-                            if typo.endswith(other_typo):
-                                blocking_typo = other_typo
-                                blocking_word = other_word
-                                break
-                        else:
-                            if typo.startswith(other_typo):
-                                blocking_typo = other_typo
-                                blocking_word = other_word
-                                break
-                report_data.removed_conflicts.append(
-                    (typo, word, blocking_typo, blocking_word, boundary)
-                )
+        removed_corrections = [
+            c for c in pre_conflict_corrections.values() if c not in final_set
+        ]
+
+        if removed_corrections and verbose:
+            print(
+                f"Analyzing {len(removed_corrections)} removed conflicts for report...",
+                file=sys.stderr,
+            )
+
+        corrections_iter = removed_corrections
+        if verbose and len(removed_corrections) > 100:
+            corrections_iter = tqdm(
+                removed_corrections,
+                desc="Analyzing removed conflicts",
+                unit="conflict",
+            )
+
+        for typo, word, boundary in corrections_iter:
+            # Find what blocked it and what it corrects to
+            blocking_typo = "unknown"
+            blocking_word = "unknown"
+            for other_typo, other_word, other_boundary in final_corrections:
+                if other_boundary == boundary and typo != other_typo:
+                    # For RIGHT boundaries (suffixes), check if typo ends with shorter typo
+                    # For other boundaries, check if typo starts with shorter typo
+                    if boundary == BoundaryType.RIGHT:
+                        if typo.endswith(other_typo):
+                            blocking_typo = other_typo
+                            blocking_word = other_word
+                            break
+                    else:
+                        if typo.startswith(other_typo):
+                            blocking_typo = other_typo
+                            blocking_word = other_word
+                            break
+            report_data.removed_conflicts.append(
+                (typo, word, blocking_typo, blocking_word, boundary)
+            )
 
     if verbose:
         conflicts_removed = pre_conflict_count - len(final_corrections)
@@ -335,12 +352,19 @@ def run_pipeline(config: Config) -> None:
     # Generate output
     stage_start = time.time()
     generate_espanso_yaml(
-        final_corrections, config.output, verbose, config.max_entries_per_file
+        final_corrections,
+        config.output,
+        verbose,
+        config.max_entries_per_file,
+        config.jobs,
     )
 
     if report_data:
         if verbose:
-            print(f"# Writing {len(final_corrections)} corrections to YAML files", file=sys.stderr)
+            print(
+                f"# Writing {len(final_corrections)} corrections to YAML files",
+                file=sys.stderr,
+            )
         report_data.stage_times["Writing YAML files"] = time.time() - stage_start
         report_data.total_corrections = len(final_corrections)
 
