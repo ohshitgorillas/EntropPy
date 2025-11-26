@@ -403,18 +403,18 @@ Analysis for "wherre":
 Action: Remove "wherre" (redundant)
 ```
 
-**Unsafe Removal Example (RIGHT boundary):**
+**Unsafe Removal Example (LEFT boundary):**
 ```
 Corrections:
-  - anb → man
-  - canb → can
+  - reathe → breathe
+  - reather → rather
 
-Analysis for "canb":
-  - Typing triggers: anb → man
-  - Remaining prefix: "c"
-  - Result: "c" + "anb" = "cman" ✗ Wrong!
+Analysis for "reather":
+  - Typing would trigger: reathe → breathe
+  - Remaining suffix: "r"
+  - Result: "breathe" + "r" = "breather" ✗ Wrong! (expected "rather")
   
-Action: Keep both corrections (not redundant)
+Action: Keep both corrections (not redundant - would create garbage)
 ```
 
 **The algorithm validates each potential removal:**
