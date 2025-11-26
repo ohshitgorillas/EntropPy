@@ -1,7 +1,5 @@
 # Autocorrect Dictionary Generator for Espanso
 
-**⚠️ Work in Progress**: This project is under active development. While somewhat functional, it contain bugs and the API is subject to change.
-
 This is a Python module which generates a personalized autocorrect dictionary for use with the [Espanso](https://espanso.org/) text expander software.
 
 It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of common "fat finger" typing errors mapped to their correct spellings.
@@ -14,18 +12,19 @@ It generates five types of typos:
 * **Insertions**: Additional characters (e.g., `apple` → `applew` via `e→w`).
 
 ## Inspiration / Why Espanso?
-
 This project originated as a tool for [QMK Firmware](https://qmk.fm/) and still has a [sibling for generating QMK dictionaries](https://github.com/ohshitgorillas/qmk_userspace/tree/main/autocorrect/ac_generator). I was dissatisfied with existing autocorrect dictionaries, which were bloated with spelling mistakes caused by genuine lack of knowledge rather than mechanical typing errors (e.g., `definately` → `definitely`). I know how to spell, I just have fat fingers.
 
-After manually entering my own mistakes for a while, I realized I didn't need a pre-existing dictionary—I could generate an arbitrarily large corpus of typos algorithmically. This insight led to the creation of this project.
+After manually entering my own mistakes for a while, I realized I didn't need a pre-existing dictionary. I could generate an arbitrarily large corpus of typos algorithmically, which led to the creation of this project.
 
-However, keyboard microcontrollers have limited storage capacity. My personal QMK keyboard can only store about 1,100 corrections, while we can algorithmically generate tens of thousands of unique patterns. Espanso runs on the host OS and supports arbitrarily large dictionaries, making it the perfect platform for this project.
+However, keyboard microcontrollers have limited storage capacity. My personal QMK keyboard can only store about 1,100 corrections, whereas this script can produce hundreds of thousands of unique corrections in 10–20 minutes. It quickly became clear that this project was overkill for QMK, so I searched for another platform to process these typos.
+
+I immediately found Espanso, and it's perfect. Espanso runs on any OS at the host level and supports arbitrarily large dictionaries, making it the ideal platform for this project.
 
 ## Features
 
 * **Smart Boundary Detection**: Automatically assigns Espanso word boundaries (`word: true`, `left_word: true`, etc.) to prevent typos from triggering inside other valid words (e.g., prevents `no` → `on` from triggering inside the word `noon`).
 * **Collision Resolution**: If a typo maps to multiple valid words (e.g., `thn` could be `then`, `than`, or `thin`), the script uses frequency analysis to pick the statistically likely correction or discards it if ambiguous. (`then` and `than` are far more frequent than `thin`, but themselves have a frequency ratio close to 1, so `thn` is considered ambiguous and skipped.)
-* **Pattern Generalization**: Automatically detects repeated suffix patterns (e.g., `-atoin` → `-ation` and `-ntoin` → `-ntion` are simplified to `-toin` → `-toin`) and creates generalized rules, reducing dictionary size.
+* **Pattern Generalization**: Automatically detects repeated patterns (e.g., `-atoin` → `-ation` and `-ntoin` → `-ntion` are simplified to `-toin` → `-tion`) and creates generalized rules, reducing dictionary size.
 * **Comprehensive Reporting**: Generate detailed reports showing collisions, pattern decisions, substring conflicts, and performance metrics—invaluable for understanding and tuning the generator.
 * **Espanso Optimization**: Outputs alphabetically organized YAML files to keep sizes manageable and organization clean.
 * **Highly Configurable**: Customize input lists, exclusion patterns, adjacent key mappings, and frequency thresholds.
@@ -63,14 +62,15 @@ pip install -r requirements.txt
 ### 3. Directory Structure
 ```text
 project_root/
-├── autocorr_generator/        <-- The package directory
+├── autocorr_generator/ <-- The package directory
 │   ├── __init__.py
 │   ├── __main__.py
 │   └── ... (other .py files)
 ├── corrections/        <-- Recommended location to write corrections to
-│   ├── typos_a.yml
-│   ├── typos_b.yml
+│   ├── typos_am_to_anyone.yml
+│   ├── typos_baby_to_battery.yml
 │   └── ...
+│   └── typos_z.yml
 ├── examples/           <-- Example files
 │   ├── adjacent.txt
 │   ├── config.json
@@ -107,16 +107,26 @@ Generate transpositions, omissions, and duplications for the top 1,000 most comm
 python -m autocorr_generator --top-n 1000 --output corrections
 ```
 
+Once you've reviewed the reports for issues, move the YAML files to Espanso and restart:
+
+```bash
+mkdir ~/.config/espanso/match/autocorrect
+mv corrections/*.yml ~/.config/espanso/match/autocorrect
+espanso restart
+```
+
 ### Generating Directly to Espanso
 You can output directly to your Espanso `match` directory.
 
 **Linux/macOS:**
 ```bash
-python -m autocorr_generator --top-n 5000 --output "$HOME/.config/espanso/match/autocorrect"
+mkdir ~/.config/espanso/match/autocorrect
+python -m autocorr_generator --top-n 5000 --output "~/.config/espanso/match/autocorrect"
 ```
 
 **Windows (PowerShell):**
 ```powershell
+mkdir "$env:APPDATA\espanso\match\autocorrect"
 python -m autocorr_generator --top-n 5000 --output "$env:APPDATA\espanso\match\autocorrect"
 ```
 
@@ -132,7 +142,7 @@ python -m autocorr_generator \
     --typo-freq-threshold 1e-8 \
     --max-word-length 12 \
     --adjacent-letters settings/qwerty_map.txt \
-    --output ./espanso_matches
+    --output corrections
 ```
 
 Using `--typo-freq-threshold` is recommended to catch conjugations and other transformations of words that may not otherwise occur in `english-words`. The word `juts`, for example, both a transposition of `just` *and* a conjugation of the verb `jut`, does not occur in `english-words` (only `jut`), but does occur in `wordfreq` with a frequency of ~2e-7. Without this option, the script would (incorrectly) generate the correction `juts` → `just`. Lower values catch less common words.
@@ -151,7 +161,7 @@ python -m autocorr_generator \
 
 This creates a timestamped directory (e.g., `reports/2025-11-25_14-30-15/`) with:
 - **`summary.txt`** - Overall statistics and timing breakdown
-- **`collisions.txt`** - Ambiguous typos that were skipped (with suggestions)
+- **`collisions.txt`** - Ambiguous typos that were skipped
 - **`patterns.txt`** - Generalized patterns and rejected patterns
 - **`conflicts_none.txt`** - Substring conflicts (no boundary)
 - **`conflicts_left.txt`** - Substring conflicts (left boundary)
@@ -168,6 +178,8 @@ Reports are invaluable for understanding the generator's decisions and fine-tuni
 ## Configuration Options
 
 You can configure the generator via Command Line Arguments or a `config.json` file.
+
+### Command Line Arguments
 
 | Argument | Default | Description |
 | :--- | :--- | :--- |
@@ -222,6 +234,7 @@ a -> s
 s -> ad
 e -> wrd
 l -> k;
+p -> o[0
 ```
 * **Replacement:** `e -> w` generates `wxample` and `examplw` for `example`.
 * **Insertion:** `e -> w` generates `wexample`, `ewxample`, `examplwe`, and `examplew`.
@@ -243,10 +256,10 @@ keyboard
 Provides powerful control over what corrections are generated and what words are considered valid. The file supports three types of rules:
 
 #### 1. Word Exclusions
-These patterns remove words from the validation dictionary at the start of the process. Any word matching these patterns is treated as a non-word, which is useful for enabling corrections like `teh -> the`. Wildcards (`*`) are supported.
+These patterns remove words from the validation dictionary at the start of the process. Any word matching these patterns is treated as a non-word, which is useful for enabling corrections like `teh -> the` which are otherwise blocked by rare words like "tehsildar". Wildcards (`*`) are supported.
 
 ```text
-# Exclude "teh" from the dictionary, allowing it to be a typo for "the".
+# Exclude words containing "teh" from the dictionary, allowing it to be a typo for "the".
 *teh*
 
 # Exclude any word ending in "ball".
@@ -385,7 +398,7 @@ Corrections:
 Analysis for "wherre":
   - Typing triggers: herre → here
   - Remaining prefix: "w"
-  - Result: "w" + "here" = "where" ✓ Correct!
+  - Result: "w" + "herre" = "where" ✓ Correct!
   
 Action: Remove "wherre" (redundant)
 ```
@@ -427,19 +440,6 @@ if expected_result == long_word:
 else:
     keep_both()  # Unsafe - would create garbage
 ```
-
-### Why This Matters
-
-Without validation, the generator would create corrections that produce garbage output:
-
-❌ **Without Validation:**
-- Typing "canb" triggers `anb → man` → produces "cman" (garbage)
-- Pattern `erew → here` makes "wherew" → "whhere" (garbage)
-
-✓ **With Validation:**
-- Both "canb → can" and "anb → man" are kept
-- Pattern rejected, specific corrections preserved
-- All corrections produce correct results
 
 ### Viewing Optimization Results
 
