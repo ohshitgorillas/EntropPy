@@ -307,8 +307,8 @@ matches:
     replace: because    # No "word" requirement, will trigger anywhere
     propagate_case: true
 
-  - trigger: milse
-    replace: miles
+  - trigger: nto
+    replace: not
     word: true          # Must be an isolated word
     propagate_case: true
 
@@ -329,12 +329,12 @@ matches:
 
 EntropPy automatically determines which boundary constraints are needed:
 
-- **`word: true`** - Typo must be standalone (e.g., `tht` → `that`, but not inside `aththe`)
+- **No boundary** - Typo can trigger anywhere (e.g., `becuse` → `because`)
+- **`word: true`** - Typo must be standalone (e.g., `nto` → `not`)
 - **`left_word: true`** - Typo must be at word start (e.g., `hte` → `the` at start only)
-- **`right_word: true`** - Typo must be at word end (e.g., `teh` → `the` at end only)
-- **No boundary** - Typo can trigger anywhere (e.g., `taht` → `that`)
+- **`right_word: true`** - Typo must be at word end (e.g., `toin` → `tion` at end only)
 
-This prevents false corrections like `no` → `on` triggering inside `noon`.
+This prevents corrections like `nto` → `not` from triggering inside `onto` and producing `onot`.
 
 ---
 
