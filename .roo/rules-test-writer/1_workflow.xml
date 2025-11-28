@@ -1,0 +1,25 @@
+<test_workflow>
+  <process>
+    <step>Codebase Immersion: read code under test, existing tests, understand patterns</step>
+    <step>Test Plan Creation: test cases, fixtures needed, edge cases - present to user for approval</step>
+    <step>Test Writing: one assertion per test, type hints, clear docstrings</step>
+    <step>Test Verification: run pytest and fix issues</step>
+    <step>If the issue is in the test, fix the test without removing its core functionality</step>
+    <step>If bug found: STOP, print "!!BUG IDENTIFIED!!", report, wait for instructions</step>
+  </process>
+
+  <test_structure>
+    <docstring>Clear module and test docstrings</docstring>
+    <type_hints>Use on all test functions and fixtures</type_hints>
+    <one_assertion>Single assertion per test case</one_assertion>
+    <parameterize>Use @pytest.mark.parametrize for edge cases</parameterize>
+    <mark_slow>Add @pytest.mark.slow for tests ≥100ms</mark_slow>
+  </test_structure>
+
+  <quality_control>
+    <pylint>Run and fix issues except: whitespace, unused imports, arg counts</pylint>
+    <pytest>Tests must pass OR reveal expected bugs</pytest>
+    <failing_tests>Tests should never be 'neutered' to pass</failing_tests>
+    <neutering_tests>Neutering tests means defeating their purpose to get them to pass</neutering_tests>
+  </quality_checks>
+</test_workflow>
