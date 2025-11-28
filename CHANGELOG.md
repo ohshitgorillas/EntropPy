@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.1] - 2025-11-28
+
+### Fixed
+
+**Cross-Boundary Deduplication: Disambiguation Windows for Typos**
+
+- **Fixed a critical bug causing Espanso disambiguation windows to appear when users typed typos.** Users typing `relaly` (intending `really`) would get a disambiguation menu instead of automatic correction.
+
+- **Root cause**: Pattern generalization (Stage 4) could create corrections with different boundary types for the same (typo, word) pair that already existed from direct generation (Stage 3). When Espanso sees multiple corrections for the same trigger (even with different boundaries), it presents a disambiguation menu rather than auto-correcting.
+
+- **Example**: The typo `teh → the` might exist as:
+  - Direct correction: `teh → the` (no boundary, from Stage 3)
+  - Prefix correction: `tehir → their`, `tehn → then` (left boundary from Stage 4)
+  - Suffix correction: `bateh → bathe`, `seeteh → seethe` (right boundary from Stage 4)
+  
+  Each correction reaches the final output, triggering Espanso's disambiguation behavior.
+
+- **Solution**: Added cross-boundary deduplication logic in [`entroppy/stages/pattern_generalization.py`](entroppy/stages/pattern_generalization.py) that:
+  - Detects when a pattern's (typo, word) pair already exists in direct corrections
+  - Rejects the conflicting pattern entirely
+  - Restores all corrections the rejected pattern was meant to replace
+  - Ensures only ONE correction per (typo, word) pair reaches final output
+
+**Implementation Details**
+
+- Added `_filter_cross_boundary_conflicts()` helper function ([`pattern_generalization.py`](entroppy/stages/pattern_generalization.py) lines 17-82)
+- Integrated into `generalize_typo_patterns()` ([`pattern_generalization.py`](entroppy/stages/pattern_generalization.py) lines 138-148)
+- O(n+m) time complexity using set-based lookups
+- Direct corrections (Stage 3) always win over patterns (Stage 4)
+- Verbose output shows rejected patterns with reasons
+- 6 new unit tests in [`tests/unit/test_stages.py`](tests/unit/test_stages.py)
+- 6 new integration tests in [`tests/integration/test_cross_boundary_deduplication.py`](tests/integration/test_cross_boundary_deduplication.py)
+
+**Impact**: Users will no longer see disambiguation windows when typing common typos. All typos now auto-correct immediately without requiring user selection.
+
+---
+
 ## [0.2.0] - 2025-11-28
 
 ### Major Refactoring Release
@@ -276,6 +313,9 @@ This is the first beta release of the Autocorrect Dictionary Generator for Espan
 
 ## Version History
 
+- **0.2.1** (2025-11-28): Fixed cross-boundary deduplication causing disambiguation windows
+- **0.2.0** (2025-11-28): Major refactoring - modular architecture with comprehensive tests
+- **0.1.6** (2025-11-27): Fixed exclusion filtering ignoring boundary specifiers
 - **0.1.5** (2025-11-26): Fixed conflict report incorrectly identifying blockers
 - **0.1.4** (2025-11-26): Parallelized YAML file generation with progress tracking
 - **0.1.3** (2025-11-26): Reverted v0.1.1 containment check (Espanso bug, not generator issue)

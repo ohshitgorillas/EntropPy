@@ -4,7 +4,7 @@ import sys
 import time
 from collections import defaultdict
 
-from ..config import Config
+from ..config import Config, Correction
 from ..patterns import generalize_patterns
 from ..processing import resolve_collisions, remove_substring_conflicts
 from .data_models import (
@@ -12,6 +12,74 @@ from .data_models import (
     CollisionResolutionResult,
     PatternGeneralizationResult,
 )
+
+
+def _filter_cross_boundary_conflicts(
+    patterns: list[Correction],
+    final_corrections: list[Correction],
+    pattern_replacements: dict[Correction, list[Correction]],
+    rejected_patterns: list[tuple[str, str, list[str]]],
+    verbose: bool = False,
+) -> tuple[list[Correction], list[Correction]]:
+    """Filter out patterns that conflict with direct corrections across boundaries.
+
+    A pattern conflicts if its (typo, word) pair already exists in final_corrections,
+    regardless of boundary type. When a conflict is detected, the pattern is rejected
+    and its replacements are restored to final_corrections.
+
+    Args:
+        patterns: List of patterns to check for conflicts
+        final_corrections: List of direct corrections (non-patterns)
+        pattern_replacements: Map of patterns to the corrections they replaced
+        rejected_patterns: List to append rejected patterns to
+        verbose: Whether to print verbose output
+
+    Returns:
+        Tuple of (final_corrections with restored replacements, safe patterns)
+    """
+    # Build index of (typo, word) pairs from direct corrections
+    direct_pairs = {(typo, word) for typo, word, boundary in final_corrections}
+
+    # Check each pattern for conflicts and separate into safe/conflicting
+    safe_patterns = []
+    conflicting_patterns = []
+
+    for pattern in patterns:
+        typo, word, boundary = pattern
+        if (typo, word) in direct_pairs:
+            conflicting_patterns.append(pattern)
+        else:
+            safe_patterns.append(pattern)
+
+    # Restore replacements for conflicting patterns
+    for pattern in conflicting_patterns:
+        if pattern in pattern_replacements:
+            final_corrections.extend(pattern_replacements[pattern])
+        # Add to rejected patterns with reason
+        typo, word, _ = pattern
+        rejected_patterns.append(
+            (typo, word, ["Cross-boundary conflict with direct correction"])
+        )
+
+    # Verbose output for cross-boundary conflicts
+    if verbose and conflicting_patterns:
+        print(
+            f"# Rejected {len(conflicting_patterns)} patterns due to "
+            f"cross-boundary conflicts with direct corrections.",
+            file=sys.stderr,
+        )
+        # Show first few examples
+        for pattern in conflicting_patterns[:3]:
+            typo, word, boundary = pattern
+            print(
+                f"#   - Pattern ({typo}, {word}, {boundary.value}) "
+                f"conflicts with direct correction",
+                file=sys.stderr,
+            )
+        if len(conflicting_patterns) > 3:
+            print(f"#   ... and {len(conflicting_patterns) - 3} more", file=sys.stderr)
+
+    return final_corrections, safe_patterns
 
 
 def generalize_typo_patterns(
@@ -71,13 +139,23 @@ def generalize_typo_patterns(
     # Patterns can also have redundancies (e.g., "lectiona" is redundant if "ectiona" exists)
     resolved_patterns = remove_substring_conflicts(resolved_patterns, verbose=False)
 
-    # Add resolved patterns to final corrections
-    final_corrections.extend(resolved_patterns)
+    # Cross-boundary deduplication: filter patterns that conflict with direct corrections
+    final_corrections, safe_patterns = _filter_cross_boundary_conflicts(
+        resolved_patterns,
+        final_corrections,
+        pattern_replacements,
+        rejected_patterns,
+        verbose,
+    )
+
+    # Add only safe patterns to final corrections
+    final_corrections.extend(safe_patterns)
 
     if verbose:
         if patterns:
             print(
-                f"# Generalized {len(resolved_patterns)} patterns, removing {removed_count} specific corrections.",
+                f"# Generalized {len(resolved_patterns)} patterns, "
+                f"removing {removed_count} specific corrections.",
                 file=sys.stderr,
             )
         print(

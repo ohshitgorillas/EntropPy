@@ -113,9 +113,12 @@ project_root/
 │   ├── exclude.txt
 │   └── include.txt
 ├── tests/                       <-- Test suite
-│   ├── test_conflict_resolution.py
-│   ├── test_conflict_resolution_integration.py
-│   ├── ...
+│   ├── unit
+│   │   ├── test_conflict_resolution.py
+│   │   ├── ...
+│   ├── integration
+│   │   ├── test_conflict_resolution_integration.py
+│   │   ├── ...
 ├── CHANGELOG.md
 ├── README.md                    <-- This file
 ├── requirements.txt             <-- Dependencies
@@ -401,6 +404,30 @@ for each correction in pattern:
     if expected_result != full_word:
         reject_pattern()  # Would create garbage!
 ```
+
+**Cross-Boundary Deduplication:**
+
+Pattern generalization also performs cross-boundary deduplication to prevent disambiguation windows. If a pattern would create a correction with the same (typo, word) pair as an existing direct correction (even with a different boundary type), the pattern is rejected entirely.
+
+```
+Example - Pattern Rejection:
+  Direct correction (Stage 3):
+    - teh → the (no boundary)
+  
+  Pattern candidate (Stage 4):
+    - teh(n,ir) → then,their (RIGHT boundary)
+    - Would create: teh → the (right boundary)
+  
+  Action: Reject pattern entirely
+  Reason: Same (typo, word) pair exists with different boundary
+  Result: Direct correction wins, pattern gets discarded
+```
+
+When a pattern is rejected for cross-boundary conflicts, all corrections it was meant to replace are restored to prevent data loss. This ensures:
+- Only ONE correction per (typo, word) pair reaches final output
+- No disambiguation windows appear in Espanso
+- Direct corrections (Stage 3) always take priority over patterns (Stage 4)
+
 
 <!-- **Example - Rejected Pattern:**
 ```
