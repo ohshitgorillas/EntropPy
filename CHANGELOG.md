@@ -4,6 +4,88 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.0] - 2025-11-28
+
+### Major Refactoring Release
+
+This release represents a complete architectural overhaul of the EntropPy codebase, improving maintainability, testability, and code quality without changing any user-facing functionality.
+
+### Changed
+
+**Code Architecture Improvements**
+
+- **Pattern Matching Consolidation**: Unified pattern matching logic into a single [`pattern_matching.py`](entroppy/pattern_matching.py) module with caching for improved performance. Eliminates code duplication across [`processing.py`](entroppy/processing.py), [`dictionary.py`](entroppy/dictionary.py), and [`exclusions.py`](entroppy/exclusions.py).
+
+- **Conflict Resolution Decomposition**: Extracted complex 140-line conflict resolution logic into a dedicated [`conflict_resolution.py`](entroppy/conflict_resolution.py) module. Implements strategy pattern with separate detectors for suffix (RIGHT boundary) and prefix (LEFT/NONE/BOTH boundaries) conflicts. Makes sophisticated validation logic explicit and testable.
+
+- **Pipeline Stage Extraction**: Refactored monolithic 321-line [`pipeline.py:run_pipeline()`](entroppy/pipeline.py) into modular stages architecture in [`entroppy/stages/`](entroppy/stages/) directory. Each stage has a single responsibility and is independently testable. Pipeline orchestrator reduced to 116 lines.
+
+- **Global State Elimination**: Removed all global variables from multiprocessing pipeline. Replaced with immutable [`WorkerContext`](entroppy/stages/worker_context.py) dataclass stored in thread-local storage. Enables concurrent pipeline execution and improves testability.
+
+### Added
+
+**New Modules**
+
+- [`entroppy/pattern_matching.py`](entroppy/pattern_matching.py): Unified pattern matching with `PatternMatcher` class
+- [`entroppy/conflict_resolution.py`](entroppy/conflict_resolution.py): Conflict detection strategies and resolution logic
+- [`entroppy/stages/`](entroppy/stages/): Modular pipeline stages
+  - [`data_models.py`](entroppy/stages/data_models.py): Data transfer objects between stages
+  - [`dictionary_loading.py`](entroppy/stages/dictionary_loading.py): Dictionary and exclusion loading
+  - [`typo_generation.py`](entroppy/stages/typo_generation.py): Parallel typo generation
+  - [`collision_resolution.py`](entroppy/stages/collision_resolution.py): Frequency-based collision resolution
+  - [`pattern_generalization.py`](entroppy/stages/pattern_generalization.py): Pattern extraction and generalization
+  - [`conflict_removal.py`](entroppy/stages/conflict_removal.py): Substring conflict removal
+  - [`output_generation.py`](entroppy/stages/output_generation.py): YAML file generation
+  - [`worker_context.py`](entroppy/stages/worker_context.py): Thread-safe worker context
+
+**Testing Infrastructure**
+
+- Comprehensive test suite with 145 tests covering all refactored components
+- Unit tests for pattern matching, conflict resolution, pipeline stages, and worker context
+- Integration tests verifying identical behavior before and after refactoring
+- Test for concurrent pipeline execution
+
+### Technical Details
+
+**Code Quality Metrics**
+
+- Reduced [`pipeline.py`](entroppy/pipeline.py) from 395 to 132 lines (-66%)
+- Eliminated 90-line `_process_boundary_group()` function through decomposition
+- Removed pattern matching duplication across 3 modules
+- No functions longer than 100 lines
+- 145 total tests (79 new tests added during refactoring)
+
+**Performance**
+
+- Pattern matching performance improved through caching
+- All multiprocessing functionality preserved
+- Character-based indexing optimizations maintained
+- Identical output verified through integration tests
+
+**Developer Experience**
+
+- Code is significantly more maintainable and debuggable
+- Each module has clear, single responsibility
+- New features can be added without modifying existing code
+- Comprehensive test coverage enables confident refactoring
+- Thread-safe design supports concurrent execution
+
+### Migration Notes
+
+**For Users**
+
+No changes required. All CLI arguments, configuration options, and output formats remain identical.
+
+**For Developers**
+
+- Pattern matching now uses [`PatternMatcher`](entroppy/pattern_matching.py) class
+- Conflict detection uses strategy pattern in [`conflict_resolution.py`](entroppy/conflict_resolution.py)
+- Pipeline stages are in [`entroppy/stages/`](entroppy/stages/) directory
+- Worker state is encapsulated in [`WorkerContext`](entroppy/stages/worker_context.py)
+- See [`STAGES.md`](STAGES.md) for detailed stage architecture documentation
+
+---
+
 ## [0.1.6] - 2025-11-27
 
 ### Fixed
