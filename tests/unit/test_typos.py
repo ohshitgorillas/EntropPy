@@ -140,4 +140,4 @@ class TestGenerateAllTypos:
 
     def test_excludes_insertions_without_map(self) -> None:
         """Without map, 'xa' is not generated from 'a'."""
-        assert "xa" not in generate_all_typos("a", None)
+        assert "xa" not in generate_all_typos("ace", None)
