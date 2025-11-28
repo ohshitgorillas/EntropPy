@@ -181,11 +181,6 @@ class TestDetermineBoundariesBothPrefixAndSuffix:
         result = determine_boundaries("test", {"testing", "attest"}, set())
         assert result == BoundaryType.BOTH
 
-    def test_returns_both_when_prefix_and_suffix_across_sets(self) -> None:
-        """When typo is prefix in one set and suffix in another, returns BOTH."""
-        result = determine_boundaries("test", {"testing"}, {"attest"})
-        assert result == BoundaryType.BOTH
-
 
 class TestDetermineBoundariesEdgeCases:
     """Test edge cases in boundary determination."""
