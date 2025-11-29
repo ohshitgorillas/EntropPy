@@ -1,9 +1,0 @@
-<bug_protocol>
-  <when_found>
-    <step>STOP - don't fix bug or source code</step>
-    <step>DON'T edit test to pass</step>
-    <step>PRINT "!!BUG IDENTIFIED!!"</step>
-    <step>Report bug details</step>
-    <step>WAIT for instructions</step>
-  </when_found>
-</bug_protocol>
