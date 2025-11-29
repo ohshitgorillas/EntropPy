@@ -11,18 +11,30 @@ from .stages import (
     resolve_typo_collisions,
     generalize_typo_patterns,
     remove_typo_conflicts,
-    generate_output,
 )
+from .platforms import get_platform_backend, PlatformBackend
 
 
-def run_pipeline(config: Config) -> None:
+def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> None:
     """Main processing pipeline orchestrating all stages.
 
     Args:
         config: Configuration object containing all settings
+        platform: Platform backend (if None, will be created from config.platform)
     """
     start_time = time.time()
     verbose = config.verbose
+
+    # Get platform backend
+    if platform is None:
+        platform = get_platform_backend(config.platform)
+
+    if verbose:
+        platform_name = platform.get_name()
+        print(f"# Using platform: {platform_name}", file=sys.stderr)
+        constraints = platform.get_constraints()
+        if constraints.max_corrections:
+            print(f"# Max corrections: {constraints.max_corrections}", file=sys.stderr)
 
     # Initialize report data if reports are enabled
     report_data = None
@@ -84,18 +96,68 @@ def run_pipeline(config: Config) -> None:
         )
         report_data.removed_conflicts = conflict_removal_result.removed_corrections
 
-    # Stage 6: Generate output
-    output_result = generate_output(
-        conflict_removal_result,
-        config.output,
-        config.max_entries_per_file,
-        config.jobs,
-        verbose,
+    # Stage 5.5: Platform-specific filtering and ranking
+    start_filter = time.time()
+
+    if verbose:
+        print("# Applying platform-specific filtering and ranking...", file=sys.stderr)
+
+    # Filter corrections
+    filtered_corrections, filter_metadata = platform.filter_corrections(
+        conflict_removal_result.corrections, config
     )
 
+    if verbose and filter_metadata.get("filtered_count", 0) > 0:
+        print(
+            f"# Platform filtered: {filter_metadata['filtered_count']} corrections",
+            file=sys.stderr,
+        )
+
+    # Rank corrections
+    ranked_corrections = platform.rank_corrections(
+        filtered_corrections,
+        pattern_result.patterns,
+        pattern_result.pattern_replacements,
+        dict_data.user_words_set,
+    )
+
+    # Apply platform constraints (e.g., max corrections limit)
+    constraints = platform.get_constraints()
+    if (
+        constraints.max_corrections
+        and len(ranked_corrections) > constraints.max_corrections
+    ):
+        if verbose:
+            print(
+                f"# Limiting to {constraints.max_corrections} corrections "
+                "(platform constraint)",
+                file=sys.stderr,
+            )
+        final_corrections = ranked_corrections[: constraints.max_corrections]
+    else:
+        final_corrections = ranked_corrections
+
+    filter_elapsed = time.time() - start_filter
+
     if report_data:
-        report_data.stage_times["Writing YAML files"] = output_result.elapsed_time
-        report_data.total_corrections = len(conflict_removal_result.corrections)
+        report_data.stage_times["Platform filtering/ranking"] = filter_elapsed
+        report_data.total_corrections = len(final_corrections)
+
+    # Stage 6: Generate output
+    start_output = time.time()
+
+    if verbose:
+        print(
+            f"# Generating output for {len(final_corrections)} corrections",
+            file=sys.stderr,
+        )
+
+    platform.generate_output(final_corrections, config.output, config)
+
+    output_elapsed = time.time() - start_output
+
+    if report_data:
+        report_data.stage_times["Generating output"] = output_elapsed
 
     # Generate reports if enabled
     if config.reports:
