@@ -177,6 +177,27 @@ python -m entroppy \
 
 Using `--typo-freq-threshold` catches conjugations and word forms not in `english-words` but present in `wordfreq`. For example, `juts` (both a transposition of `just` and a conjugation of `jut`) appears in `wordfreq` (~2e-7 frequency) but not `english-words`. Without this threshold, the script would incorrectly generate `juts` → `just`.
 
+### Logging and Output Control
+
+EntropPy uses structured logging with three levels:
+
+- **Default** (no flags): Only shows warnings and errors
+- **Verbose** (`--verbose` or `-v`): Shows informational messages about progress and statistics
+- **Debug** (`--debug` or `-d`): Shows detailed debug information with timestamps and source locations
+
+```bash
+# Default - minimal output
+python -m entroppy --platform espanso --top-n 1000 --output corrections
+
+# Verbose - show progress and statistics
+python -m entroppy --platform espanso --top-n 1000 --output corrections --verbose
+
+# Debug - detailed logging with timestamps
+python -m entroppy --platform espanso --top-n 1000 --output corrections --debug
+```
+
+All logging output goes to stderr, keeping stdout available for piped data.
+
 ### Generating Reports
 
 Reports provide detailed analysis of EntropPy's decisions and are essential for understanding and tuning configuration:
@@ -243,7 +264,8 @@ You can configure EntropPy via Command Line Arguments or a `config.json` file.
 | `--max-word-length` | `10` | Maximum word length to generate typos for. |
 | `--typo-freq-threshold` | `0.0` | Skip typos with a `wordfreq` frequency above this. |
 | `--max-entries-per-file`| `500` | Maximum number of corrections per YAML file. |
-| `--verbose`, `-v` | `False` | Print statistics, RAM estimates, and dropped typos. |
+| `--verbose`, `-v` | `False` | Print statistics, RAM estimates, and dropped typos (INFO level). |
+| `--debug`, `-d` | `False` | Enable debug logging with timestamps and source locations. |
 
 ### JSON Configuration
 Instead of long CLI strings, you can use a `config.json`:
@@ -257,7 +279,8 @@ Instead of long CLI strings, you can use a `config.json`:
   "min_typo_length": 4,
   "exclude": "settings/exclusions.txt",
   "adjacent_letters": "settings/qwerty.txt",
-  "verbose": true
+  "verbose": true,
+  "debug": false
 }
 ```
 
