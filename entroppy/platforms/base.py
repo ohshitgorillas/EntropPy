@@ -66,6 +66,7 @@ class PlatformBackend(ABC):
         patterns: list[Correction],
         pattern_replacements: dict,
         user_words: set[str],
+        config: Config | None = None,
     ) -> list[Correction]:
         """
         Rank corrections by platform-specific usefulness.
@@ -75,6 +76,7 @@ class PlatformBackend(ABC):
             patterns: Pattern corrections only
             pattern_replacements: Map of pattern -> list of corrections it replaces
             user_words: User-specified words (high priority)
+            config: Configuration object (optional, for platform-specific limits)
 
         Returns:
             Ordered list of corrections (most to least useful)
