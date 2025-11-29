@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Structured logging with loguru**
+  - Replaced all `print()` statements with loguru-based structured logging
+  - Three log levels: WARNING (default), INFO (verbose), DEBUG (debug)
+  - `--debug` / `-d` CLI flag for detailed logging with timestamps and source locations
+  - `"debug": true/false` JSON config option
+  - Debug mode shows timestamps, file names, function names, and line numbers
+  - Info/Warning modes use simple, clean formatting
+  - All logging output goes to stderr (stdout reserved for data output)
+  - Created centralized logger configuration in [`entroppy/logger.py`](entroppy/logger.py)
+
+### Changed
+
+- Updated all modules to use loguru instead of print statements
+- Added `loguru` to `requirements.txt`
+
+### Fixed
+
+- **Pipeline bug**: Fixed `UnboundLocalError` where `constraints` variable was only defined inside verbose block but used outside it in pattern generalization stage
+
 ## [0.3.1] - 2025-11-29
 
 ### Added
