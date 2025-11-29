@@ -1,4 +1,4 @@
-"""Command-line interface."""
+"""Command-line interface for the EntropPy project."""
 
 import argparse
 from multiprocessing import cpu_count

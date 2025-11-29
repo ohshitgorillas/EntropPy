@@ -1,4 +1,4 @@
-"""Configuration management for autocorrgen."""
+"""Configuration management for EntropPy."""
 
 import json
 import os
@@ -63,8 +63,6 @@ def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Conf
         json_path = os.path.expanduser(json_path)
         with open(json_path, "r", encoding="utf-8") as f:
             json_config = json.load(f)
-
-    
 
     # Build config with CLI args taking precedence over JSON
     return Config(
