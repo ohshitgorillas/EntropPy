@@ -40,6 +40,9 @@ class Config:
     max_entries_per_file: int = 500
     reports: str | None = None
 
+    # Platform selection
+    platform: str = "espanso"  # "espanso", "qmk", etc.
+
 
 def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Config:
     """Load JSON config, override with CLI args, return Config object."""
@@ -75,4 +78,5 @@ def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Conf
         jobs=get_value("jobs", cpu_count()),
         max_entries_per_file=get_value("max_entries_per_file", 500),
         reports=get_value("reports", None),
+        platform=json_config.get("platform", "espanso"),
     )
