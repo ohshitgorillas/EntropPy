@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.0] - 2025-11-29
+
+### Added
+- **Platform abstraction system** for multi-platform support
+  - `PlatformBackend` abstract base class defining platform interface
+  - `PlatformConstraints` dataclass for platform capabilities
+  - `MatchDirection` enum (LEFT_TO_RIGHT for Espanso, RIGHT_TO_LEFT for QMK)
+  - Factory function `get_platform_backend()` for dynamic platform selection
+  - `list_platforms()` function to query available platforms
+
+- **Espanso platform backend** (fully implemented)
+  - Complete implementation of all platform methods
+  - Unlimited corrections, full Unicode support
+  - Left-to-right matching behavior
+  - YAML output generation
+
+- **QMK platform backend** (architecture ready)
+  - Skeleton implementation with complete constraints
+  - Max corrections: ~1,500 (flash memory limit)
+  - Character set: a-z + apostrophe only
+  - Right-to-left matching (critical difference from Espanso)
+  - C header output format (not yet implemented)
+
+- **Pipeline integration**
+  - Stage 5.5: Platform-specific filtering and ranking
+  - Stage 6: Platform-specific output generation
+  - Optional `platform` parameter in pipeline
+  - Platform name displayed in verbose mode
+
+- **Configuration**
+  - `--platform` CLI option (default: espanso)
+  - `platform` field in JSON config
+  - Backward compatible - defaults to Espanso
+
+- **Test suite**
+  - 30 comprehensive platform tests
+  - 20 passing tests, 11 skipped (QMK not yet implemented)
+  - Tests verify behavior, not implementation
+
+### Changed
+- Pipeline now platform-aware with backend injection support
+- Output generation delegated to platform backends
+- Filtering and ranking now platform-specific
+
+
 ## [0.2.1] - 2025-11-28
 
 ### Fixed
@@ -313,6 +358,7 @@ This is the first beta release of the Autocorrect Dictionary Generator for Espan
 
 ## Version History
 
+- **0.3.0** (2025-11-29): Added structure for cross-platform support; currently Espanso only supported
 - **0.2.1** (2025-11-28): Fixed cross-boundary deduplication causing disambiguation windows
 - **0.2.0** (2025-11-28): Major refactoring - modular architecture with comprehensive tests
 - **0.1.6** (2025-11-27): Fixed exclusion filtering ignoring boundary specifiers

@@ -1,8 +1,11 @@
 # EntropPy
 
-**Version 0.2.0 (Beta)** | [Changelog](CHANGELOG.md)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Python-based autocorrect dictionary generator for the [Espanso](https://espanso.org/) text expander.
+**Version 0.3.0 (Beta)** | [Changelog](CHANGELOG.md)
+
+A Python-based autocorrect dictionary generator for text expansion systems.
 
 It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of typos mapped to their correct spellings.
 
@@ -13,17 +16,48 @@ It generates five types of typing errors:
 * **Replacements**: Wrong characters (e.g., `apple` → `applw`).
 * **Insertions**: Additional characters (e.g., `food` → `foopd`).
 
+## Platform Support
+
+EntropPy now supports multiple autocorrect platforms through a platform abstraction layer:
+
+### ✅ Espanso (Default)
+The original and fully supported platform. Espanso runs on any OS at the host level and supports arbitrarily large dictionaries.
+
+**Status**: Complete  
+**Output**: YAML files  
+**Characteristics**: Unlimited corrections, full Unicode support, left-to-right matching
+
+### ⏸️ QMK Firmware
+Architecture ready for keyboard firmware-level autocorrect.
+
+**Status**: Skeleton implementation (coming soon)  
+**Output**: C header files  
+**Characteristics**: ~1,500 correction limit (flash memory), alphas + apostrophe only, right-to-left matching
+
+To specify a platform:
+```bash
+python -m entroppy --platform espanso  # default
+python -m entroppy --platform qmk      # when implemented
+```
+
+Or in `config.json`:
+```json
+{
+  "platform": "espanso",
+  ...
+}
+```
+
 ## Inspiration / Why Espanso?
 This project originated as a tool for [QMK Firmware](https://qmk.fm/) and still has a [sibling for generating QMK dictionaries](https://github.com/ohshitgorillas/qmk_userspace/tree/main/autocorrect/ac_generator). I was dissatisfied with existing autocorrect dictionaries, which were bloated with spelling mistakes caused by genuine lack of knowledge rather than mechanical typing errors (e.g., `definately` → `definitely`). I know how to spell, I just have fat fingers.
 
 After manually entering my own mistakes for a while, I realized I didn't need a pre-existing dictionary. I could generate an arbitrarily large corpus of typos algorithmically, which led to the creation of this project.
 
-However, keyboard microcontrollers have limited storage capacity. My personal QMK keyboard can only store about 1,100 corrections, whereas this script can produce hundreds of thousands of unique corrections in 10–20 minutes. It quickly became clear that this project was overkill for QMK, so I searched for another platform to process these typos.
-
-I immediately found Espanso, and it's perfect. Espanso runs on any OS at the host level and supports arbitrarily large dictionaries, making it the ideal platform for this project.
+However, keyboard microcontrollers have limited storage capacity. My personal QMK keyboard can only store about 1,100 corrections, whereas this script can produce hundreds of thousands of unique corrections in 10–20 minutes. With v0.3.0's platform abstraction, EntropPy can now target both Espanso (unlimited corrections) and QMK (space-constrained), choosing the most useful corrections for each platform.
 
 ## Features
 
+* **Multi-Platform Support**: Generate corrections for Espanso, QMK, or other platforms via extensible backend system
 * **Smart Boundary Detection**: Automatically assigns Espanso word boundaries (`word: true`, `left_word: true`, etc.) to prevent typos from triggering inside other valid words (e.g., prevents `no` → `on` from triggering inside the word `noon`).
 * **Collision Resolution**: If a typo maps to multiple valid words (e.g., `thn` could be `then`, `than`, or `thin`), the script uses frequency analysis to pick the statistically likely correction or discards it if ambiguous. (`then` and `than` are far more frequent than `thin`, but themselves have a frequency ratio close to 1, so `thn` is considered ambiguous and skipped.)
 * **Pattern Generalization**: Automatically detects repeated patterns (e.g., `-atoin` → `-ation` and `-ntoin` → `-ntion` are simplified to `-toin` → `-tion`) and creates generalized rules, reducing dictionary size.
@@ -75,6 +109,11 @@ project_root/
 │   ├── pattern_matching.py      <-- Unified pattern matching
 │   ├── patterns.py              <-- Pattern generalization
 │   ├── pipeline.py              <-- Pipeline orchestration
+│   ├── platforms/               <-- NEW: Platform abstraction
+│   │   ├── __init__.py
+│   │   ├── base.py              <-- Platform interface
+│   │   ├── espanso.py           <-- Espanso backend (complete)
+│   │   └── qmk.py               <-- QMK backend (skeleton)
 │   ├── processing.py            <-- Word processing and collision resolution
 │   ├── reports.py               <-- Report generation
 │   ├── typos.py                 <-- Typo generation algorithms
@@ -119,6 +158,11 @@ project_root/
 │   ├── integration
 │   │   ├── test_conflict_resolution_integration.py
 │   │   ├── ...
+│   └── platforms                <-- NEW: Platform tests
+│       ├── test_base.py
+│       ├── test_espanso.py
+│       ├── test_qmk.py
+│       └── ...
 ├── CHANGELOG.md
 ├── README.md                    <-- This file
 ├── requirements.txt             <-- Dependencies
@@ -216,7 +260,8 @@ You can configure EntropPy via Command Line Arguments or a `config.json` file.
 
 | Argument | Default | Description |
 | :--- | :--- | :--- |
-| `--output`, `-o` | `None` | Directory to output YAML files. (Prints to stdout if omitted). |
+| `--platform` | `espanso` | Target platform (espanso, qmk). |
+| `--output`, `-o` | `None` | Directory to output files. (Prints to stdout if omitted). |
 | `--reports` | `None` | Directory to generate detailed reports (creates timestamped subdirectories). |
 | `--jobs`, `-j` | CPU Count | Number of parallel worker processes. |
 | `--top-n` | `None` | Process the top N most frequent English words. |
@@ -236,6 +281,7 @@ Instead of long CLI strings, you can use a `config.json`:
 
 ```json
 {
+  "platform": "espanso",
   "top_n": 5000,
   "output": "corrections",
   "reports": "reports",
