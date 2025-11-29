@@ -3,11 +3,11 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version 0.3.0 (Beta)** | [Changelog](CHANGELOG.md)
+**Version 0.3.1 (Beta)** | [Changelog](CHANGELOG.md)
 
-A Python-based autocorrect dictionary generator for text expansion systems.
+A Python-based autocorrect dictionary generator for multiple text expansion and autocorrect platforms.
 
-It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating thousands of typos mapped to their correct spellings.
+It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of English words, generating typos mapped to their correct spellings.
 
 It generates five types of typing errors:
 * **Transpositions**: Swapped characters (e.g., `the` → `teh`).
@@ -16,63 +16,35 @@ It generates five types of typing errors:
 * **Replacements**: Wrong characters (e.g., `apple` → `applw`).
 * **Insertions**: Additional characters (e.g., `food` → `foopd`).
 
-## Platform Support
-
-EntropPy now supports multiple autocorrect platforms through a platform abstraction layer:
-
-### ✅ Espanso (Default)
-The original and fully supported platform. Espanso runs on any OS at the host level and supports arbitrarily large dictionaries.
-
-**Status**: Complete  
-**Output**: YAML files  
-**Characteristics**: Unlimited corrections, full Unicode support, left-to-right matching
-
-### ⏸️ QMK Firmware
-Architecture ready for keyboard firmware-level autocorrect.
-
-**Status**: Skeleton implementation (coming soon)  
-**Output**: C header files  
-**Characteristics**: ~1,500 correction limit (flash memory), alphas + apostrophe only, right-to-left matching
-
-To specify a platform:
-```bash
-python -m entroppy --platform espanso  # default
-python -m entroppy --platform qmk      # when implemented
-```
-
-Or in `config.json`:
-```json
-{
-  "platform": "espanso",
-  ...
-}
-```
-
-## Inspiration / Why Espanso?
-This project originated as a tool for [QMK Firmware](https://qmk.fm/) and still has a [sibling for generating QMK dictionaries](https://github.com/ohshitgorillas/qmk_userspace/tree/main/autocorrect/ac_generator). I was dissatisfied with existing autocorrect dictionaries, which were bloated with spelling mistakes caused by genuine lack of knowledge rather than mechanical typing errors (e.g., `definately` → `definitely`). I know how to spell, I just have fat fingers.
+## Inspiration
+This project originated as a tool for [QMK Firmware](https://qmk.fm/)'s Autocorrect feature. I was dissatisfied with existing autocorrect dictionaries, which were bloated with spelling mistakes caused by genuine lack of knowledge rather than mechanical typing errors (e.g., `definately` → `definitely`). I know how to spell, I just have fat fingers.
 
 After manually entering my own mistakes for a while, I realized I didn't need a pre-existing dictionary. I could generate an arbitrarily large corpus of typos algorithmically, which led to the creation of this project.
 
-However, keyboard microcontrollers have limited storage capacity. My personal QMK keyboard can only store about 1,100 corrections, whereas this script can produce hundreds of thousands of unique corrections in 10–20 minutes. With v0.3.0's platform abstraction, EntropPy can now target both Espanso (unlimited corrections) and QMK (space-constrained), choosing the most useful corrections for each platform.
+However, different platforms have different constraints. Keyboard firmware has limited storage (my QMK keyboard stores ~1,100 corrections), while host-level tools like Espanso can handle hundreds of thousands. EntropPy generates corrections in 10–20 minutes and can target multiple platforms, optimizing output for each platform's capabilities and constraints.
 
 ## Features
 
 * **Multi-Platform Support**: Generate corrections for Espanso, QMK, or other platforms via extensible backend system
-* **Smart Boundary Detection**: Automatically assigns Espanso word boundaries (`word: true`, `left_word: true`, etc.) to prevent typos from triggering inside other valid words (e.g., prevents `no` → `on` from triggering inside the word `noon`).
-* **Collision Resolution**: If a typo maps to multiple valid words (e.g., `thn` could be `then`, `than`, or `thin`), the script uses frequency analysis to pick the statistically likely correction or discards it if ambiguous. (`then` and `than` are far more frequent than `thin`, but themselves have a frequency ratio close to 1, so `thn` is considered ambiguous and skipped.)
-* **Pattern Generalization**: Automatically detects repeated patterns (e.g., `-atoin` → `-ation` and `-ntoin` → `-ntion` are simplified to `-toin` → `-tion`) and creates generalized rules, reducing dictionary size.
-* **Comprehensive Reporting**: Generate detailed reports showing collisions, pattern decisions, substring conflicts, and performance metrics—invaluable for understanding and tuning EntropPy.
-* **Espanso Optimization**: Outputs alphabetically organized YAML files to keep sizes manageable and organization clean.
-* **Highly Configurable**: Customize input lists, exclusion patterns, adjacent key mappings, and frequency thresholds.
-* **Progress Tracking**: Real-time progress bars for word processing, pattern generalization, conflict removal, and YAML file writing.
-* **Estimates RAM Usage**: Estimates the total RAM consumed by the dictionary in Espanso (~21,500 entries → 1.5MB).
+* **Smart Boundary Detection**: Automatically assigns word boundaries to prevent typos from triggering inside other valid words (e.g., prevents `nto` → `not` from triggering inside `onto` and producing `onot`)
+* **Collision Resolution**: Uses frequency analysis to resolve ambiguous typos that map to multiple words (e.g., `thn` could be `then`, `than`, or `thin`)
+* **Pattern Generalization**: Automatically detects repeated patterns and creates generalized rules, reducing dictionary size (platform-specific: respects each platform's match direction)
+* **Platform-Specific Reporting**: Detailed reports tailored to each platform showing filtering decisions, cutoff analysis, and optimization results
+* **Platform-Specific Optimization**:
+  - **Espanso**: Alphabetically organized YAML files with RAM estimation
+  - **QMK**: Frequency-based ranking and space-optimized corrections (in progress)
+* **Highly Configurable**: Customize input lists, exclusion patterns, adjacent key mappings, and frequency thresholds
+* **Progress Tracking**: Real-time progress bars for word processing, pattern generalization, conflict removal, and file writing
 
 ---
 
 ## Setup Instructions
 
-### 1. Install Espanso
-Follow the instructions for your OS at [espanso.org/install](https://espanso.org/install/).
+### 1. Install the Backend
+The backend is the software that will actually be using the generated dictionary. This may be:
+* QMK
+* Espanso
+* More to come...
 
 ### 2. Environment Setup
 It is recommended to run EntropPy inside a virtual environment:
@@ -93,125 +65,105 @@ mkdir corrections settings reports
 pip install -r requirements.txt
 ```
 
-### 3. Directory Structure
-```text
-project_root/
-├── entroppy/                    <-- The package directory
-│   ├── __init__.py
-│   ├── __main__.py
-│   ├── boundaries.py            <-- Boundary detection
-│   ├── cli.py                   <-- Command-line interface
-│   ├── config.py                <-- Configuration management
-│   ├── conflict_resolution.py   <-- Conflict detection strategies
-│   ├── dictionary.py            <-- Dictionary loading
-│   ├── exclusions.py            <-- Exclusion pattern matching
-│   ├── output.py                <-- YAML output generation
-│   ├── pattern_matching.py      <-- Unified pattern matching
-│   ├── patterns.py              <-- Pattern generalization
-│   ├── pipeline.py              <-- Pipeline orchestration
-│   ├── platforms/               <-- NEW: Platform abstraction
-│   │   ├── __init__.py
-│   │   ├── base.py              <-- Platform interface
-│   │   ├── espanso.py           <-- Espanso backend (complete)
-│   │   └── qmk.py               <-- QMK backend (skeleton)
-│   ├── processing.py            <-- Word processing and collision resolution
-│   ├── reports.py               <-- Report generation
-│   ├── typos.py                 <-- Typo generation algorithms
-│   ├── utils.py                 <-- Utility functions
-│   └── stages/                  <-- Modular pipeline stages
-│       ├── __init__.py
-│       ├── collision_resolution.py
-│       ├── conflict_removal.py
-│       ├── data_models.py       <-- Data transfer objects
-│       ├── dictionary_loading.py
-│       ├── output_generation.py
-│       ├── pattern_generalization.py
-│       ├── typo_generation.py
-│       └── worker_context.py    <-- Thread-safe worker context
-├── corrections/                 <-- Optional location to write corrections to
-│   ├── typos_able_to_anyone.yml
-│   ├── typos_baby_to_battery.yml
-│   └── ...
-│   └── typos_z.yml
-├── examples/                    <-- Example files
-│   ├── adjacent.txt
-│   ├── config.json
-│   ├── exclude.txt
-│   └── include.txt
-├── reports/                     <-- Optional Timestamped reports
-│   ├── 2025-11-25_14-30-15/
-│   │   ├── collisions.txt
-│   │   ├── conflicts_*.txt
-│   │   ├── patterns.txt
-│   │   ├── statistics.csv
-│   │   └── summary.txt
-│   └── ...
-├── settings/                    <-- Optional location for personalization files
-│   ├── adjacent.txt
-│   ├── config.json
-│   ├── exclude.txt
-│   └── include.txt
-├── tests/                       <-- Test suite
-│   ├── unit
-│   │   ├── test_conflict_resolution.py
-│   │   ├── ...
-│   ├── integration
-│   │   ├── test_conflict_resolution_integration.py
-│   │   ├── ...
-│   └── platforms                <-- NEW: Platform tests
-│       ├── test_base.py
-│       ├── test_espanso.py
-│       ├── test_qmk.py
-│       └── ...
-├── CHANGELOG.md
-├── README.md                    <-- This file
-├── requirements.txt             <-- Dependencies
-└── requirements-testing.txt     <-- Testing dependencies
-```
-
 ---
 
 ## Usage
 
-It's recommended to generate the dictionaries into the local `corrections` folder for manual review before importing them into Espanso. A quick once-over of the reports to check for garbage corrections is sufficient.
-
-Once you're satisfied with the generated corrections, copy the files to your Espanso configuration directory and restart Espanso.
+It's recommended to generate dictionaries into a local `corrections` folder for manual review before deploying them to your target platform. Review the generated reports to verify correction quality.
 
 ### Basic Generation
-Generate transpositions, omissions, and duplications for the top 1,000 most common English words and output to a local folder:
+Generate transpositions, omissions, and duplications for the top 1,000 most common English words:
 
 ```bash
 python -m entroppy --top-n 1000 --output corrections
 ```
 
-Once you've reviewed the reports for issues, move the YAML files to Espanso and restart:
+After reviewing the reports, deploy the corrections to your chosen platform (see Platform Support section below).
 
+## Platform Support
+
+EntropPy supports multiple autocorrect platforms through a platform abstraction layer. Each platform has unique characteristics that influence how corrections are generated, filtered, and formatted.
+
+### ✅ Espanso (Default)
+Host-level text expander supporting unlimited corrections.
+
+**Status**: Complete
+**Output**: YAML files organized alphabetically
+**Characteristics**:
+- Unlimited corrections
+- Full Unicode support
+- Left-to-right matching
+- RAM estimation included in reports
+
+**Example Usage:**
 ```bash
-mkdir ~/.config/espanso/match/autocorrect
-mv corrections/*.yml ~/.config/espanso/match/autocorrect
-espanso restart
+python -m entroppy --platform espanso --top-n 5000 --output corrections
 ```
 
-### Generating Directly to Espanso
-You can output directly to your Espanso `match` directory.
+**Deploying to Espanso:**
 
 **Linux/macOS:**
 ```bash
 mkdir ~/.config/espanso/match/autocorrect
-python -m entroppy --top-n 5000 --output "~/.config/espanso/match/autocorrect"
+cp corrections/*.yml ~/.config/espanso/match/autocorrect/
+espanso restart
 ```
 
 **Windows (PowerShell):**
 ```powershell
 mkdir "$env:APPDATA\espanso\match\autocorrect"
-python -m entroppy --top-n 5000 --output "$env:APPDATA\espanso\match\autocorrect"
+Copy-Item corrections\*.yml "$env:APPDATA\espanso\match\autocorrect\"
+espanso restart
+```
+
+### 🚧 QMK Firmware
+Keyboard firmware-level autocorrect with strict space constraints.
+
+**Status**: Partial - Pattern generation in progress
+**Output**: C header file (format complete, pattern optimization ongoing)
+**Characteristics**:
+- ~1,500 correction limit (flash memory)
+- Alphas + apostrophe only
+- Right-to-left matching
+- Frequency-based ranking
+- Cutoff analysis in reports
+
+**Example Usage:**
+```bash
+python -m entroppy --platform qmk --top-n 10000 --output corrections --reports reports
+```
+
+**Known Limitations:**
+- Pattern generation misses some common patterns (`teh` → `the`, `toin` → `tion`)
+- Dictionary not yet fully optimized for limited space
+- These are active development areas
+
+**Deploying to QMK:**
+Copy the generated header file to your QMK keymap directory and configure according to [QMK Autocorrect documentation](https://docs.qmk.fm/#/feature_autocorrect).
+
+### Specifying Platform
+
+**Command line:**
+```bash
+python -m entroppy --platform espanso  # default
+python -m entroppy --platform qmk
+```
+
+**Configuration file:**
+```json
+{
+  "platform": "espanso",
+  "top_n": 5000,
+  "output": "corrections"
+}
 ```
 
 ### Advanced Usage
-Generate typos using a custom word list, a specific "fat finger" key map, and exclude specific patterns:
+Generate typos using a custom word list, exclusion patterns, and adjacent key map:
 
 ```bash
 python -m entroppy \
+    --platform espanso \
     --verbose \
     --top-n 2000 \
     --include settings/my_custom_words.txt \
@@ -219,24 +171,28 @@ python -m entroppy \
     --typo-freq-threshold 1e-8 \
     --max-word-length 12 \
     --adjacent-letters settings/qwerty_map.txt \
-    --output corrections
+    --output corrections \
+    --reports reports
 ```
 
-Using `--typo-freq-threshold` is recommended to catch conjugations and other transformations of words that may not otherwise occur in `english-words`. The word `juts`, for example, both a transposition of `just` *and* a conjugation of the verb `jut`, does not occur in `english-words` (only `jut`), but does occur in `wordfreq` with a frequency of ~2e-7. Without this option, the script would (incorrectly) generate the correction `juts` → `just`. Lower values catch less common words.
+Using `--typo-freq-threshold` catches conjugations and word forms not in `english-words` but present in `wordfreq`. For example, `juts` (both a transposition of `just` and a conjugation of `jut`) appears in `wordfreq` (~2e-7 frequency) but not `english-words`. Without this threshold, the script would incorrectly generate `juts` → `just`.
 
 ### Generating Reports
 
-Generate detailed reports to analyze what EntropPy is doing:
+Reports provide detailed analysis of EntropPy's decisions and are essential for understanding and tuning configuration:
 
 ```bash
 python -m entroppy \
+    --platform espanso \
     --top-n 5000 \
     --output corrections \
     --reports reports \
     --verbose
 ```
 
-This creates a timestamped directory (e.g., `reports/2025-11-25_14-30-15/`) with:
+This creates a timestamped, platform-specific directory (e.g., `reports/2025-11-29_14-30-15_espanso/`) with:
+
+**Universal Reports** (all platforms):
 - **`summary.txt`** - Overall statistics and timing breakdown
 - **`collisions.txt`** - Ambiguous typos that were skipped
 - **`patterns.txt`** - Generalized patterns and rejected patterns
@@ -248,7 +204,20 @@ This creates a timestamped directory (e.g., `reports/2025-11-25_14-30-15/`) with
 - **`exclusions.txt`** - Corrections blocked by exclusion rules (if any)
 - **`statistics.csv`** - Machine-readable statistics for analysis
 
-Reports are invaluable for understanding EntropPy's decisions and fine-tuning your configuration.
+**Platform-Specific Reports:**
+
+**Espanso:**
+- RAM estimation and file size breakdown
+- Largest files by entry count
+- File organization by letter
+
+**QMK:**
+- Filtering details (character set violations, conflicts)
+- The Cutoff Bubble (last 10 that made the cut, first 10 that didn't)
+- User words section
+- Pattern and direct correction breakdown
+
+Reports are invaluable for understanding platform-specific optimization decisions.
 
 ---
 
@@ -376,7 +345,11 @@ xy* -> yz
 
 ## Output Structure
 
-The script generates multiple YAML files, organized alphabetically by the corrected words they contain. This keeps individual files compact and manageable. Use `--max-entries-per-file` (up to 1000) to generate fewer, larger files if preferred.
+Output format depends on the target platform:
+
+### Espanso Output
+
+Multiple YAML files organized alphabetically by corrected words. Use `--max-entries-per-file` (up to 1000) to control file sizes.
 
 **Example YAML Entry:**
 ```yaml
@@ -401,30 +374,60 @@ matches:
     propagate_case: true
 ```
 
+### QMK Output
+
+Single text file containing corrections ordered alphabetically by the correct spelling.
+
+**Example Text File:**
+```text
+teh -> the
+toin: -> tion
+:aer: -> are
+```
+
+Refer to platform-specific reports for detailed breakdown of included corrections and filtering decisions.
+
 ---
 
 ## Boundary Detection
 
-EntropPy automatically determines which boundary constraints are needed:
+EntropPy automatically determines which boundary constraints are needed to prevent false triggers. This prevents corrections like `nto` → `not` from triggering inside `onto` and producing `onot`.
 
+**Boundary Types:**
 - **No boundary** - Typo can trigger anywhere (e.g., `becuse` → `because`)
-- **`word: true`** - Typo must be standalone (e.g., `nto` → `not`)
-- **`left_word: true`** - Typo must be at word start (e.g., `hte` → `the` at start only)
-- **`right_word: true`** - Typo must be at word end (e.g., `toin` → `tion` at end only)
+- **Both boundaries** - Typo must be standalone (e.g., `nto` → `not`)
+- **Left boundary** - Typo must be at word start (e.g., `hte` → `the`)
+- **Right boundary** - Typo must be at word end (e.g., `toin` → `tion`)
 
-This prevents corrections like `nto` → `not` from triggering inside `onto` and producing `onot`.
+**Platform-Specific Representation:**
+
+**Espanso** uses YAML properties:
+- No boundary: No property
+- Both: `word: true`
+- Left: `left_word: true`
+- Right: `right_word: true`
+
+**QMK** uses colon notation in text files:
+- No boundary: `teh -> the`
+- Both: `:teh: -> the`
+- Left: `:teh -> the`
+- Right: `teh: -> the`
 
 ---
 
 ## Pattern Generalization & Conflict Resolution
 
-EntropPy employs sophisticated algorithms to optimize the dictionary and prevent garbage corrections. These optimizations are critical for ensuring Espanso's left-to-right, greedy matching behavior produces correct results.
+EntropPy employs sophisticated algorithms to optimize dictionaries and prevent garbage corrections. These optimizations respect each platform's matching behavior (left-to-right vs right-to-left).
 
 ### Pattern Generalization
 
-When multiple corrections share a common suffix pattern, EntropPy attempts to create a single generalized rule instead of multiple specific corrections.
+When multiple corrections share a common pattern, EntropPy attempts to create a single generalized rule instead of multiple specific corrections.
 
-**Example - Valid Generalization:**
+**Platform-Specific Pattern Detection:**
+- **Espanso (LTR)**: Detects suffix patterns (e.g., `oev → ove`)
+- **QMK (RTL)**: Detects prefix patterns (e.g., `teh → the`)
+
+**Example - Valid Generalization (Espanso):**
 ```
 Specific corrections:
   - loev → love
@@ -440,12 +443,21 @@ This works because:
 
 **Validation Process:**
 
-EntropPy validates each pattern by checking if Espanso's mechanics would produce the correct result:
+EntropPy validates each pattern by checking if the platform's matching mechanics would produce the correct result:
 
 ```python
+# For LTR platforms (Espanso) - suffix patterns:
 for each correction in pattern:
     remaining_prefix = full_typo[:-len(pattern_typo)]
     expected_result = remaining_prefix + pattern_correction
+    
+    if expected_result != full_word:
+        reject_pattern()  # Would create garbage!
+
+# For RTL platforms (QMK) - prefix patterns:
+for each correction in pattern:
+    remaining_suffix = full_typo[len(pattern_typo):]
+    expected_result = pattern_correction + remaining_suffix
     
     if expected_result != full_word:
         reject_pattern()  # Would create garbage!
@@ -513,15 +525,53 @@ else:
 
 ### Viewing Optimization Results
 
-Use the `--reports` flag to see detailed information about:
+Use the `--reports` flag to see detailed information about optimization decisions. Report structure varies by platform (see Generating Reports section above for full details).
+
+**Common Reports** (all platforms):
 - **`collisions.txt`**: Words that produce the same typo and their frequency ratios
-- **`conflicts_*.txt`**: Corrections removed as redundant and the blocking pattern responsible for each removal
+- **`conflicts_*.txt`**: Corrections removed as redundant and the blocking pattern responsible
 - **`patterns.txt`**: Which patterns were generalized and which were rejected (with reasons)
-- **`stats.csv`**: Machine-readable statistics in CSV format for analysis and tracking performance over time
-- **`summary.txt`**: Overall statistics showing how many patterns and conflicts were found
+- **`statistics.csv`**: Machine-readable statistics for analysis and tracking
+- **`summary.txt`**: Overall statistics showing patterns and conflicts found
 
+**Platform-Specific Reports** provide additional insights:
+- **Espanso**: RAM estimation, file size breakdown
+- **QMK**: Cutoff analysis, filtering details, character set violations
 
-These reports can be invaluable for understanding EntropPy's decisions and verifying corrections.
+These reports are invaluable for understanding platform-specific optimization decisions.
+
+---
+
+## Known Limitations
+
+### Pattern Generation (QMK)
+
+The current implementation of pattern generation for QMK's right-to-left matching detects some patterns but misses common ones:
+
+**Missing Common Patterns:**
+- `teh` → `the` (and variants: `tehn` → `then`, `bateh` → `bathe`)
+- `toin` → `tion` (and variants: `-ation`, `-ntion`)
+
+**Impact:**
+- QMK dictionaries are not yet fully optimized for limited storage
+- More corrections could be represented as patterns to save space
+- This is an active development area
+
+**Workarounds:**
+- Use higher `--top-n` values to capture more words
+- Manually review cutoff bubble in reports to identify missed patterns
+- Direct corrections still work correctly, they just consume more space
+
+### Platform Support
+
+**QMK:**
+- Pattern generation incomplete (see above)
+- Output format complete but pattern optimization ongoing
+- Suitable for testing but not yet production-ready
+
+**General:**
+- Pattern generalization only works for one boundary type per platform
+- Large dictionaries (>20,000 entries) may take several minutes to generate
 
 ---
 
