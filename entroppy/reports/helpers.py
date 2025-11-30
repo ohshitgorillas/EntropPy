@@ -23,3 +23,15 @@ def write_report_header(f, title: str):
     f.write(f"{title}\n")
     f.write("=" * 80 + "\n")
     f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+
+
+def write_section_header(f, title: str):
+    """Write a section header with separator line.
+
+    Args:
+        f: File object to write to
+        title: Title of the section (empty string to write only separator)
+    """
+    if title:
+        f.write(f"{title}\n")
+    f.write("-" * 80 + "\n")

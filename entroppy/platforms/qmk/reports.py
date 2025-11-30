@@ -4,6 +4,7 @@ from pathlib import Path
 
 from entroppy.core import BoundaryType, Correction, format_boundary_display, format_boundary_name
 from entroppy.reports import write_report_header
+from entroppy.reports.helpers import write_section_header
 
 
 def generate_qmk_ranking_report(
@@ -50,8 +51,7 @@ def _write_overview_statistics(
     f, final_corrections: list[Correction], filtered_corrections: list[Correction]
 ):
     """Write overview statistics section."""
-    f.write("OVERVIEW STATISTICS\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "OVERVIEW STATISTICS")
     f.write(f"Total corrections selected:        {len(final_corrections):,}\n")
     f.write(f"Available after filtering:         {len(filtered_corrections):,}\n")
     selection_rate = (
@@ -62,8 +62,7 @@ def _write_overview_statistics(
 
 def _write_filtering_details(f, filter_metadata: dict):
     """Write filtering details section."""
-    f.write("FILTERING DETAILS\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "FILTERING DETAILS")
     filter_reasons = filter_metadata.get("filter_reasons", {})
     f.write(f"Character set violations:          {filter_reasons.get('char_set', 0):,}\n")
     f.write(
@@ -135,8 +134,7 @@ def _write_suffix_conflicts(f, filter_metadata: dict):
 
 def _write_user_words_section(f, user_corrections: list[Correction]):
     """Write user words section."""
-    f.write("USER WORDS\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "USER WORDS")
     user_count = len(user_corrections)
     f.write(f"User-specified words (always included): {user_count:,}\n")
     if user_count > 0:
@@ -155,8 +153,7 @@ def _write_patterns_section(
     pattern_replacements: dict,
 ):
     """Write patterns section."""
-    f.write("PATTERNS\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "PATTERNS")
     pattern_count = len(pattern_scores)
     f.write(f"Pattern corrections: {pattern_count:,}\n\n")
 
@@ -186,8 +183,7 @@ def _write_patterns_section(
 
 def _write_direct_corrections_section(f, direct_scores: list[tuple[float, str, str, BoundaryType]]):
     """Write direct corrections section."""
-    f.write("DIRECT CORRECTIONS\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "DIRECT CORRECTIONS")
     direct_count = len(direct_scores)
     f.write(f"Direct corrections: {direct_count:,}\n\n")
 
@@ -222,8 +218,7 @@ def _write_cutoff_bubble(
     cutoff_index = len(final_corrections)
 
     # Last 10 that made the cut
-    f.write("LAST 10 CORRECTIONS THAT MADE THE CUT:\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "LAST 10 CORRECTIONS THAT MADE THE CUT:")
     start_idx = max(0, cutoff_index - 10)
     for i in range(start_idx, cutoff_index):
         typo, word, boundary = final_corrections[i]
@@ -233,8 +228,8 @@ def _write_cutoff_bubble(
         f.write(f"   Type: {correction_type}, Score: {score:.6f}\n\n")
 
     # First 10 that got cut
-    f.write("\nFIRST 10 CORRECTIONS THAT GOT CUT:\n")
-    f.write("-" * 80 + "\n")
+    f.write("\n")
+    write_section_header(f, "FIRST 10 CORRECTIONS THAT GOT CUT:")
     if len(ranked_corrections_before_limit) > cutoff_index:
         for i in range(cutoff_index, min(cutoff_index + 10, len(ranked_corrections_before_limit))):
             typo, word, boundary = ranked_corrections_before_limit[i]

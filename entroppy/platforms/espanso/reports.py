@@ -4,6 +4,7 @@ from pathlib import Path
 
 from entroppy.core import Correction
 from entroppy.reports import write_report_header
+from entroppy.reports.helpers import write_section_header
 
 
 def generate_espanso_output_report(
@@ -31,8 +32,7 @@ def generate_espanso_output_report(
 
 def _write_overview(f, final_corrections: list[Correction], ram_estimate: dict):
     """Write overview section."""
-    f.write("OVERVIEW\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "OVERVIEW")
     f.write(f"Total corrections:              {len(final_corrections):,}\n")
     f.write(f"Estimated RAM usage:            {ram_estimate.get('total_mb', 0):.2f} MB\n")
     f.write(f"Average bytes per entry:        {ram_estimate.get('per_entry_bytes', 0):.1f}\n\n")
@@ -42,8 +42,7 @@ def _write_file_breakdown(
     f, corrections_by_letter: dict[str, list[dict]], max_entries_per_file: int
 ):
     """Write file breakdown section."""
-    f.write("FILE BREAKDOWN\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "FILE BREAKDOWN")
 
     total_files = 0
     for letter in sorted(corrections_by_letter.keys()):
@@ -65,8 +64,7 @@ def _write_file_breakdown(
 
 def _write_largest_files(f, corrections_by_letter: dict[str, list[dict]]):
     """Write largest files section."""
-    f.write("LARGEST FILES (Top 5 by correction count)\n")
-    f.write("-" * 80 + "\n")
+    write_section_header(f, "LARGEST FILES (Top 5 by correction count)")
 
     # Sort by correction count
     sorted_letters = sorted(corrections_by_letter.items(), key=lambda x: len(x[1]), reverse=True)

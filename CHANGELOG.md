@@ -8,6 +8,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Backend module refactoring for improved maintainability**
+  - **Split QMK backend** (`entroppy/platforms/qmk/backend.py`, 437 lines) into focused modules:
+    - `formatting.py`: Boundary marker formatting utilities (`format_boundary_markers`)
+    - `filtering.py`: Character set validation and conflict detection logic
+      - `filter_character_set()`, `resolve_same_typo_conflicts()`
+      - `detect_conflicts_generic()`, `detect_suffix_conflicts()`, `detect_substring_conflicts()`
+      - Main `filter_corrections()` entry point
+    - `ranking.py`: Ranking and scoring logic
+      - `separate_by_type()`, `score_patterns()`, `score_direct_corrections()`
+      - Main `rank_corrections()` entry point
+    - `output.py`: Output generation utilities
+      - `format_correction_line()`, `sort_corrections()`, `determine_output_path()`
+      - Main `generate_output()` entry point
+    - Main `backend.py` now focuses on orchestration and platform interface
+  - **Split Espanso backend** (`entroppy/platforms/espanso/backend.py`, 292 lines) into focused modules:
+    - `yaml_conversion.py`: YAML dict conversion (`correction_to_yaml_dict`)
+    - `organization.py`: Correction organization by letter (`organize_by_letter`)
+    - `ram_estimation.py`: RAM usage estimation (`estimate_ram_usage`)
+    - `file_writing.py`: YAML file writing utilities
+      - `write_single_yaml_file()`, `write_yaml_files()`
+    - Main `backend.py` now focuses on orchestration and platform interface
+  - **Benefits**:
+    - Improved code organization with single-responsibility modules
+    - Easier maintenance - related functionality grouped together
+    - Better testability - modules can be tested independently
+    - Backward compatible - all imports and public API unchanged
+    - No functional changes - all behavior preserved
+
+- **Redundancy elimination and code consolidation**
+  - **Consolidated report section header writing**:
+    - Added `write_section_header()` helper function in `entroppy/reports/helpers.py`
+    - Updated `entroppy/platforms/espanso/reports.py` and `entroppy/platforms/qmk/reports.py` to use shared helper
+    - Eliminated 11+ instances of duplicate `f.write("TITLE\n")` followed by `f.write("-" * 80 + "\n")` pattern
+  - **Moved QMK-specific boundary formatting to QMK module**:
+    - Removed `format_boundary_markers()` from `entroppy/core/boundaries.py` (core module should not contain platform-specific code)
+    - Added `_format_boundary_markers()` as private function in `entroppy/platforms/qmk/backend.py`
+    - Function is now properly scoped to QMK backend where it's used
+    - Removed from `entroppy/core/__init__.py` exports
+  - **Impact**: ~20+ lines of duplicate code eliminated, improved code organization with platform-specific code in appropriate modules
+
 - **Code readability improvements through helper function extraction**
   - **Refactored `patterns.py`** for improved maintainability:
     - Extracted `_extract_pattern_parts()` to eliminate duplication between prefix/suffix extraction
