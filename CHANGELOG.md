@@ -4,9 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.5.0] - 2025-01-29
 
 ### Added
+
+- **Pydantic v2 type validation system**
+  - Replaced manual validation with Pydantic BaseModel for automatic type checking
+  - Added Pydantic v2 dependency (`pydantic>=2.0.0,<3.0.0`)
+  - **Config class** (`entroppy/core/config.py`):
+    - Converted from `@dataclass` to Pydantic `BaseModel`
+    - Added field validators with constraints (e.g., `ge=1`, `gt=0`)
+    - Added `Literal["espanso", "qmk"]` for platform validation
+    - Field validator for string set parsing (`debug_words`, `debug_typos`)
+    - Model validator for cross-field validation (max_word_length >= min_word_length, QMK requirements)
+    - Automatic type coercion from JSON configuration
+  - **Data models** (`entroppy/processing/stages/data_models.py`):
+    - Converted all stage result models from `@dataclass` to Pydantic `BaseModel`
+    - Added field constraints (e.g., `elapsed_time >= 0`, `removed_count >= 0`)
+    - Fixed type definitions to match actual code behavior:
+      - `adjacent_letters_map`: `dict[str, str]` (strings, not lists)
+      - `skipped_collisions`: `tuple[str, list[str], float]` (list of words, not single string)
+      - `skipped_short`: `list[tuple[str, str, int]]` (tuples, not strings)
+      - `rejected_patterns`: `tuple[str, str, str | list[str]]` (flexible reason type)
+  - **Benefits**:
+    - ~50 lines of manual validation code eliminated
+    - Better error messages with field-level validation details
+    - Automatic type coercion for JSON configuration loading
+    - Runtime validation at object creation time
+    - Improved developer experience with IDE support and field descriptions
+    - Backward compatible with existing code and tests
 
 - **Code quality improvements: constants and helper functions**
   - **Constants file** (`entroppy/utils/constants.py`):
@@ -55,6 +81,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Improved code consistency:
     - Changed `_format_time` to public `format_time` in `processing/pipeline.py` for consistency
     - All imports now follow Python PEP 8 style guide conventions
+
+- **Resolved lazy imports and circular dependencies**:
+  - **Moved `Correction` type alias to dedicated types module**:
+    - Created `entroppy/core/types.py` to centralize type definitions
+    - Moved `Correction = tuple[str, str, BoundaryType]` from `core/config.py` to `core/types.py`
+    - Updated all imports across codebase to use `entroppy.core.types.Correction`
+    - Updated `core/__init__.py` to export `Correction` from `types.py`
+  - **Eliminated circular dependency**:
+    - Broke circular import between `core/config.py` and `utils/debug.py`
+    - `config.py` and `debug.py` now both import `Correction` from `types.py` (no circular dependency)
+    - `DebugTypoMatcher` can now be imported at module level in `config.py` (no lazy import needed)
+  - **Removed lazy imports**:
+    - Moved `expand_file_path` import from inside `load_config()` function to module level in `config.py`
+    - Removed lazy import logic from `_rebuild_config_model()` function
+    - All imports are now at module level, following Python best practices
+  - **Benefits**:
+    - Cleaner architecture with types separated from implementation
+    - No circular dependencies - improved module independence
+    - Better code organization - all imports at module level
+    - Improved maintainability - type definitions centralized in one location
 
 - **Improved type hinting across the codebase**:
   - Added missing return type hints to helper functions (`log_debug_word`, `log_debug_typo`, `write_report_header`, `write_section_header`)
@@ -107,6 +153,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Updated all modules to import debug utilities directly from `entroppy/utils/debug` instead of `entroppy/utils`
     - Changed `entroppy/core/boundaries.py` to import `Constants` directly from `entroppy/utils/constants` instead of `entroppy/utils`
     - All imports now use direct module paths, avoiding circular dependencies
+  - Fixed circular dependency between `core/config.py` and `utils/debug.py`:
+    - Moved `Correction` type alias to `core/types.py` to break the circular import
+    - Both modules now import `Correction` from `types.py` instead of from each other
+    - Eliminated the need for lazy imports in `config.py`
   - **Type checking improvements**:
     - Updated `determine_boundaries()` and `_check_typo_in_wordset()` to accept both `set` and `frozenset` types
     - Fixed `generate_all_typos()` to return empty list for empty strings instead of raising error (matches test expectations)
@@ -190,6 +240,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Easier maintenance - changes to validation/logging happen in one place
     - Better testability - helper functions can be tested independently
     - No functional changes - all behavior preserved
+
+## [Unreleased]
 
 ## [0.4.3] - 2025-12-01
 
@@ -737,6 +789,7 @@ This is the first beta release of the Autocorrect Dictionary Generator for Espan
 
 ## Version History
 
+- **0.5.0** (2025-01-29): Pydantic v2 type validation system and code quality improvements
 - **0.4.0** (2025-11-30): Debug tracing system and QMK substring conflict fix
 - **0.3.1** (2025-11-29): Platform-specific reporting and initial QMK pattern generation support
 - **0.3.0** (2025-11-29): Added structure for cross-platform support; currently Espanso only supported
