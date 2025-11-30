@@ -72,13 +72,4 @@ addopts = [
     "--strict-markers",
 ]
 
-[tool.black]
-line-length = 120
-target-version = ["py310", "py311", "py312", "py313"]
-include = '\.pyi?$'
-extend-exclude = [
-    "/venv/",
-    "/build/",
-    "/dist/",
-]
 
