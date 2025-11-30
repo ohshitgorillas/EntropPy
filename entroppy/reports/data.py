@@ -1,6 +1,7 @@
 """Report data models."""
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from entroppy.core import BoundaryType, Correction
 
@@ -43,5 +44,5 @@ class ReportData:
     final_corrections: list[Correction] = field(default_factory=list)
     ranked_corrections_before_limit: list[Correction] = field(default_factory=list)
     filtered_corrections: list[Correction] = field(default_factory=list)
-    filter_metadata: dict = field(default_factory=dict)
+    filter_metadata: dict[str, Any] = field(default_factory=dict)
 

@@ -7,17 +7,18 @@ from loguru import logger
 
 from entroppy.core import BoundaryType, Config, Correction
 from entroppy.platforms.qmk.formatting import format_boundary_markers
+from entroppy.utils import Constants
 
 
 def format_correction_line(typo: str, word: str, boundary: BoundaryType) -> str:
     """Format a single correction line with QMK boundary markers."""
     formatted_typo = format_boundary_markers(typo, boundary)
-    return f"{formatted_typo} -> {word}"
+    return f"{formatted_typo}{Constants.QMK_OUTPUT_SEPARATOR}{word}"
 
 
 def sort_corrections(lines: list[str]) -> list[str]:
     """Sort correction lines alphabetically by correction word."""
-    return sorted(lines, key=lambda line: line.split(" -> ")[1])
+    return sorted(lines, key=lambda line: line.split(Constants.QMK_OUTPUT_SEPARATOR)[1])
 
 
 def determine_output_path(output_path: str | None) -> str | None:
@@ -49,14 +50,35 @@ def generate_output(corrections: list[Correction], output_path: str | None, conf
     output_file = determine_output_path(output_path)
 
     if output_file:
-        os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
+        try:
+            os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
+        except PermissionError:
+            logger.error(f"Permission denied creating output directory for: {output_file}")
+            raise
+        except OSError as e:
+            logger.error(f"OS error creating output directory for {output_file}: {e}")
+            raise
 
-        with open(output_file, "w", encoding="utf-8") as f:
-            for line in lines:
-                f.write(line + "\n")
+        try:
+            with open(output_file, "w", encoding="utf-8") as f:
+                for line in lines:
+                    f.write(line + "\n")
+        except PermissionError:
+            logger.error(f"Permission denied writing file: {output_file}")
+            raise
+        except OSError as e:
+            logger.error(f"OS error writing file {output_file}: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error writing file {output_file}: {e}")
+            raise
 
         if config.verbose:
             logger.info(f"\nWrote {len(lines)} corrections to {output_file}")
     else:
-        for line in lines:
-            print(line, file=sys.stdout)
+        try:
+            for line in lines:
+                print(line, file=sys.stdout)
+        except (OSError, IOError) as e:
+            logger.error(f"Error writing to stdout: {e}")
+            raise

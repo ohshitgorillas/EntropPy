@@ -28,7 +28,14 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
 
     # Get platform backend
     if platform is None:
-        platform = get_platform_backend(config.platform)
+        try:
+            platform = get_platform_backend(config.platform)
+        except ValueError as e:
+            logger.error(f"Invalid platform '{config.platform}': {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error getting platform backend: {e}")
+            raise
 
     # Get platform constraints
     constraints = platform.get_constraints()

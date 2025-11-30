@@ -1,6 +1,7 @@
 """Statistics CSV report generation."""
 
 from pathlib import Path
+from loguru import logger
 
 from entroppy.reports.data import ReportData
 
@@ -8,7 +9,8 @@ from entroppy.reports.data import ReportData
 def generate_statistics_csv(data: ReportData, report_dir: Path) -> None:
     """Generate machine-readable statistics CSV."""
     filepath = report_dir / "statistics.csv"
-    with open(filepath, "w", encoding="utf-8") as f:
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
         f.write("metric,value\n")
         f.write(f"words_processed,{data.words_processed}\n")
         f.write(f"corrections_before_generalization,{data.corrections_before_generalization}\n")
@@ -30,3 +32,12 @@ def generate_statistics_csv(data: ReportData, report_dir: Path) -> None:
             f.write(f"time_{stage_key},{duration:.3f}\n")
         total_time = sum(data.stage_times.values())
         f.write(f"time_total,{total_time:.3f}\n")
+    except PermissionError:
+        logger.error(f"Permission denied writing statistics file: {filepath}")
+        raise
+    except OSError as e:
+        logger.error(f"OS error writing statistics file {filepath}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error writing statistics file {filepath}: {e}")
+        raise

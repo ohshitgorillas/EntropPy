@@ -1,6 +1,7 @@
 """Espanso platform-specific report generation."""
 
 from pathlib import Path
+from typing import Any, TextIO
 
 from entroppy.core import Correction
 from entroppy.reports import write_report_header
@@ -9,11 +10,11 @@ from entroppy.reports.helpers import write_section_header
 
 def generate_espanso_output_report(
     final_corrections: list[Correction],
-    corrections_by_letter: dict[str, list[dict]],
+    corrections_by_letter: dict[str, list[dict[str, Any]]],
     ram_estimate: dict[str, float],
     max_entries_per_file: int,
     report_dir: Path,
-) -> dict:
+) -> dict[str, Any]:
     """Generate Espanso output summary report."""
     report_path = report_dir / "espanso_output.txt"
 
@@ -30,7 +31,7 @@ def generate_espanso_output_report(
     }
 
 
-def _write_overview(f, final_corrections: list[Correction], ram_estimate: dict):
+def _write_overview(f: TextIO, final_corrections: list[Correction], ram_estimate: dict[str, float]) -> None:
     """Write overview section."""
     write_section_header(f, "OVERVIEW")
     f.write(f"Total corrections:              {len(final_corrections):,}\n")
@@ -39,8 +40,8 @@ def _write_overview(f, final_corrections: list[Correction], ram_estimate: dict):
 
 
 def _write_file_breakdown(
-    f, corrections_by_letter: dict[str, list[dict]], max_entries_per_file: int
-):
+    f: TextIO, corrections_by_letter: dict[str, list[dict[str, Any]]], max_entries_per_file: int
+) -> None:
     """Write file breakdown section."""
     write_section_header(f, "FILE BREAKDOWN")
 
@@ -62,7 +63,7 @@ def _write_file_breakdown(
     f.write(f"Max entries per file:           {max_entries_per_file}\n\n")
 
 
-def _write_largest_files(f, corrections_by_letter: dict[str, list[dict]]):
+def _write_largest_files(f: TextIO, corrections_by_letter: dict[str, list[dict[str, Any]]]) -> None:
     """Write largest files section."""
     write_section_header(f, "LARGEST FILES (Top 5 by correction count)")
 

@@ -6,6 +6,8 @@ from multiprocessing import Pool
 import yaml
 from loguru import logger
 
+from entroppy.utils import expand_file_path
+
 
 def write_single_yaml_file(args: tuple) -> tuple[str, int]:
     """Worker function to write a single YAML file."""
@@ -13,15 +15,28 @@ def write_single_yaml_file(args: tuple) -> tuple[str, int]:
 
     yaml_output = {"matches": chunk}
 
-    with open(filename, "w", encoding="utf-8") as f:
-        yaml.safe_dump(
-            yaml_output,
-            f,
-            allow_unicode=True,
-            default_flow_style=False,
-            sort_keys=False,
-            width=float("inf"),
-        )
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            yaml.safe_dump(
+                yaml_output,
+                f,
+                allow_unicode=True,
+                default_flow_style=False,
+                sort_keys=False,
+                width=float("inf"),
+            )
+    except PermissionError:
+        logger.error(f"Permission denied writing file: {filename}")
+        raise
+    except OSError as e:
+        logger.error(f"OS error writing file {filename}: {e}")
+        raise
+    except yaml.YAMLError as e:
+        logger.error(f"YAML serialization error writing file {filename}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error writing file {filename}: {e}")
+        raise
 
     return (os.path.basename(filename), len(chunk))
 
@@ -34,8 +49,15 @@ def write_yaml_files(
     jobs: int = 1,
 ) -> None:
     """Write YAML files in parallel, splitting large files into chunks."""
-    output_dir = os.path.expanduser(output_dir)
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = expand_file_path(output_dir) or output_dir
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+    except PermissionError:
+        logger.error(f"Permission denied creating output directory: {output_dir}")
+        raise
+    except OSError as e:
+        logger.error(f"OS error creating output directory {output_dir}: {e}")
+        raise
 
     write_tasks = []
 

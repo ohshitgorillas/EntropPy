@@ -1,11 +1,15 @@
 """QMK platform backend implementation."""
 
+from pathlib import Path
+from typing import Any
+
 from entroppy.core import Config, Correction
 from entroppy.platforms.base import MatchDirection, PlatformBackend, PlatformConstraints
 from entroppy.platforms.qmk.filtering import filter_corrections as qmk_filter_corrections
 from entroppy.platforms.qmk.output import generate_output as qmk_generate_output
 from entroppy.platforms.qmk.ranking import rank_corrections as qmk_rank_corrections
 from entroppy.platforms.qmk.reports import generate_qmk_ranking_report
+from entroppy.utils import Constants
 
 
 class QMKBackend(PlatformBackend):
@@ -15,7 +19,7 @@ class QMKBackend(PlatformBackend):
     Characteristics:
     - Matches right-to-left
     - Limited corrections
-        (6000 theoretical max, effective max depends on flash size)
+        (theoretical max depends on flash size, default 6000)
     - Alphas + apostrophe only
     - Compile-time validation (rejects overlapping patterns)
     - Text output format
@@ -35,9 +39,9 @@ class QMKBackend(PlatformBackend):
     def get_constraints(self) -> PlatformConstraints:
         """Return QMK constraints."""
         return PlatformConstraints(
-            max_corrections=6000,  # Theoretical max, user-configurable
-            max_typo_length=62,  # QMK string length limit
-            max_word_length=62,
+            max_corrections=Constants.QMK_MAX_CORRECTIONS,  # Theoretical max, user-configurable
+            max_typo_length=Constants.QMK_MAX_STRING_LENGTH,  # QMK string length limit
+            max_word_length=Constants.QMK_MAX_STRING_LENGTH,
             allowed_chars=self.ALLOWED_CHARS,
             supports_boundaries=True,  # Via ':' notation
             supports_case_propagation=True,
@@ -48,7 +52,7 @@ class QMKBackend(PlatformBackend):
 
     def filter_corrections(
         self, corrections: list[Correction], config: Config
-    ) -> tuple[list[Correction], dict]:
+    ) -> tuple[list[Correction], dict[str, Any]]:
         """
         Apply QMK-specific filtering.
 
@@ -63,7 +67,7 @@ class QMKBackend(PlatformBackend):
         self,
         corrections: list[Correction],
         patterns: list[Correction],
-        pattern_replacements: dict,
+        pattern_replacements: dict[Correction, list[Correction]],
         user_words: set[str],
         config: Config | None = None,
     ) -> list[Correction]:
@@ -112,12 +116,12 @@ class QMKBackend(PlatformBackend):
         ranked_corrections_before_limit: list[Correction],
         filtered_corrections: list[Correction],
         patterns: list[Correction],
-        pattern_replacements: dict,
+        pattern_replacements: dict[Correction, list[Correction]],
         user_words: set[str],
-        filter_metadata: dict,
-        report_dir,
+        filter_metadata: dict[str, Any],
+        report_dir: Path,
         config: Config,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Generate QMK ranking report."""
         return generate_qmk_ranking_report(
             final_corrections,

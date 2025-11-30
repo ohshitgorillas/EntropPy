@@ -1,6 +1,8 @@
 """Espanso platform backend implementation."""
 
 import sys
+from pathlib import Path
+from typing import Any
 
 import yaml
 from loguru import logger
@@ -47,7 +49,7 @@ class EspansoBackend(PlatformBackend):
 
     def filter_corrections(
         self, corrections: list[Correction], config: Config
-    ) -> tuple[list[Correction], dict]:
+    ) -> tuple[list[Correction], dict[str, Any]]:
         """Espanso filtering (minimal - accepts everything)."""
         metadata = {
             "total_input": len(corrections),
@@ -62,7 +64,7 @@ class EspansoBackend(PlatformBackend):
         self,
         corrections: list[Correction],
         patterns: list[Correction],
-        pattern_replacements: dict,
+        pattern_replacements: dict[Correction, list[Correction]],
         user_words: set[str],
         config: Config | None = None,
     ) -> list[Correction]:
@@ -94,14 +96,24 @@ class EspansoBackend(PlatformBackend):
         else:
             yaml_dicts = [correction_to_yaml_dict(c) for c in sorted_corrections]
             yaml_output = {"matches": yaml_dicts}
-            yaml.safe_dump(
-                yaml_output,
-                sys.stdout,
-                allow_unicode=True,
-                default_flow_style=False,
-                sort_keys=False,
-                width=float("inf"),
-            )
+            try:
+                yaml.safe_dump(
+                    yaml_output,
+                    sys.stdout,
+                    allow_unicode=True,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    width=float("inf"),
+                )
+            except yaml.YAMLError as e:
+                logger.error(f"YAML serialization error: {e}")
+                raise
+            except (OSError, IOError) as e:
+                logger.error(f"Error writing to stdout: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error during YAML output: {e}")
+                raise
 
     def generate_platform_report(
         self,
@@ -109,12 +121,12 @@ class EspansoBackend(PlatformBackend):
         ranked_corrections_before_limit: list[Correction],
         filtered_corrections: list[Correction],
         patterns: list[Correction],
-        pattern_replacements: dict,
+        pattern_replacements: dict[Correction, list[Correction]],
         user_words: set[str],
-        filter_metadata: dict,
-        report_dir,
+        filter_metadata: dict[str, Any],
+        report_dir: Path,
         config: Config,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Generate Espanso output summary report."""
         return generate_espanso_output_report(
             final_corrections,

@@ -6,6 +6,96 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Code quality improvements: constants and helper functions**
+  - **Constants file** (`entroppy/utils/constants.py`):
+    - Centralized all magic numbers and strings to avoid duplication
+    - Added `ESPANSO_MAX_ENTRIES_WARNING` (1000) for Espanso file size warnings
+    - Added `WORDFREQ_MULTIPLIER` (3) for wordfreq fetching
+    - Added `ADJACENT_MAP_SEPARATOR` (" -> ") for adjacent letters map parsing
+    - Added `EXCLUSION_SEPARATOR` ("->") for exclusion pattern detection
+    - Added `QMK_OUTPUT_SEPARATOR` (" -> ") for QMK output formatting
+    - Added `BOUNDARY_MARKER` (":") for boundary pattern parsing
+    - Added `QMK_MAX_CORRECTIONS` (6000) for QMK theoretical maximum
+    - Added `QMK_MAX_STRING_LENGTH` (62) for QMK string length limits
+  - **Helper functions**:
+    - Added `log_if_debug_correction()` in `entroppy/utils/debug.py`:
+      - Reduces code duplication by combining `is_debug_correction()` check and `log_debug_correction()` call
+      - Used throughout codebase to simplify debug logging patterns
+    - Added `expand_file_path()` in `entroppy/utils/helpers.py`:
+      - Centralizes `os.path.expanduser()` calls for file path expansion
+      - Reduces duplication across multiple file loading functions
+
+### Changed
+
+- **Code deduplication**:
+  - Replaced magic numbers and strings with constants from `Constants` class:
+    - `__main__.py`: Uses `Constants.ESPANSO_MAX_ENTRIES_WARNING` instead of hardcoded 1000
+    - `dictionary.py`: Uses constants for separators and multipliers
+    - `qmk/backend.py`: Uses `Constants.QMK_MAX_CORRECTIONS` and `Constants.QMK_MAX_STRING_LENGTH`
+    - `qmk/output.py`: Uses `Constants.QMK_OUTPUT_SEPARATOR`
+    - `boundaries.py`: Uses `Constants.BOUNDARY_MARKER`
+  - Replaced repeated debug logging patterns with `log_if_debug_correction()`:
+    - `resolution/collision.py`: 4 instances updated
+    - `resolution/boundary_utils.py`: 1 instance updated
+    - `core/patterns.py`: 1 instance updated
+    - `resolution/conflicts.py`: 1 instance updated
+  - Replaced `os.path.expanduser()` calls with `expand_file_path()`:
+    - `data/dictionary.py`: 3 instances updated
+    - `core/config.py`: 1 instance updated
+    - `platforms/espanso/file_writing.py`: 1 instance updated
+  - Removed unused `os` imports from `dictionary.py` and `config.py`
+
+- **Improved type hinting across the codebase**:
+  - Added missing return type hints to helper functions (`log_debug_word`, `log_debug_typo`, `write_report_header`, `write_section_header`)
+  - Made generic dict/list types more specific throughout:
+    - `pattern_replacements: dict` → `dict[Correction, list[Correction]]`
+    - `filter_metadata: dict` → `dict[str, Any]`
+  - Added type hints for file I/O parameters (`TextIO`) and path parameters (`Path`)
+  - Improved return type specificity for `generalize_patterns()` and report generation functions
+
+- **Comprehensive error handling and input validation**
+  - **File I/O error handling**:
+    - Added error handling for all file read operations in `entroppy/data/dictionary.py`:
+      - `load_word_list()`: Handles `FileNotFoundError`, `PermissionError`, `UnicodeDecodeError`
+      - `load_exclusions()`: Handles file access and encoding errors
+      - `load_adjacent_letters_map()`: Handles file errors and malformed line format errors
+    - Added error handling for JSON parsing in `entroppy/core/config.py`:
+      - `load_config()`: Handles `FileNotFoundError`, `json.JSONDecodeError`, `PermissionError`, `UnicodeDecodeError`
+    - Added error handling for file writing operations:
+      - `entroppy/platforms/espanso/file_writing.py`: YAML file writing with error handling
+      - `entroppy/platforms/espanso/backend.py`: YAML stdout output error handling
+      - `entroppy/platforms/qmk/output.py`: QMK output file writing with error handling
+      - `entroppy/reports/statistics.py` and `entroppy/reports/summary.py`: Report file writing error handling
+  - **External library error handling**:
+    - `load_validation_dictionary()`: Handles errors from `english_words.get_english_words_set()`
+    - `load_source_words()`: Handles errors from `wordfreq.top_n_list()` (network/package issues)
+    - YAML serialization: Handles `yaml.YAMLError` for serialization failures
+  - **Input validation**:
+    - Added `_validate_config()` function in `entroppy/core/config.py`:
+      - Validates `min_typo_length >= 1`, `min_word_length >= 1`
+      - Validates `max_word_length >= min_word_length` when specified
+      - Validates `freq_ratio > 0`, `top_n >= 1`, `max_corrections >= 1`
+      - Validates `max_entries_per_file >= 1`, `typo_freq_threshold >= 0`, `jobs >= 1`
+    - Added parameter validation to typo generation functions in `entroppy/core/typos.py`:
+      - All functions validate `word` is non-empty string
+      - Functions validate `adj_letters_map` is dict when provided
+      - Raises `ValueError` for empty words, `TypeError` for invalid types
+    - Added parameter validation to boundary functions in `entroppy/core/boundaries.py`:
+      - `parse_boundary_markers()`: Validates pattern is string
+      - `_check_typo_in_wordset()`: Validates typo is string, word_set is set, check_type is valid
+      - `determine_boundaries()`: Validates all parameters are correct types
+  - **Pipeline error handling**:
+    - Added error handling for `get_platform_backend()` in `entroppy/processing/pipeline.py`
+    - Handles `ValueError` for invalid platform names with clear error messages
+  - **Benefits**:
+    - Improved reliability: All file operations now handle common error scenarios gracefully
+    - Better error messages: All errors are logged with context before re-raising
+    - Early validation: Invalid configuration and parameters are caught before processing
+    - Production-ready: Handles edge cases like missing files, permission errors, encoding issues
+    - Maintains error chain: All exceptions preserve original error context using `raise ... from e`
+
 ### Changed
 
 - **Backend module refactoring for improved maintainability**

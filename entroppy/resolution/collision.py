@@ -7,7 +7,7 @@ from wordfreq import word_frequency
 
 from entroppy.core import BoundaryType, Correction
 from entroppy.matching import ExclusionMatcher
-from entroppy.utils import is_debug_correction, log_debug_correction, log_debug_typo
+from entroppy.utils import is_debug_correction, log_debug_correction, log_debug_typo, log_if_debug_correction
 from .conflicts import resolve_conflicts_for_group
 from .boundary_utils import (
     _should_skip_short_typo,
@@ -38,14 +38,13 @@ def _handle_exclusion(
     """
     if exclusion_matcher.should_exclude(correction):
         matching_rule = exclusion_matcher.get_matching_rule(correction)
-        if is_debug_correction(correction, debug_words, debug_typo_matcher):
-            log_debug_correction(
-                correction,
-                f"EXCLUDED by rule: {matching_rule}",
-                debug_words,
-                debug_typo_matcher,
-                "Stage 3",
-            )
+        log_if_debug_correction(
+            correction,
+            f"EXCLUDED by rule: {matching_rule}",
+            debug_words,
+            debug_typo_matcher,
+            "Stage 3",
+        )
         return True, matching_rule
     return False, None
 
@@ -87,15 +86,14 @@ def _process_single_word_correction(
     # Check if typo should be skipped due to length
     if _should_skip_short_typo(typo, word, min_typo_length, min_word_length):
         correction_temp = (typo, word, boundary)
-        if is_debug_correction(correction_temp, debug_words, debug_typo_matcher):
-            log_debug_correction(
-                correction_temp,
-                f"SKIPPED - typo length {len(typo)} < min_typo_length {min_typo_length} "
-                f"(word length {len(word)} > min_word_length {min_word_length})",
-                debug_words,
-                debug_typo_matcher,
-                "Stage 3",
-            )
+        log_if_debug_correction(
+            correction_temp,
+            f"SKIPPED - typo length {len(typo)} < min_typo_length {min_typo_length} "
+            f"(word length {len(word)} > min_word_length {min_word_length})",
+            debug_words,
+            debug_typo_matcher,
+            "Stage 3",
+        )
         return None, True, None
 
     correction = (typo, word, boundary)
@@ -107,14 +105,13 @@ def _process_single_word_correction(
         return None, False, (typo, word, matching_rule)
 
     # Debug logging for accepted correction
-    if is_debug_correction(correction, debug_words, debug_typo_matcher):
-        log_debug_correction(
-            correction,
-            f"Selected (no collision, boundary: {boundary.value})",
-            debug_words,
-            debug_typo_matcher,
-            "Stage 3",
-        )
+    log_if_debug_correction(
+        correction,
+        f"Selected (no collision, boundary: {boundary.value})",
+        debug_words,
+        debug_typo_matcher,
+        "Stage 3",
+    )
 
     return correction, False, None
 
@@ -209,14 +206,13 @@ def _process_collision_case(
     # Check if typo should be skipped due to length
     if _should_skip_short_typo(typo, word, min_typo_length, min_word_length):
         correction_temp = (typo, word, boundary)
-        if is_debug_correction(correction_temp, debug_words, debug_typo_matcher):
-            log_debug_correction(
-                correction_temp,
-                f"SKIPPED after collision resolution - typo length {len(typo)} < min_typo_length {min_typo_length}",
-                debug_words,
-                debug_typo_matcher,
-                "Stage 3",
-            )
+        log_if_debug_correction(
+            correction_temp,
+            f"SKIPPED after collision resolution - typo length {len(typo)} < min_typo_length {min_typo_length}",
+            debug_words,
+            debug_typo_matcher,
+            "Stage 3",
+        )
         return None, True, None, ratio
 
     correction = (typo, word, boundary)

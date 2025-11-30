@@ -273,7 +273,7 @@ def is_debug_correction(
 # Logging functions
 
 
-def log_debug_word(word: str, message: str, stage: str = ""):
+def log_debug_word(word: str, message: str, stage: str = "") -> None:
     """Log a debug message for a word.
 
     Args:
@@ -287,7 +287,7 @@ def log_debug_word(word: str, message: str, stage: str = ""):
 
 def log_debug_typo(
     typo: str, message: str, matched_patterns: list[str] | None = None, stage: str = ""
-):
+) -> None:
     """Log a debug message for a typo.
 
     Args:
@@ -333,3 +333,27 @@ def log_debug_correction(
         matched_patterns = debug_typo_matcher.get_matching_patterns(typo, boundary)
         if matched_patterns:
             log_debug_typo(typo, f"{message} (word: {word})", matched_patterns, stage)
+
+
+def log_if_debug_correction(
+    correction: Correction,
+    message: str,
+    debug_words: set[str],
+    debug_typo_matcher: DebugTypoMatcher | None,
+    stage: str = "",
+) -> None:
+    """Helper function to check if correction is debugged and log if so.
+
+    This reduces code duplication by combining the common pattern of:
+        if is_debug_correction(...):
+            log_debug_correction(...)
+
+    Args:
+        correction: Tuple of (typo, word, boundary)
+        message: The message to log
+        debug_words: Set of debug words
+        debug_typo_matcher: The debug typo matcher (or None)
+        stage: Optional stage name (e.g., "Stage 3")
+    """
+    if is_debug_correction(correction, debug_words, debug_typo_matcher):
+        log_debug_correction(correction, message, debug_words, debug_typo_matcher, stage)

@@ -2,6 +2,7 @@
 
 import time
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -12,6 +13,9 @@ from entroppy.processing.stages.data_models import (
     CollisionResolutionResult,
     PatternGeneralizationResult,
 )
+
+if TYPE_CHECKING:
+    from entroppy.platforms.base import MatchDirection
 
 
 def _filter_cross_boundary_conflicts(
@@ -82,7 +86,7 @@ def generalize_typo_patterns(
     collision_result: CollisionResolutionResult,
     dict_data: DictionaryData,
     config: Config,
-    match_direction,
+    match_direction: "MatchDirection",  # type: ignore[name-defined]
     verbose: bool = False,
 ) -> PatternGeneralizationResult:
     """Generalize patterns from corrections.

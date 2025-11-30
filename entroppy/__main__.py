@@ -27,7 +27,9 @@ def main():
         parser.error("Must specify a platform")
     if config.platform == "qmk" and not config.max_corrections:
         parser.error("Must specify --max-corrections for QMK")
-    if config.platform == "espanso" and config.max_entries_per_file > 1000:
+    from entroppy.utils import Constants
+
+    if config.platform == "espanso" and config.max_entries_per_file > Constants.ESPANSO_MAX_ENTRIES_WARNING:
         logger.warning("--------------------------------")
         logger.warning("!!! WARNING:")
         logger.warning("max_entries_per_file is greater than 1000")

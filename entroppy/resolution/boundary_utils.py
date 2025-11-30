@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from entroppy.core import BoundaryType
-from entroppy.utils import is_debug_correction, log_debug_correction
+from entroppy.utils import log_if_debug_correction
 
 if TYPE_CHECKING:
     from entroppy.utils import DebugTypoMatcher
@@ -65,12 +65,11 @@ def apply_user_word_boundary_override(
         boundary = BoundaryType.BOTH
         # Debug logging for forced BOTH boundary
         correction = (typo, word, boundary)
-        if is_debug_correction(correction, debug_words, debug_typo_matcher):
-            log_debug_correction(
-                correction,
-                f"Forced BOTH boundary (2-letter user word, was {orig_boundary.value})",
-                debug_words,
-                debug_typo_matcher,
-                "Stage 3",
-            )
+        log_if_debug_correction(
+            correction,
+            f"Forced BOTH boundary (2-letter user word, was {orig_boundary.value})",
+            debug_words,
+            debug_typo_matcher,
+            "Stage 3",
+        )
     return boundary

@@ -1,6 +1,7 @@
 """Summary report generation."""
 
 from pathlib import Path
+from loguru import logger
 
 from entroppy.reports.data import ReportData
 from entroppy.reports.helpers import format_time, write_report_header
@@ -11,8 +12,9 @@ def generate_summary_report(data: ReportData, report_dir: Path) -> None:
     filepath = report_dir / "summary.txt"
     total_time = sum(data.stage_times.values())
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        write_report_header(f, "AUTOCORRECT GENERATION SUMMARY")
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            write_report_header(f, "AUTOCORRECT GENERATION SUMMARY")
 
         # Processing stats
         f.write("PROCESSING STATISTICS\n")
@@ -49,3 +51,12 @@ def generate_summary_report(data: ReportData, report_dir: Path) -> None:
                 f.write(f"{stage:<35} {format_time(duration):>12} ({pct:>5.1f}%)\n")
             f.write("-" * 70 + "\n")
             f.write(f"{'Total':<35} {format_time(total_time):>12}\n")
+    except PermissionError:
+        logger.error(f"Permission denied writing summary file: {filepath}")
+        raise
+    except OSError as e:
+        logger.error(f"OS error writing summary file {filepath}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error writing summary file {filepath}: {e}")
+        raise

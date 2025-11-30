@@ -1,6 +1,7 @@
 """Helper functions for report generation."""
 
 from datetime import datetime
+from typing import TextIO
 
 def format_time(seconds: float) -> str:
     """Format seconds into human-readable time."""
@@ -12,7 +13,7 @@ def format_time(seconds: float) -> str:
     return f"{int(minutes)}m {secs:.1f}s"
 
 
-def write_report_header(f, title: str):
+def write_report_header(f: TextIO, title: str) -> None:
     """Write a standard report header with title and timestamp.
 
     Args:
@@ -25,7 +26,7 @@ def write_report_header(f, title: str):
     f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
 
 
-def write_section_header(f, title: str):
+def write_section_header(f: TextIO, title: str) -> None:
     """Write a section header with separator line.
 
     Args:

@@ -13,7 +13,7 @@ from entroppy.core.pattern_validation import (
     validate_pattern_for_all_occurrences,
 )
 from entroppy.platforms.base import MatchDirection
-from entroppy.utils import is_debug_correction, log_debug_correction
+from entroppy.utils import is_debug_correction, log_if_debug_correction
 
 if TYPE_CHECKING:
     from entroppy.utils import DebugTypoMatcher
@@ -28,7 +28,7 @@ def generalize_patterns(
     verbose: bool = False,
     debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
-) -> tuple[list[Correction], set[Correction], dict, list]:
+) -> tuple[list[Correction], set[Correction], dict[Correction, list[Correction]], list[tuple[str, str, str]]]:
     """Find repeated patterns, create generalized rules, and return corrections to be removed.
 
     Args:
@@ -145,13 +145,12 @@ def generalize_patterns(
             corrections_to_remove.add((typo, word, orig_boundary))
             # Log individual replacements for debug items
             correction = (typo, word, orig_boundary)
-            if is_debug_correction(correction, debug_words, debug_typo_matcher):
-                log_debug_correction(
-                    correction,
-                    f"Will be replaced by pattern: {typo_pattern} → {word_pattern}",
-                    debug_words,
-                    debug_typo_matcher,
-                    "Stage 4",
-                )
+            log_if_debug_correction(
+                correction,
+                f"Will be replaced by pattern: {typo_pattern} → {word_pattern}",
+                debug_words,
+                debug_typo_matcher,
+                "Stage 4",
+            )
 
     return patterns, corrections_to_remove, pattern_replacements, rejected_patterns

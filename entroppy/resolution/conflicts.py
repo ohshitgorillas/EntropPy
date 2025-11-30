@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from entroppy.core import BoundaryType, Correction
-from entroppy.utils import is_debug_correction, log_debug_correction
+from entroppy.utils import is_debug_correction, log_debug_correction, log_if_debug_correction
 
 if TYPE_CHECKING:
     from entroppy.utils import DebugTypoMatcher
@@ -247,14 +247,13 @@ def _log_kept_correction(
         debug_words: Set of words to debug
         debug_typo_matcher: Matcher for debug typos
     """
-    if is_debug_correction(correction, debug_words, debug_typo_matcher):
-        log_debug_correction(
-            correction,
-            f"Kept - no blocking substring conflicts found (boundary: {boundary.value})",
-            debug_words,
-            debug_typo_matcher,
-            "Stage 5",
-        )
+    log_if_debug_correction(
+        correction,
+        f"Kept - no blocking substring conflicts found (boundary: {boundary.value})",
+        debug_words,
+        debug_typo_matcher,
+        "Stage 5",
+    )
 
 
 def _process_typo_for_conflicts(

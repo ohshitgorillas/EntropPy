@@ -1,6 +1,7 @@
 """QMK platform-specific report generation."""
 
 from pathlib import Path
+from typing import Any, TextIO
 
 from entroppy.core import BoundaryType, Correction, format_boundary_display, format_boundary_name
 from entroppy.reports import write_report_header
@@ -12,13 +13,13 @@ def generate_qmk_ranking_report(
     ranked_corrections_before_limit: list[Correction],
     filtered_corrections: list[Correction],
     patterns: list[Correction],
-    pattern_replacements: dict,
+    pattern_replacements: dict[Correction, list[Correction]],
     user_corrections: list[Correction],
     pattern_scores: list[tuple[float, str, str, BoundaryType]],
     direct_scores: list[tuple[float, str, str, BoundaryType]],
-    filter_metadata: dict,
+    filter_metadata: dict[str, Any],
     report_dir: Path,
-) -> dict:
+) -> dict[str, Any]:
     """Generate comprehensive QMK ranking report."""
     report_path = report_dir / "qmk_ranking.txt"
 
@@ -48,8 +49,8 @@ def generate_qmk_ranking_report(
 
 
 def _write_overview_statistics(
-    f, final_corrections: list[Correction], filtered_corrections: list[Correction]
-):
+    f: TextIO, final_corrections: list[Correction], filtered_corrections: list[Correction]
+) -> None:
     """Write overview statistics section."""
     write_section_header(f, "OVERVIEW STATISTICS")
     f.write(f"Total corrections selected:        {len(final_corrections):,}\n")
@@ -60,7 +61,7 @@ def _write_overview_statistics(
     f.write(f"Selection rate:                    {selection_rate:.1f}%\n\n")
 
 
-def _write_filtering_details(f, filter_metadata: dict):
+def _write_filtering_details(f: TextIO, filter_metadata: dict[str, Any]) -> None:
     """Write filtering details section."""
     write_section_header(f, "FILTERING DETAILS")
     filter_reasons = filter_metadata.get("filter_reasons", {})
@@ -75,7 +76,7 @@ def _write_filtering_details(f, filter_metadata: dict):
     _write_suffix_conflicts(f, filter_metadata)
 
 
-def _write_char_violations(f, filter_metadata: dict):
+def _write_char_violations(f: TextIO, filter_metadata: dict[str, Any]) -> None:
     """Write character set violations examples."""
     char_filtered = filter_metadata.get("char_filtered", [])
     if not char_filtered:
@@ -90,7 +91,7 @@ def _write_char_violations(f, filter_metadata: dict):
     f.write("\n")
 
 
-def _write_same_typo_conflicts(f, filter_metadata: dict):
+def _write_same_typo_conflicts(f: TextIO, filter_metadata: dict[str, Any]) -> None:
     """Write same-typo conflicts examples."""
     same_typo_conflicts = filter_metadata.get("same_typo_conflicts", [])
     if not same_typo_conflicts:
@@ -115,7 +116,7 @@ def _write_same_typo_conflicts(f, filter_metadata: dict):
     f.write("\n")
 
 
-def _write_suffix_conflicts(f, filter_metadata: dict):
+def _write_suffix_conflicts(f: TextIO, filter_metadata: dict[str, Any]) -> None:
     """Write RTL suffix conflicts examples."""
     suffix_conflicts = filter_metadata.get("suffix_conflicts", [])
     if not suffix_conflicts:
@@ -132,7 +133,7 @@ def _write_suffix_conflicts(f, filter_metadata: dict):
     f.write("\n")
 
 
-def _write_user_words_section(f, user_corrections: list[Correction]):
+def _write_user_words_section(f: TextIO, user_corrections: list[Correction]) -> None:
     """Write user words section."""
     write_section_header(f, "USER WORDS")
     user_count = len(user_corrections)
@@ -148,10 +149,10 @@ def _write_user_words_section(f, user_corrections: list[Correction]):
 
 
 def _write_patterns_section(
-    f,
+    f: TextIO,
     pattern_scores: list[tuple[float, str, str, BoundaryType]],
-    pattern_replacements: dict,
-):
+    pattern_replacements: dict[Correction, list[Correction]],
+) -> None:
     """Write patterns section."""
     write_section_header(f, "PATTERNS")
     pattern_count = len(pattern_scores)
@@ -181,7 +182,9 @@ def _write_patterns_section(
         f.write(f"... and {remaining} more patterns\n\n")
 
 
-def _write_direct_corrections_section(f, direct_scores: list[tuple[float, str, str, BoundaryType]]):
+def _write_direct_corrections_section(
+    f: TextIO, direct_scores: list[tuple[float, str, str, BoundaryType]]
+) -> None:
     """Write direct corrections section."""
     write_section_header(f, "DIRECT CORRECTIONS")
     direct_count = len(direct_scores)
@@ -202,13 +205,13 @@ def _write_direct_corrections_section(f, direct_scores: list[tuple[float, str, s
 
 
 def _write_cutoff_bubble(
-    f,
+    f: TextIO,
     final_corrections: list[Correction],
     ranked_corrections_before_limit: list[Correction],
     patterns: list[Correction],
     pattern_scores: list[tuple[float, str, str, BoundaryType]],
     direct_scores: list[tuple[float, str, str, BoundaryType]],
-):
+) -> None:
     """Write the cutoff bubble section showing what made/missed the cut."""
     f.write("THE CUTOFF BUBBLE\n")
     f.write("=" * 80 + "\n")

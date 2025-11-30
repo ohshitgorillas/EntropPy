@@ -8,7 +8,7 @@ from entroppy.core import BoundaryType, Correction
 def separate_by_type(
     corrections: list[Correction],
     patterns: list[Correction],
-    pattern_replacements: dict,
+    pattern_replacements: dict[Correction, list[Correction]],
     user_words: set[str],
 ) -> tuple[list[Correction], list[Correction], list[Correction]]:
     """Separate corrections into user words, patterns, and direct corrections."""
@@ -37,7 +37,7 @@ def separate_by_type(
 
 
 def score_patterns(
-    pattern_corrections: list[Correction], pattern_replacements: dict
+    pattern_corrections: list[Correction], pattern_replacements: dict[Correction, list[Correction]]
 ) -> list[tuple[float, str, str, BoundaryType]]:
     """Score patterns by sum of replaced word frequencies."""
     scores = []
@@ -66,7 +66,7 @@ def score_direct_corrections(
 def rank_corrections(
     corrections: list[Correction],
     patterns: list[Correction],
-    pattern_replacements: dict,
+    pattern_replacements: dict[Correction, list[Correction]],
     user_words: set[str],
     max_corrections: int | None = None,
 ) -> tuple[
