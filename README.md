@@ -75,17 +75,19 @@ python -m entroppy --top-n 1000 --platform espanso --output corrections
 
 ### Platform Support
 
-**Espanso:**
+#### Espanso
+
+**Usage:**
 ```bash
 python -m entroppy --platform espanso --top-n 5000 --output corrections
 ```
 
-**QMK:**
-```bash
-python -m entroppy --platform qmk --top-n 10000 --output corrections/autocorrect.txt --max-corrections 1500
-```
+**Strategy:**
+- **Corrections**: Go wild—Espanso can handle hundreds of thousands. Time is your main constraint.
+- **Top-N**: How much time do you have? Start with 5,000–10,000, scale up as needed.
+- **Adjacent Keys**: Use a comprehensive map including symbols and numbers. Espanso supports full Unicode.
 
-**Deploying to Espanso:**
+**Deployment:**
 ```bash
 # Linux/macOS
 mkdir ~/.config/espanso/match/autocorrect
@@ -98,7 +100,19 @@ Copy-Item corrections\*.yml "$env:APPDATA\espanso\match\autocorrect\"
 espanso restart
 ```
 
-**Deploying to QMK:**  
+#### QMK
+
+**Usage:**
+```bash
+python -m entroppy --platform qmk --top-n 10000 --output corrections/autocorrect.txt --max-corrections 1500
+```
+
+**Strategy:**
+- **Corrections**: Conservative—limited to ~1,500 corrections (flash memory constraint).
+- **Top-N**: Only need enough words to capture common patterns. Start with 8,000–12,000.
+- **Adjacent Keys**: Be targeted—focus on letters and apostrophe only. QMK is limited to alphas + apostrophe.
+
+**Deployment:**
 Use the QMK CLI to generate the C file:
 
 ```bash
@@ -260,7 +274,7 @@ xy* -> yz                 # Wildcards
 *in: -> *ing              # With boundary: right boundary required
 :in* -> ni*               # Left boundary required
 :teh: -> the              # Both boundaries required
-```
+``` 
 
 ## Contributing
 
