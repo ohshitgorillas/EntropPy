@@ -4,6 +4,7 @@ import pickle
 from multiprocessing import Pool
 import pytest
 
+from entroppy.core import Config
 from entroppy.processing.stages.worker_context import (
     WorkerContext,
     init_worker,
@@ -30,6 +31,7 @@ class TestWorkerContextBehavior:
 
     def test_context_can_be_created_from_dict_data(self):
         """Workers need context created from pipeline data."""
+        
         dict_data = DictionaryData(
             validation_set={"word1", "word2"},
             filtered_validation_set={"word1"},
@@ -38,7 +40,8 @@ class TestWorkerContextBehavior:
             exclusions={"excl1"},
         )
 
-        context = WorkerContext.from_dict_data(dict_data, 0.002)
+        config = Config(typo_freq_threshold=0.002)
+        context = WorkerContext.from_dict_data(dict_data, config)
 
         assert context.typo_freq_threshold == 0.002
 
@@ -51,6 +54,8 @@ class TestWorkerContextBehavior:
             typo_freq_threshold=0.001,
             adjacent_letters_map={"a": ["s", "q"]},
             exclusions_set=frozenset(["excl1"]),
+            debug_words=frozenset(),
+            debug_typo_matcher=None,
         )
 
         deserialized = pickle.loads(pickle.dumps(context))
@@ -70,6 +75,8 @@ class TestMultiprocessingBehavior:
             typo_freq_threshold=2.0,
             adjacent_letters_map={"a": ["s"]},
             exclusions_set=frozenset(),
+            debug_words=frozenset(),
+            debug_typo_matcher=None,
         )
 
         with Pool(processes=2, initializer=init_worker, initargs=(context,)) as pool:
@@ -87,6 +94,8 @@ class TestMultiprocessingBehavior:
             typo_freq_threshold=1.0,
             adjacent_letters_map={},
             exclusions_set=frozenset(),
+            debug_words=frozenset(),
+            debug_typo_matcher=None,
         )
 
         with Pool(processes=2, initializer=init_worker, initargs=(context1,)) as pool:
@@ -100,6 +109,8 @@ class TestMultiprocessingBehavior:
             typo_freq_threshold=5.0,
             adjacent_letters_map={},
             exclusions_set=frozenset(),
+            debug_words=frozenset(),
+            debug_typo_matcher=None,
         )
 
         with Pool(processes=2, initializer=init_worker, initargs=(context2,)) as pool:

@@ -7,6 +7,7 @@ from entroppy.processing.stages import (
     resolve_typo_collisions,
     generalize_typo_patterns,
 )
+from entroppy.platforms.espanso import EspansoBackend
 
 
 class TestCrossBoundaryDeduplication:
@@ -39,8 +40,10 @@ class TestCrossBoundaryDeduplication:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # BEHAVIOR: Check no (typo, word) pair appears more than once
@@ -92,8 +95,10 @@ class TestCrossBoundaryDeduplication:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # BEHAVIOR: Verify no duplicates in final output
@@ -129,8 +134,10 @@ class TestCrossBoundaryDeduplication:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # BEHAVIOR: Verify corrections for target word exist
@@ -176,8 +183,10 @@ class TestCrossBoundaryDeduplication:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # BEHAVIOR: Verify no duplicate pairs in output
@@ -228,8 +237,10 @@ class TestCrossBoundaryDeduplication:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # BEHAVIOR: No duplicate (typo, word) pairs in realistic scenario
@@ -275,8 +286,10 @@ class TestCrossBoundaryDeduplication:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # BEHAVIOR: Each trigger maps to exactly one word (no disambiguation)

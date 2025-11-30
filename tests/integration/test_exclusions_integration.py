@@ -26,7 +26,7 @@ class TestProcessingIntegration:
         adj_letters_map = None
         exclusions = {"tset"}  # Exact exclusion
 
-        corrections = process_word(
+        corrections, _ = process_word(
             word,
             validation_set,
             filtered_validation_set,
@@ -50,7 +50,7 @@ class TestProcessingIntegration:
         adj_letters_map = None
         exclusions = {"tset"}  # This typo should bypass frequency check
 
-        corrections = process_word(
+        corrections, _ = process_word(
             word,
             validation_set,
             filtered_validation_set,
@@ -74,7 +74,7 @@ class TestProcessingIntegration:
         adj_letters_map = None
         exclusions = {"tset -> test"}  # This should be ignored by process_word
 
-        corrections = process_word(
+        corrections, _ = process_word(
             word,
             validation_set,
             filtered_validation_set,
@@ -97,7 +97,7 @@ class TestProcessingIntegration:
         adj_letters_map = None
         exclusions = {"tset", "test*"}  # Mix of exact and wildcard
 
-        corrections = process_word(
+        corrections, _ = process_word(
             word,
             validation_set,
             filtered_validation_set,
@@ -278,7 +278,7 @@ class TestRealWorldPatterns:
         adj_letters_map = None
         exclusions = {"*teh*"}
 
-        corrections = process_word(
+        corrections, _ = process_word(
             word,
             validation_set,
             filtered_validation_set,

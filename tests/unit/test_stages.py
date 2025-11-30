@@ -169,8 +169,10 @@ class TestPatternGeneralization:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # Check: no (typo, word) pair should appear more than once
@@ -204,8 +206,10 @@ class TestPatternGeneralization:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # Check: rejected_patterns should contain any cross-boundary conflicts
@@ -243,8 +247,10 @@ class TestPatternGeneralization:
             typo_result, dict_data, config, verbose=False
         )
 
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # Corrections count should be reasonable relative to input
@@ -278,8 +284,10 @@ class TestPatternGeneralization:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # Should have some patterns in the results
@@ -309,8 +317,10 @@ class TestPatternGeneralization:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # Pattern replacements should be tracked
@@ -340,8 +350,10 @@ class TestPatternGeneralization:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # Removed count should be non-negative
@@ -371,8 +383,10 @@ class TestPatternGeneralization:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
 
         # Result should include corrections (original or patterns)
@@ -406,8 +420,10 @@ class TestConflictRemoval:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
         result = remove_typo_conflicts(pattern_result, verbose=False)
 
@@ -444,8 +460,10 @@ class TestOutputGeneration:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
         conflict_result = remove_typo_conflicts(pattern_result, verbose=False)
 
@@ -484,8 +502,10 @@ class TestOutputGeneration:
         collision_result = resolve_typo_collisions(
             typo_result, dict_data, config, verbose=False
         )
+        platform = EspansoBackend()
+        match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, verbose=False
+            collision_result, dict_data, config, match_direction, verbose=False
         )
         conflict_result = remove_typo_conflicts(pattern_result, verbose=False)
 
