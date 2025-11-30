@@ -26,7 +26,7 @@ However, different platforms have different constraints. Keyboard firmware has l
 ## Features
 
 * **Multi-Platform Support**: Espanso, QMK, and extensible backend system
-* **Smart Boundary Detection**: Prevents false triggers (e.g., `nto` → `not` won't trigger inside `onto`)
+* **Smart Boundary Detection**: Prevents false triggers (e.g., `nto` → `not` won't trigger inside `onto` and produce `onot`)
 * **Collision Resolution**: Frequency-based resolution of ambiguous typos
 * **Pattern Generalization**: Reduces dictionary size by detecting repeated patterns
 * **Platform-Specific Optimization**: Tailored output for each platform's constraints
@@ -65,17 +65,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Basic
-
-Generate corrections for the top 1,000 words for Espanso:
-
-```bash
-python -m entroppy --top-n 1000 --platform espanso --output corrections
-```
-
-### Platform Support
-
-#### Espanso
+### Basic: Espanso
 
 **Usage:**
 ```bash
@@ -84,7 +74,7 @@ python -m entroppy --platform espanso --top-n 5000 --output corrections
 
 **Strategy:**
 - **Corrections**: Go wild—Espanso can handle hundreds of thousands. Time is your main constraint.
-- **Top-N**: How much time do you have? Start with 5,000, scale up as needed.
+- **Top-N**: How much time do you have? Start with 5,000 and scale up as needed.
 - **Adjacent Keys**: Use a comprehensive map including symbols and numbers. Espanso supports full Unicode.
 
 **Deployment:**
@@ -100,7 +90,7 @@ Copy-Item corrections\*.yml "$env:APPDATA\espanso\match\autocorrect\"
 espanso restart
 ```
 
-#### QMK
+#### Basic: QMK
 
 **Usage:**
 ```bash
