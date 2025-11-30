@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version 0.3.1 (Beta)** | [Changelog](CHANGELOG.md)
+**Version 0.4.0 (Beta)** | [Changelog](CHANGELOG.md)
 
 A Python-based autocorrect dictionary generator for multiple text expansion and autocorrect platforms.
 
@@ -119,10 +119,10 @@ espanso restart
 ### 🚧 QMK Firmware
 Keyboard firmware-level autocorrect with strict space constraints.
 
-**Status**: Partial - Pattern generation in progress
-**Output**: C header file (format complete, pattern optimization ongoing)
+**Status**: Beta - Fully functional with substring conflict detection
+**Output**: Text file
 **Characteristics**:
-- ~1,500 correction limit (flash memory)
+- ~6,000 correction limit (flash memory)
 - Alphas + apostrophe only
 - Right-to-left matching
 - Frequency-based ranking
@@ -133,10 +133,9 @@ Keyboard firmware-level autocorrect with strict space constraints.
 python -m entroppy --platform qmk --top-n 10000 --output corrections --reports reports
 ```
 
-**Known Limitations:**
-- Pattern generation misses some common patterns (`teh` → `the`, `toin` → `tion`)
-- Dictionary not yet fully optimized for limited space
-- These are active development areas
+**Recent Fixes:**
+- Fixed critical substring conflict bug that prevented QMK dictionaries from compiling
+- Comprehensive substring detection now ensures all generated corrections comply with QMK's requirements
 
 **Deploying to QMK:**
 Copy the generated header file to your QMK keymap directory and configure according to [QMK Autocorrect documentation](https://docs.qmk.fm/#/feature_autocorrect).

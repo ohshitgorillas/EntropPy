@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-11-30
+
 ### Added
 
 - **Debug tracing flags for pipeline transparency**
@@ -48,6 +50,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Added `loguru` to `requirements.txt`
 
 ### Fixed
+
+- **QMK compilation errors from substring conflicts**
+  - Fixed critical bug where QMK would reject dictionaries with substring typos (e.g., "asbout" vs "sbout")
+  - Original `_detect_suffix_conflicts()` only checked within boundary groups, missing cross-boundary conflicts
+  - Implemented comprehensive `_detect_substring_conflicts()` that enforces QMK's hard constraint: no typo can be a substring of another (prefix, suffix, or middle)
+  - Both RTL optimization logic (suffix conflicts) and absolute substring validation now work together
+  - QMK dictionaries now compile successfully without substring violations
 
 - **Pipeline bug**: Fixed `UnboundLocalError` where `constraints` variable was only defined inside verbose block but used outside it in pattern generalization stage
 
@@ -449,6 +458,7 @@ This is the first beta release of the Autocorrect Dictionary Generator for Espan
 
 ## Version History
 
+- **0.4.0** (2025-11-30): Debug tracing system and QMK substring conflict fix
 - **0.3.1** (2025-11-29): Platform-specific reporting and initial QMK pattern generation support
 - **0.3.0** (2025-11-29): Added structure for cross-platform support; currently Espanso only supported
 - **0.2.1** (2025-11-28): Fixed cross-boundary deduplication causing disambiguation windows
