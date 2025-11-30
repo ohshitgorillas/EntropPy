@@ -57,9 +57,9 @@ def _check_typo_in_wordset(typo: str, word_set: set[str], check_type: str) -> bo
             continue
         if check_type == 'substring' and typo in word:
             return True
-        elif check_type == 'prefix' and word.startswith(typo):
+        if check_type == 'prefix' and word.startswith(typo):
             return True
-        elif check_type == 'suffix' and word.endswith(typo):
+        if check_type == 'suffix' and word.endswith(typo):
             return True
     return False
 

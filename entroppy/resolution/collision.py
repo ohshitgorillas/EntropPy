@@ -7,7 +7,13 @@ from wordfreq import word_frequency
 
 from ..core import BoundaryType, Correction, determine_boundaries, generate_all_typos
 from ..matching import ExclusionMatcher, PatternMatcher
-from ..utils import is_debug_word, is_debug_typo
+from ..utils import (
+    is_debug_correction,
+    is_debug_word,
+    is_debug_typo,
+    log_debug_correction,
+    log_debug_typo,
+)
 from .conflicts import resolve_conflicts_for_group
 
 if TYPE_CHECKING:
@@ -181,8 +187,6 @@ def resolve_collisions(
     Returns:
         Tuple of (final_corrections, skipped_collisions, skipped_short, excluded_corrections)
     """
-    from ..utils import is_debug_correction, log_debug_correction, log_debug_typo
-
     if debug_words is None:
         debug_words = set()
 

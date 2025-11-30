@@ -4,10 +4,15 @@ from collections import defaultdict
 
 from loguru import logger
 
+from typing import TYPE_CHECKING
+
 from .boundaries import would_trigger_at_end
 from .config import BoundaryType, Correction
 from ..platforms.base import MatchDirection
-from ..utils import is_debug_correction
+from ..utils import is_debug_correction, log_debug_correction
+
+if TYPE_CHECKING:
+    from ..utils import DebugTypoMatcher
 
 
 def _find_patterns(
@@ -172,13 +177,6 @@ def generalize_patterns(
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)
     """
-    from typing import TYPE_CHECKING
-
-    if TYPE_CHECKING:
-        from ..utils import DebugTypoMatcher
-
-    from ..utils import log_debug_correction
-
     if debug_words is None:
         debug_words = set()
 
