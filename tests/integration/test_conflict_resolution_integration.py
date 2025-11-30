@@ -5,8 +5,8 @@ identical behavior to the original implementation across all boundary types
 and various real-world scenarios.
 """
 
-from entroppy.config import BoundaryType
-from entroppy.processing import remove_substring_conflicts
+from entroppy.core import BoundaryType
+from entroppy.resolution import remove_substring_conflicts
 
 
 class TestRemoveSubstringConflictsIntegration:

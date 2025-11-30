@@ -3,9 +3,9 @@
 import pytest
 import concurrent.futures
 
-from entroppy.config import Config
-from entroppy.stages.data_models import DictionaryData
-from entroppy.stages.typo_generation import generate_typos
+from entroppy.core import Config
+from entroppy.processing.stages.data_models import DictionaryData
+from entroppy.processing.stages import generate_typos
 
 
 class TestTypoGenerationWithContext:

@@ -1,14 +1,14 @@
 """Unit tests for pipeline stages - focusing on behavior, not implementation."""
 
-from entroppy.config import Config
-from entroppy.stages import (
+from entroppy.core import Config
+from entroppy.processing.stages import (
     load_dictionaries,
     generate_typos,
     resolve_typo_collisions,
     generalize_typo_patterns,
     remove_typo_conflicts,
-    generate_output,
 )
+from entroppy.platforms.espanso import EspansoBackend
 
 
 class TestDictionaryLoading:
@@ -449,12 +449,11 @@ class TestOutputGeneration:
         )
         conflict_result = remove_typo_conflicts(pattern_result, verbose=False)
 
-        generate_output(
-            conflict_result,
+        backend = EspansoBackend()
+        backend.generate_output(
+            conflict_result.corrections,
             str(output_dir),
-            config.max_entries_per_file,
-            config.jobs,
-            verbose=False,
+            config,
         )
 
         assert output_dir.exists()
@@ -490,12 +489,11 @@ class TestOutputGeneration:
         )
         conflict_result = remove_typo_conflicts(pattern_result, verbose=False)
 
-        generate_output(
-            conflict_result,
+        backend = EspansoBackend()
+        backend.generate_output(
+            conflict_result.corrections,
             str(output_dir),
-            config.max_entries_per_file,
-            config.jobs,
-            verbose=False,
+            config,
         )
 
         yaml_files = list(output_dir.glob("*.yml"))

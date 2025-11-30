@@ -7,10 +7,10 @@ behavior in all three refactored modules.
 import os
 import tempfile
 
-from entroppy.dictionary import load_validation_dictionary
-from entroppy.exclusions import ExclusionMatcher
-from entroppy.processing import process_word
-from entroppy.config import BoundaryType
+from entroppy.data import load_validation_dictionary
+from entroppy.matching import ExclusionMatcher
+from entroppy.resolution import process_word
+from entroppy.core import BoundaryType
 
 
 class TestProcessingIntegration:

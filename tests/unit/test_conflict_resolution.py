@@ -4,8 +4,8 @@ Tests verify conflict detection and resolution behavior across different boundar
 Each test has a single assertion and uses type hints.
 """
 
-from entroppy.config import BoundaryType
-from entroppy.conflict_resolution import resolve_conflicts_for_group
+from entroppy.core import BoundaryType
+from entroppy.resolution import resolve_conflicts_for_group
 
 
 class TestRightBoundaryConflicts:

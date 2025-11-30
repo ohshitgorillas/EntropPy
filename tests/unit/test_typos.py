@@ -3,7 +3,7 @@
 Tests verify typo generation behavior. Each test has exactly one assertion.
 """
 
-from entroppy.typos import (
+from entroppy.core.typos import (
     generate_transpositions,
     generate_omissions,
     generate_duplications,

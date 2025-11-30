@@ -2,8 +2,8 @@
 
 import yaml
 
-from entroppy.config import Config
-from entroppy.pipeline import run_pipeline
+from entroppy.core import Config
+from entroppy.processing import run_pipeline
 
 
 class TestPipelineIntegration:

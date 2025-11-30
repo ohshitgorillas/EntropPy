@@ -6,7 +6,7 @@ Each test has a single assertion and uses type hints.
 
 import pytest
 
-from entroppy.pattern_matching import PatternMatcher
+from entroppy.matching import PatternMatcher
 
 # pylint: disable=protected-access
 

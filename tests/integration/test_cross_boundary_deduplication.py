@@ -1,7 +1,7 @@
 """Integration tests for cross-boundary deduplication behavior."""
 
-from entroppy.config import Config
-from entroppy.stages import (
+from entroppy.core import Config
+from entroppy.processing.stages import (
     load_dictionaries,
     generate_typos,
     resolve_typo_collisions,

@@ -4,13 +4,13 @@ Tests verify boundary detection logic that determines when typos need word bound
 to prevent false triggers. Each test has a single assertion and focuses on behavior.
 """
 
-from entroppy.boundaries import (
+from entroppy.core.boundaries import (
     is_substring_of_any,
     would_trigger_at_start,
     would_trigger_at_end,
     determine_boundaries,
 )
-from entroppy.config import BoundaryType
+from entroppy.core import BoundaryType
 
 
 class TestIsSubstringOfAny:
