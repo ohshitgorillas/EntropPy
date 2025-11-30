@@ -7,6 +7,8 @@ from entroppy.core import load_config
 from entroppy.processing import run_pipeline
 from entroppy.utils.debug import DebugTypoMatcher
 from entroppy.utils.logging import setup_logger
+from entroppy.utils.constants import Constants
+
 
 
 def main():
@@ -28,7 +30,6 @@ def main():
         parser.error("Must specify a platform")
     if config.platform == "qmk" and not config.max_corrections:
         parser.error("Must specify --max-corrections for QMK")
-    from entroppy.utils import Constants
 
     if (
         config.platform == "espanso"
