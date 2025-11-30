@@ -2,7 +2,6 @@
 corrections/*
 settings/*
 reports/*
-test_*
 .roo*
 
 # everything below this is the default gitignore for a python project
