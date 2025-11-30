@@ -4,8 +4,8 @@ import time
 
 from loguru import logger
 
-from ..config import Config
-from ..processing import resolve_collisions
+from ...core import Config
+from ...resolution import resolve_collisions
 from .data_models import (
     DictionaryData,
     TypoGenerationResult,

@@ -4,16 +4,16 @@ import time
 
 from loguru import logger
 
-from .config import Config
-from .reports import ReportData, generate_reports, _format_time
+from ..core import Config
+from ..platforms import PlatformBackend, get_platform_backend
+from ..reports import ReportData, _format_time, generate_reports
 from .stages import (
-    load_dictionaries,
-    generate_typos,
-    resolve_typo_collisions,
     generalize_typo_patterns,
+    load_dictionaries,
     remove_typo_conflicts,
+    resolve_typo_collisions,
+    generate_typos,
 )
-from .platforms import get_platform_backend, PlatformBackend
 
 
 def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> None:

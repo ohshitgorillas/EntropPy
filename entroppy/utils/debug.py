@@ -5,8 +5,8 @@ from re import Pattern
 
 from loguru import logger
 
-from entroppy.config import BoundaryType, Correction
-from entroppy.utils import compile_wildcard_regex
+from ..core import BoundaryType, Correction
+from .helpers import compile_wildcard_regex
 
 
 @dataclass(frozen=True)

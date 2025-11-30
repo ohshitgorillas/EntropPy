@@ -1,19 +1,16 @@
 """Espanso platform backend implementation."""
 
 import os
+import sys
 from collections import defaultdict
 from multiprocessing import Pool
 
 import yaml
 from loguru import logger
 
-from .espanso_report import generate_espanso_output_report
-from .base import (
-    PlatformBackend,
-    PlatformConstraints,
-    MatchDirection,
-)
-from ..config import BoundaryType, Correction, Config
+from ...core import BoundaryType, Config, Correction
+from ..base import MatchDirection, PlatformBackend, PlatformConstraints
+from .reports import generate_espanso_output_report
 
 
 class EspansoBackend(PlatformBackend):

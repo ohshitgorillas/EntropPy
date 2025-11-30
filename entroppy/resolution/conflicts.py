@@ -13,8 +13,8 @@ When typing "wherre":
 from collections import defaultdict
 from abc import ABC, abstractmethod
 
-from .config import BoundaryType, Correction
-from .debug_utils import is_debug_correction
+from ..core import BoundaryType, Correction
+from ..utils import is_debug_correction
 
 
 class ConflictDetector(ABC):
@@ -148,7 +148,7 @@ def get_detector_for_boundary(boundary: BoundaryType) -> ConflictDetector:
 def resolve_conflicts_for_group(
     corrections: list[Correction],
     boundary: BoundaryType,
-    debug_words: set[str] = set(),
+    debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> list[Correction]:
     """Remove substring conflicts from a group of corrections with the same boundary.
@@ -166,7 +166,15 @@ def resolve_conflicts_for_group(
     Returns:
         List of corrections with conflicts removed
     """
-    from .debug_utils import log_debug_correction
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        from ..utils import DebugTypoMatcher
+
+    from ..utils import log_debug_correction
+
+    if debug_words is None:
+        debug_words = set()
 
     if not corrections:
         return []

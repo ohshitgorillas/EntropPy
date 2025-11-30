@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from re import Pattern
 
-from .boundaries import parse_boundary_markers
-from .config import BoundaryType, Correction
-from .pattern_matching import PatternMatcher
-from .utils import compile_wildcard_regex
+from ..core import BoundaryType, Correction, parse_boundary_markers
+from ..utils import compile_wildcard_regex
+from .pattern_matcher import PatternMatcher
 
 
 class ExclusionMatcher:

@@ -5,16 +5,13 @@ from typing import TYPE_CHECKING
 from tqdm import tqdm
 from wordfreq import word_frequency
 
-from .boundaries import determine_boundaries
-from .config import BoundaryType, Correction
-from .conflict_resolution import resolve_conflicts_for_group
-from .debug_utils import is_debug_word, is_debug_typo
-from .exclusions import ExclusionMatcher
-from .typos import generate_all_typos
-from .pattern_matching import PatternMatcher
+from ..core import BoundaryType, Correction, determine_boundaries, generate_all_typos
+from ..matching import ExclusionMatcher, PatternMatcher
+from ..utils import is_debug_word, is_debug_typo
+from .conflicts import resolve_conflicts_for_group
 
 if TYPE_CHECKING:
-    from .debug_utils import DebugTypoMatcher
+    from ..utils import DebugTypoMatcher
 
 
 def process_word(
@@ -166,7 +163,7 @@ def resolve_collisions(
     min_word_length: int,
     user_words: set[str],
     exclusion_matcher: ExclusionMatcher,
-    debug_words: set[str] = set(),
+    debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], list, list, list]:
     """Resolve collisions where multiple words map to same typo.
@@ -184,7 +181,10 @@ def resolve_collisions(
     Returns:
         Tuple of (final_corrections, skipped_collisions, skipped_short, excluded_corrections)
     """
-    from .debug_utils import is_debug_correction, log_debug_correction, log_debug_word, log_debug_typo
+    from ..utils import is_debug_correction, log_debug_correction, log_debug_typo
+
+    if debug_words is None:
+        debug_words = set()
 
     final_corrections = []
     skipped_collisions = []
@@ -347,7 +347,7 @@ def resolve_collisions(
 def remove_substring_conflicts(
     corrections: list[Correction],
     verbose: bool = False,
-    debug_words: set[str] = set(),
+    debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> list[Correction]:
     """Remove corrections where one typo is a substring of another WITH THE SAME BOUNDARY.

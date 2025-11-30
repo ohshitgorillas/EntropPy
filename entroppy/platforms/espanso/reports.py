@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from ..config import Correction
-from ..reports import write_report_header
+from ...core import Correction
+from ...reports import write_report_header
 
 
 def generate_espanso_output_report(

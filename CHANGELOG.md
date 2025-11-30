@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.4.2] - 2025-12-01
+
+### Changed
+
+- **Major file structure reorganization for better maintainability**
+  - Reorganized codebase into logical modules by responsibility:
+    - **`core/`**: Core domain logic (boundaries, config, patterns, typos)
+    - **`processing/`**: Pipeline orchestration and stages
+    - **`resolution/`**: Collision and conflict resolution algorithms
+    - **`matching/`**: Pattern and exclusion matching
+    - **`platforms/`**: Platform-specific implementations (further organized by platform)
+      - **`platforms/espanso/`**: Espanso backend and reports
+      - **`platforms/qmk/`**: QMK backend and reports
+    - **`data/`**: Data loading and validation
+    - **`reporting/`**: Report generation (renamed from `reports/`)
+    - **`utils/`**: General utilities (logging, debug, helpers)
+    - **`cli/`**: Command-line interface
+  - Improved module naming for clarity:
+    - `cli.py` → `cli/parser.py`
+    - `conflict_resolution.py` → `resolution/conflicts.py`
+    - `processing.py` → `resolution/collision.py`
+    - `pattern_matching.py` → `matching/pattern_matcher.py`
+    - `logger.py` → `utils/logging.py`
+    - `debug_utils.py` → `utils/debug.py`
+    - `utils.py` → `utils/helpers.py`
+    - Platform files: `espanso.py` → `espanso/backend.py`, `qmk.py` → `qmk/backend.py`
+  - All imports updated to reflect new structure
+  - Created comprehensive `__init__.py` files for all modules
+  - Added `pyproject.toml` for modern Python packaging
+  - **Benefits**:
+    - Clearer code organization by domain/responsibility
+    - Easier navigation and maintenance
+    - Better scalability for adding new platforms or features
+    - Follows Python packaging best practices
+
 ## [0.4.1] - 2025-11-30
 
 ### Changed

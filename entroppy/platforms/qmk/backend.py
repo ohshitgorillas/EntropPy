@@ -7,13 +7,9 @@ from collections import defaultdict
 from loguru import logger
 from wordfreq import word_frequency
 
-from .base import (
-    PlatformBackend,
-    PlatformConstraints,
-    MatchDirection,
-)
-from ..config import Correction, Config, BoundaryType
-from .qmk_report import generate_qmk_ranking_report
+from ...core import BoundaryType, Config, Correction
+from ..base import MatchDirection, PlatformBackend, PlatformConstraints
+from .reports import generate_qmk_ranking_report
 
 
 class QMKBackend(PlatformBackend):

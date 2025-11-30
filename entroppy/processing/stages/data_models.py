@@ -3,8 +3,8 @@
 from dataclasses import dataclass, field
 from collections import defaultdict
 
-from ..config import BoundaryType, Correction
-from ..exclusions import ExclusionMatcher
+from ...core import BoundaryType, Correction
+from ...matching import ExclusionMatcher
 
 
 @dataclass

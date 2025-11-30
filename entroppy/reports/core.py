@@ -6,7 +6,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from .config import BoundaryType, Correction
+from ..core import BoundaryType, Correction
 
 
 @dataclass

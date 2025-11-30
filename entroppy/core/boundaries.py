@@ -1,6 +1,6 @@
 """Boundary detection for typo corrections."""
 
-from .config import BoundaryType
+from entroppy.core.config import BoundaryType
 
 
 def parse_boundary_markers(pattern: str) -> tuple[str, BoundaryType | None]:

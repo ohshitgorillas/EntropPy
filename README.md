@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Version 0.4.1 (Beta)** | [Changelog](CHANGELOG.md)
+**Version 0.4.2 (Beta)** | [Changelog](CHANGELOG.md)
 
 A Python-based autocorrect dictionary generator for multiple text expansion and autocorrect platforms.
 
@@ -668,6 +668,27 @@ The current implementation of pattern generation for QMK's right-to-left matchin
 - Large dictionaries (>20,000 entries) may take several minutes to generate
 
 ---
+
+## Project Structure
+
+EntropPy is organized into logical modules by responsibility:
+
+```
+entroppy/
+├── core/              # Core domain logic (boundaries, config, patterns, typos)
+├── processing/        # Pipeline orchestration and stages
+├── resolution/        # Collision and conflict resolution algorithms
+├── matching/          # Pattern and exclusion matching
+├── platforms/         # Platform-specific implementations
+│   ├── espanso/       # Espanso backend and reports
+│   └── qmk/          # QMK backend and reports
+├── data/              # Data loading and validation
+├── reports/           # Report generation
+├── utils/             # General utilities (logging, debug, helpers)
+└── cli/               # Command-line interface
+```
+
+This structure makes the codebase easier to navigate, maintain, and extend with new platforms or features.
 
 ## Contributing
 

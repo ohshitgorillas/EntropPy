@@ -5,16 +5,16 @@ import time
 from loguru import logger
 from wordfreq import zipf_frequency
 
-from ..config import Config
-from ..debug_utils import log_debug_word, log_debug_typo, BoundaryType
-from ..dictionary import (
-    load_adjacent_letters,
+from ...core import BoundaryType, Config
+from ...data import (
+    load_adjacent_letters_map,
     load_exclusions,
     load_source_words,
     load_validation_dictionary,
     load_word_list,
 )
-from ..exclusions import ExclusionMatcher
+from ...matching import ExclusionMatcher
+from ...utils import log_debug_typo, log_debug_word
 from .data_models import DictionaryData
 
 
@@ -48,7 +48,7 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
         )
 
     # Load adjacent letters mapping
-    adjacent_letters_map = load_adjacent_letters(config.adjacent_letters, verbose)
+    adjacent_letters_map = load_adjacent_letters_map(config.adjacent_letters, verbose)
 
     # Load source words
     user_words = load_word_list(config.include, verbose)

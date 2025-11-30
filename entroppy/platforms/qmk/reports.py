@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from ..config import BoundaryType, Correction
-from ..reports import write_report_header
+from ...core import BoundaryType, Correction
+from ...reports import write_report_header
 
 
 def generate_qmk_ranking_report(

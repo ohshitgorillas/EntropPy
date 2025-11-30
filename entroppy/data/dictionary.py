@@ -6,8 +6,8 @@ from english_words import get_english_words_set
 from loguru import logger
 from wordfreq import top_n_list
 
-from .config import Config
-from .pattern_matching import PatternMatcher
+from ..core import Config
+from ..matching import PatternMatcher
 
 
 def load_validation_dictionary(
@@ -107,7 +107,7 @@ def load_exclusions(filepath: str | None, verbose: bool = False) -> set[str]:
     return exclusions
 
 
-def load_adjacent_letters(
+def load_adjacent_letters_map(
     filepath: str | None, verbose: bool = False
 ) -> dict[str, str] | None:
     """Load keyboard adjacency map from file."""

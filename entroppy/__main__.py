@@ -3,10 +3,9 @@
 from loguru import logger
 
 from .cli import create_parser
-from .config import load_config
-from .debug_utils import DebugTypoMatcher
-from .logger import setup_logger
-from .pipeline import run_pipeline
+from .core import load_config
+from .processing import run_pipeline
+from .utils import DebugTypoMatcher, setup_logger
 
 
 def main():

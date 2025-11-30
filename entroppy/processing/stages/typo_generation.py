@@ -7,8 +7,8 @@ from multiprocessing import Pool
 from loguru import logger
 from tqdm import tqdm
 
-from ..config import Config, Correction
-from ..processing import process_word
+from ...core import Config, Correction
+from ...resolution import process_word
 from .data_models import DictionaryData, TypoGenerationResult
 from .worker_context import WorkerContext, init_worker, get_worker_context
 

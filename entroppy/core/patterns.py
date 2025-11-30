@@ -6,9 +6,8 @@ from loguru import logger
 
 from .boundaries import would_trigger_at_end
 from .config import BoundaryType, Correction
-from .debug_utils import is_debug_correction
-
-from .platforms.base import MatchDirection
+from ..platforms.base import MatchDirection
+from ..utils import is_debug_correction
 
 
 def _find_patterns(
@@ -155,7 +154,7 @@ def generalize_patterns(
     min_typo_length: int,
     match_direction: MatchDirection,
     verbose: bool = False,
-    debug_words: set[str] = set(),
+    debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], set[Correction], dict, list]:
     """Find repeated patterns, create generalized rules, and return corrections to be removed.
@@ -173,7 +172,15 @@ def generalize_patterns(
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)
     """
-    from .debug_utils import log_debug_correction, log_debug_typo
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        from ..utils import DebugTypoMatcher
+
+    from ..utils import log_debug_correction
+
+    if debug_words is None:
+        debug_words = set()
 
     patterns = []
     corrections_to_remove = set()

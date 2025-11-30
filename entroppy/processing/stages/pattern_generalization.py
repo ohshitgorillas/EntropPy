@@ -5,9 +5,8 @@ from collections import defaultdict
 
 from loguru import logger
 
-from ..config import Config, Correction
-from ..patterns import generalize_patterns
-from ..processing import resolve_collisions, remove_substring_conflicts
+from ...core import Config, Correction, generalize_patterns
+from ...resolution import remove_substring_conflicts, resolve_collisions
 from .data_models import (
     DictionaryData,
     CollisionResolutionResult,

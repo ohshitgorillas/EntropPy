@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "entroppy"
+version = "0.4.2"
+description = "A Python-based autocorrect dictionary generator for multiple text expansion and autocorrect platforms"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Adam Goldsmith"}
+]
+keywords = [
+    "autocorrect",
+    "typo",
+    "espanso",
+    "qmk",
+    "text-expansion",
+    "dictionary",
+    "keyboard",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "english-words",
+    "wordfreq",
+    "pyyaml",
+    "tqdm",
+    "loguru",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[project.urls]
+Homepage = "https://github.com/ohshitgorillas/entroppy"
+Repository = "https://github.com/ohshitgorillas/entroppy"
+Issues = "https://github.com/ohshitgorillas/entroppy/issues"
+Changelog = "https://github.com/ohshitgorillas/entroppy/blob/main/CHANGELOG.md"
+
+[project.scripts]
+entroppy = "entroppy.__main__:main"
+
+[tool.setuptools]
+packages = ["entroppy"]
+
+[tool.setuptools.package-data]
+entroppy = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py310", "py311", "py312", "py313"]
+include = '\.pyi?$'
+extend-exclude = [
+    "/venv/",
+    "/build/",
+    "/dist/",
+]
+

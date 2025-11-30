@@ -5,8 +5,8 @@ import time
 from loguru import logger
 from tqdm import tqdm
 
-from ..config import BoundaryType
-from ..processing import remove_substring_conflicts
+from ...core import BoundaryType
+from ...resolution import remove_substring_conflicts
 from .data_models import PatternGeneralizationResult, ConflictRemovalResult
 
 
