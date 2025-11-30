@@ -6,7 +6,7 @@ from loguru import logger
 from wordfreq import zipf_frequency
 
 from ..config import Config
-from ..debug_utils import is_debug_word, is_debug_typo, log_debug_word, log_debug_typo
+from ..debug_utils import log_debug_word, log_debug_typo, BoundaryType
 from ..dictionary import (
     load_adjacent_letters,
     load_exclusions,
@@ -60,9 +60,7 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
     source_words.extend(user_words)
 
     if verbose and user_words:
-        logger.info(
-            f"Included {len(user_words)} user words (bypassed filters)"
-        )
+        logger.info(f"Included {len(user_words)} user words (bypassed filters)")
 
     source_words_set = set(source_words)
 
@@ -71,7 +69,9 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
         for word in config.debug_words:
             # Check if word is in user words
             if word in user_words_set:
-                log_debug_word(word, "Found in user word list (include file)", "Stage 1")
+                log_debug_word(
+                    word, "Found in user word list (include file)", "Stage 1"
+                )
 
             # Check if word is in source words
             if word in source_words_set:
@@ -81,36 +81,37 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
                 log_debug_word(
                     word,
                     f"Included from wordfreq (rank: {rank}, zipf freq: {freq:.2f})",
-                    "Stage 1"
+                    "Stage 1",
                 )
             else:
                 # Word not in source words - explain why
                 if config.top_n is None:
-                    log_debug_word(word, "NOT in source words (top_n not specified)", "Stage 1")
+                    log_debug_word(
+                        word, "NOT in source words (top_n not specified)", "Stage 1"
+                    )
                 elif len(word) > config.max_word_length:
                     log_debug_word(
                         word,
                         f"NOT in source words (length {len(word)} > max_word_length {config.max_word_length})",
-                        "Stage 1"
+                        "Stage 1",
                     )
                 elif len(word) < config.min_word_length:
                     log_debug_word(
                         word,
                         f"NOT in source words (length {len(word)} < min_word_length {config.min_word_length})",
-                        "Stage 1"
+                        "Stage 1",
                     )
                 else:
                     freq = zipf_frequency(word, "en")
                     log_debug_word(
                         word,
                         f"NOT in source words (not in top {config.top_n}, zipf freq: {freq:.2f})",
-                        "Stage 1"
+                        "Stage 1",
                     )
 
     if config.debug_typo_matcher:
         # Check all patterns against validation set
         # We'll check exact patterns (not wildcards) for validation
-        from ..config import BoundaryType
 
         # Get all unique patterns to check
         all_patterns = config.debug_typos
@@ -124,20 +125,27 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
                         typo,
                         "WARNING: Typo exists as valid word in dictionary",
                         [pattern_str],
-                        "Stage 1"
+                        "Stage 1",
                     )
 
                 # Check if typo would be excluded by any exclusion rule
                 # We need to test with all boundary types since we don't know yet
-                for boundary in [BoundaryType.NONE, BoundaryType.LEFT, BoundaryType.RIGHT, BoundaryType.BOTH]:
+                for boundary in [
+                    BoundaryType.NONE,
+                    BoundaryType.LEFT,
+                    BoundaryType.RIGHT,
+                    BoundaryType.BOTH,
+                ]:
                     test_correction = (typo, "test", boundary)
                     if exclusion_matcher.should_exclude(test_correction):
-                        matching_rule = exclusion_matcher.get_matching_rule(test_correction)
+                        matching_rule = exclusion_matcher.get_matching_rule(
+                            test_correction
+                        )
                         log_debug_typo(
                             typo,
                             f"Typo matches exclusion rule (boundary={boundary.value}): {matching_rule}",
                             [pattern_str],
-                            "Stage 1"
+                            "Stage 1",
                         )
                         break  # Only log once
 
