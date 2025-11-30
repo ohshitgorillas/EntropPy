@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.1] - 2025-11-30
+
+### Fixed
+
+- **Pattern classification bug in QMK ranking reports**
+  - Fixed incorrect classification where patterns were being reported as "direct corrections" instead of "patterns"
+  - Root cause: Patterns that block other corrections (substring/suffix conflicts) were not being added to `pattern_replacements` when conflicts were detected during platform filtering
+  - **Universal pattern update logic** (`entroppy/processing/stages/conflict_removal.py`):
+    - Added `update_patterns_from_conflicts()` function that works for all platforms
+    - Updates `pattern_replacements` when conflicts are detected during platform filtering
+    - When a shorter correction blocks a longer one, the shorter correction is now correctly identified as a pattern
+  - **Pattern classification** (`entroppy/platforms/qmk/reports.py`):
+    - Report classification now uses `pattern_replacements` as the source of truth
+    - Corrections in `pattern_replacements` are correctly classified as PATTERNS
+    - BOTH boundary corrections are correctly excluded from being patterns (they can't block anything by definition)
+  - **Pipeline integration** (`entroppy/processing/pipeline.py`):
+    - Pattern updates now happen after platform filtering for all platforms
+    - Collects conflicts from filter metadata (suffix_conflicts, substring_conflicts) and updates patterns accordingly
+  - **Impact**: Reports now correctly show pattern counts and classifications. For example, "tje → the" that blocks "tjen → then" is now correctly classified as a PATTERN
+
 ## [0.5.0] - 2025-01-29
 
 ### Added

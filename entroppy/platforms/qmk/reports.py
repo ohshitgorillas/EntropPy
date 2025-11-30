@@ -185,7 +185,8 @@ def _write_complete_ranked_list(
         if correction_key in user_set:
             correction_type = "USER"
             score_str = "(USER)"
-        elif (typo, word) in pattern_set:
+        elif boundary != BoundaryType.BOTH and correction_key in pattern_set:
+            # BOTH boundary corrections can NEVER be patterns - they can't block anything
             correction_type = "PATTERN"
             score = pattern_score_map.get(correction_key, 0.0)
             score_str = f"{score:.6f}"

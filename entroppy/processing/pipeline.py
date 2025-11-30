@@ -7,6 +7,7 @@ from loguru import logger
 from entroppy.core import Config
 from entroppy.platforms import PlatformBackend, get_platform_backend
 from entroppy.reports import ReportData, format_time, generate_reports
+from entroppy.processing.stages.conflict_removal import update_patterns_from_conflicts
 from entroppy.processing.stages import (
     generalize_typo_patterns,
     load_dictionaries,
@@ -85,6 +86,7 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
         # Store pattern info with count of replacements
         for typo, word, boundary in pattern_result.patterns:
             pattern_key = (typo, word, boundary)
+            # pylint: disable=no-member
             count = len(pattern_result.pattern_replacements.get(pattern_key, []))
             report_data.generalized_patterns.append((typo, word, boundary, count))
         report_data.pattern_replacements = pattern_result.pattern_replacements
@@ -117,6 +119,27 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
 
     if verbose and filter_metadata.get("filtered_count", 0) > 0:
         logger.info(f"# Platform filtered: {filter_metadata['filtered_count']} corrections")
+
+    # Update patterns based on conflicts detected during platform filtering
+    # When a shorter correction blocks a longer one, the shorter one is a pattern
+    # This is universal - any correction that blocks others is a pattern
+    # (except BOTH boundary corrections, which can't block anything)
+    all_conflicts = []
+    # QMK format: (long_typo, long_word, short_typo, short_word, boundary)
+    if "suffix_conflicts" in filter_metadata:
+        all_conflicts.extend(filter_metadata["suffix_conflicts"])
+    if "substring_conflicts" in filter_metadata:
+        all_conflicts.extend(filter_metadata["substring_conflicts"])
+
+    if all_conflicts:
+        updated_patterns, updated_replacements = update_patterns_from_conflicts(
+            pattern_result.patterns,
+            pattern_result.pattern_replacements,
+            filtered_corrections,
+            all_conflicts,
+        )
+        pattern_result.patterns = updated_patterns
+        pattern_result.pattern_replacements = updated_replacements
 
     # Rank corrections
     ranked_corrections = platform.rank_corrections(

@@ -65,6 +65,128 @@ def _find_blocking_typo(
     return blocking_typo, blocking_word
 
 
+def _update_patterns_from_blocked_corrections(
+    patterns: list[Correction],
+    pattern_replacements: dict[Correction, list[Correction]],
+    final_corrections: list[Correction],
+    removed_corrections: list[tuple[str, str, str, str, BoundaryType]],
+):
+    """Update patterns based on corrections that were blocked.
+
+    When a shorter correction blocks a longer one (substring conflict),
+    the shorter correction is effectively a pattern that eliminates the longer one.
+
+    Args:
+        patterns: Current list of patterns
+        pattern_replacements: Current dictionary mapping patterns to their replacements
+        final_corrections: Corrections that were kept (the blocking corrections)
+        removed_corrections: List of (blocked_typo, blocked_word, blocking_typo, blocking_word, boundary)
+
+    Returns:
+        Tuple of (updated_patterns, updated_pattern_replacements)
+    """
+    updated_patterns = list(patterns)
+    updated_replacements = dict(pattern_replacements)
+
+    # Track which corrections are already patterns
+    pattern_set = {(typo, word, boundary) for typo, word, boundary in updated_patterns}
+
+    # Build a map of blocking corrections to find their boundaries
+    blocking_corrections_map = {}
+    for typo, word, boundary in final_corrections:
+        blocking_corrections_map[(typo, word)] = boundary
+
+    # Process removed corrections to identify blocking patterns
+    for blocked_typo, blocked_word, blocking_typo, blocking_word, _ in removed_corrections:
+        # Find the boundary of the blocking correction
+        blocking_boundary = blocking_corrections_map.get((blocking_typo, blocking_word))
+        if blocking_boundary is None:
+            # Blocking correction not found, skip
+            continue
+
+        # BOTH boundary corrections can't block anything (they only match standalone words)
+        if blocking_boundary == BoundaryType.BOTH:
+            continue
+
+        blocking_correction = (blocking_typo, blocking_word, blocking_boundary)
+        blocked_correction = (blocked_typo, blocked_word, blocking_boundary)
+
+        # Add blocking correction to patterns if not already there
+        if blocking_correction not in pattern_set:
+            updated_patterns.append(blocking_correction)
+            pattern_set.add(blocking_correction)
+            updated_replacements[blocking_correction] = []
+
+        # Add blocked correction to pattern_replacements
+        if blocking_correction in updated_replacements:
+            if blocked_correction not in updated_replacements[blocking_correction]:
+                updated_replacements[blocking_correction].append(blocked_correction)
+
+    return updated_patterns, updated_replacements
+
+
+def update_patterns_from_conflicts(
+    patterns: list[Correction],
+    pattern_replacements: dict[Correction, list[Correction]],
+    filtered_corrections: list[Correction],
+    conflict_tuples: list[tuple[str, str, str, str, BoundaryType]],
+):
+    """Update patterns based on conflict tuples from filtering.
+
+    Universal function to update patterns when conflicts are detected.
+    Conflict tuples are: (blocked_typo, blocked_word, blocking_typo, blocking_word, boundary)
+    
+    Note: Corrections with BOTH boundaries are skipped because they can't block other corrections.
+
+    Args:
+        patterns: Current list of patterns
+        pattern_replacements: Current dictionary mapping patterns to their replacements
+        filtered_corrections: Corrections that were kept after filtering (the blocking corrections)
+        conflict_tuples: List of conflict tuples from filtering
+
+    Returns:
+        Tuple of (updated_patterns, updated_pattern_replacements)
+    """
+    updated_patterns = list(patterns)
+    updated_replacements = dict(pattern_replacements)
+
+    # Track which corrections are already patterns
+    pattern_set = {(typo, word, boundary) for typo, word, boundary in updated_patterns}
+
+    # Build a map of blocking corrections to find their boundaries
+    blocking_corrections_map = {}
+    for typo, word, boundary in filtered_corrections:
+        blocking_corrections_map[(typo, word)] = boundary
+
+    # Process conflicts: (blocked_typo, blocked_word, blocking_typo, blocking_word, boundary)
+    for blocked_typo, blocked_word, blocking_typo, blocking_word, _ in conflict_tuples:
+        # blocking_typo blocks blocked_typo, so blocking_typo is a pattern
+        blocking_boundary = blocking_corrections_map.get((blocking_typo, blocking_word))
+        if blocking_boundary is None:
+            # Blocking correction not in final list, skip
+            continue
+
+        # BOTH boundary corrections can't block anything (they only match standalone words)
+        if blocking_boundary == BoundaryType.BOTH:
+            continue
+
+        blocking_correction = (blocking_typo, blocking_word, blocking_boundary)
+        blocked_correction = (blocked_typo, blocked_word, blocking_boundary)
+
+        # Add blocking correction to patterns if not already there
+        if blocking_correction not in pattern_set:
+            updated_patterns.append(blocking_correction)
+            pattern_set.add(blocking_correction)
+            updated_replacements[blocking_correction] = []
+
+        # Add blocked correction to pattern_replacements
+        if blocking_correction in updated_replacements:
+            if blocked_correction not in updated_replacements[blocking_correction]:
+                updated_replacements[blocking_correction].append(blocked_correction)
+
+    return updated_patterns, updated_replacements
+
+
 def remove_typo_conflicts(
     pattern_result: PatternGeneralizationResult,
     verbose: bool = False,
@@ -93,8 +215,6 @@ def remove_typo_conflicts(
 
     # Track which corrections are removed if needed
     removed_corrections = []
-    if collect_details:
-        pre_conflict_corrections = {c: c for c in pattern_result.corrections}
 
     final_corrections = remove_substring_conflicts(
         pattern_result.corrections, verbose, debug_words, debug_typo_matcher
@@ -102,16 +222,16 @@ def remove_typo_conflicts(
 
     conflicts_removed = pre_conflict_count - len(final_corrections)
 
-    # Analyze removed corrections if details are requested
-    if collect_details and conflicts_removed > 0:
+    # Find blocking corrections for removed conflicts (needed for pattern updates)
+    if conflicts_removed > 0:
         final_set = set(final_corrections)
-        removed = [c for c in pre_conflict_corrections.values() if c not in final_set]
+        removed = [c for c in pattern_result.corrections if c not in final_set]
 
-        if removed and verbose:
+        if removed and verbose and collect_details:
             logger.info(f"Analyzing {len(removed)} removed conflicts for report...")
 
         corrections_iter = removed
-        if verbose and len(removed) > 100:
+        if verbose and collect_details and len(removed) > 100:
             corrections_iter = tqdm(
                 removed,
                 desc="Analyzing removed conflicts",
@@ -123,6 +243,17 @@ def remove_typo_conflicts(
                 typo, word, boundary, final_corrections
             )
             removed_corrections.append((typo, word, blocking_typo, blocking_word, boundary))
+
+    # Update patterns: when a shorter correction blocks a longer one, it's a pattern
+    if removed_corrections:
+        updated_patterns, updated_replacements = _update_patterns_from_blocked_corrections(
+            pattern_result.patterns,
+            pattern_result.pattern_replacements,
+            final_corrections,
+            removed_corrections,
+        )
+        pattern_result.patterns = updated_patterns
+        pattern_result.pattern_replacements = updated_replacements
 
     if verbose and conflicts_removed > 0:
         logger.info(f"# Removed {conflicts_removed} typos due to substring conflicts")
