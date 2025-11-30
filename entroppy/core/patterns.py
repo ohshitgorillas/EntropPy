@@ -11,7 +11,7 @@ from entroppy.core.pattern_validation import (
     validate_pattern_for_all_occurrences,
 )
 from entroppy.platforms.base import MatchDirection
-from entroppy.utils.debug import (
+from entroppy.utils.debug import (  # pylint: disable=unused-import
     DebugTypoMatcher,
     is_debug_correction,
     log_if_debug_correction,
