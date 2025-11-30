@@ -22,29 +22,6 @@ def choose_strictest_boundary(boundaries: list[BoundaryType]) -> BoundaryType:
     return BoundaryType.NONE
 
 
-def _should_skip_short_typo(
-    typo: str,
-    word: str,
-    min_typo_length: int,
-    min_word_length: int,
-) -> bool:
-    """Check if a typo should be skipped due to being too short.
-
-    A short typo is permissible if it corrects to a word that is also short,
-    using the user's `min_word_length` as the threshold.
-
-    Args:
-        typo: The typo string
-        word: The correct word
-        min_typo_length: Minimum typo length
-        min_word_length: Minimum word length
-
-    Returns:
-        True if the typo should be skipped, False otherwise
-    """
-    return len(typo) < min_typo_length and len(word) > min_word_length
-
-
 def apply_user_word_boundary_override(
     word: str,
     boundary: BoundaryType,
