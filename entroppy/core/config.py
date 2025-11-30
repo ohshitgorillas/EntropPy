@@ -52,41 +52,37 @@ class Config:
 
 def _validate_config(config: Config) -> None:
     """Validate configuration parameters.
-    
+
     Raises:
         ValueError: If any configuration parameter is invalid
     """
     if config.min_typo_length < 1:
         raise ValueError(f"min_typo_length must be >= 1, got {config.min_typo_length}")
-    
+
     if config.min_word_length < 1:
         raise ValueError(f"min_word_length must be >= 1, got {config.min_word_length}")
-    
+
     if config.max_word_length and config.max_word_length < config.min_word_length:
         raise ValueError(
             f"max_word_length ({config.max_word_length}) must be >= "
             f"min_word_length ({config.min_word_length})"
         )
-    
+
     if config.freq_ratio <= 0:
         raise ValueError(f"freq_ratio must be > 0, got {config.freq_ratio}")
-    
+
     if config.top_n and config.top_n < 1:
         raise ValueError(f"top_n must be >= 1, got {config.top_n}")
-    
+
     if config.max_corrections and config.max_corrections < 1:
         raise ValueError(f"max_corrections must be >= 1, got {config.max_corrections}")
-    
+
     if config.max_entries_per_file < 1:
-        raise ValueError(
-            f"max_entries_per_file must be >= 1, got {config.max_entries_per_file}"
-        )
-    
+        raise ValueError(f"max_entries_per_file must be >= 1, got {config.max_entries_per_file}")
+
     if config.typo_freq_threshold < 0:
-        raise ValueError(
-            f"typo_freq_threshold must be >= 0, got {config.typo_freq_threshold}"
-        )
-    
+        raise ValueError(f"typo_freq_threshold must be >= 0, got {config.typo_freq_threshold}")
+
     if config.jobs < 1:
         raise ValueError(f"jobs must be >= 1, got {config.jobs}")
 

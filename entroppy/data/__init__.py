@@ -15,4 +15,3 @@ __all__ = [
     "load_validation_dictionary",
     "load_word_list",
 ]
-

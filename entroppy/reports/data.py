@@ -45,4 +45,3 @@ class ReportData:
     ranked_corrections_before_limit: list[Correction] = field(default_factory=list)
     filtered_corrections: list[Correction] = field(default_factory=list)
     filter_metadata: dict[str, Any] = field(default_factory=dict)
-

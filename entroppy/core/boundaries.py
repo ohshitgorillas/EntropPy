@@ -28,13 +28,13 @@ def parse_boundary_markers(pattern: str) -> tuple[str, BoundaryType | None]:
 
     Returns:
         Tuple of (core_pattern, boundary_type)
-        
+
     Raises:
         TypeError: If pattern is not a string
     """
     if not isinstance(pattern, str):
         raise TypeError(f"pattern must be a string, got {type(pattern)}")
-    
+
     if not pattern:
         return pattern, None
 
@@ -68,7 +68,7 @@ def _check_typo_in_wordset(typo: str, word_set: set[str], check_type: str) -> bo
 
     Returns:
         True if typo matches any word according to check_type
-        
+
     Raises:
         TypeError: If typo is not a string or word_set is not a set
         ValueError: If check_type is invalid
@@ -79,7 +79,7 @@ def _check_typo_in_wordset(typo: str, word_set: set[str], check_type: str) -> bo
         raise TypeError(f"word_set must be a set or frozenset, got {type(word_set)}")
     if check_type not in ("substring", "prefix", "suffix"):
         raise ValueError(f"check_type must be 'substring', 'prefix', or 'suffix', got {check_type}")
-    
+
     for word in word_set:
         if typo == word:
             continue
@@ -122,7 +122,7 @@ def determine_boundaries(
     Returns:
         BoundaryType indicating what boundaries are needed,
         or None if correction should be skipped
-        
+
     Raises:
         TypeError: If typo is not a string or sets are not sets
     """
@@ -132,7 +132,7 @@ def determine_boundaries(
         raise TypeError(f"validation_set must be a set or frozenset, got {type(validation_set)}")
     if not isinstance(source_words, (set, frozenset)):
         raise TypeError(f"source_words must be a set or frozenset, got {type(source_words)}")
-    
+
     # Check if typo appears as substring in other contexts
     is_substring_source = is_substring_of_any(typo, source_words)
     is_substring_validation = is_substring_of_any(typo, validation_set)

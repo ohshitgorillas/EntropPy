@@ -6,6 +6,7 @@ from collections import defaultdict
 from entroppy.core import BoundaryType, Correction
 from entroppy.matching import ExclusionMatcher
 
+
 @dataclass
 class StageResult:
     """Base class for stage results with timing."""

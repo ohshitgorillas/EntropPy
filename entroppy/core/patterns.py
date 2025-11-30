@@ -27,7 +27,12 @@ def generalize_patterns(
     verbose: bool = False,
     debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
-) -> tuple[list[Correction], set[Correction], dict[Correction, list[Correction]], list[tuple[str, str, str]]]:
+) -> tuple[
+    list[Correction],
+    set[Correction],
+    dict[Correction, list[Correction]],
+    list[tuple[str, str, str]],
+]:
     """Find repeated patterns, create generalized rules, and return corrections to be removed.
 
     Args:

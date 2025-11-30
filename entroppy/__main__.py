@@ -30,7 +30,10 @@ def main():
         parser.error("Must specify --max-corrections for QMK")
     from entroppy.utils import Constants
 
-    if config.platform == "espanso" and config.max_entries_per_file > Constants.ESPANSO_MAX_ENTRIES_WARNING:
+    if (
+        config.platform == "espanso"
+        and config.max_entries_per_file > Constants.ESPANSO_MAX_ENTRIES_WARNING
+    ):
         logger.warning("--------------------------------")
         logger.warning("!!! WARNING:")
         logger.warning("max_entries_per_file is greater than 1000")

@@ -9,4 +9,12 @@ from entroppy.utils.debug import DebugTypoMatcher
 from entroppy.utils.logging import setup_logger
 
 __version__ = "0.4.2"
-__all__ = ["BoundaryType", "Config", "Correction", "load_config", "run_pipeline", "DebugTypoMatcher", "setup_logger"]
+__all__ = [
+    "BoundaryType",
+    "Config",
+    "Correction",
+    "load_config",
+    "run_pipeline",
+    "DebugTypoMatcher",
+    "setup_logger",
+]

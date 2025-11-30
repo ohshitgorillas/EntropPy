@@ -32,32 +32,26 @@ def resolve_typo_collisions(
     """
     start_time = time.time()
 
-    corrections, skipped_collisions, skipped_short, excluded_corrections = (
-        resolve_collisions(
-            typo_result.typo_map,
-            config.freq_ratio,
-            config.min_typo_length,
-            config.min_word_length,
-            dict_data.user_words_set,
-            dict_data.exclusion_matcher,
-            config.debug_words,
-            config.debug_typo_matcher,
-        )
+    corrections, skipped_collisions, skipped_short, excluded_corrections = resolve_collisions(
+        typo_result.typo_map,
+        config.freq_ratio,
+        config.min_typo_length,
+        config.min_word_length,
+        dict_data.user_words_set,
+        dict_data.exclusion_matcher,
+        config.debug_words,
+        config.debug_typo_matcher,
     )
 
     if verbose:
-        logger.info(
-            f"# Generated {len(corrections)} corrections (before pattern generalization)"
-        )
+        logger.info(f"# Generated {len(corrections)} corrections (before pattern generalization)")
         if skipped_short:
             logger.info(
                 f"# Skipped {len(skipped_short)} typos shorter "
                 f"than {config.min_typo_length} characters"
             )
         if skipped_collisions:
-            logger.info(
-                f"# Skipped {len(skipped_collisions)} ambiguous collisions:"
-            )
+            logger.info(f"# Skipped {len(skipped_collisions)} ambiguous collisions:")
             for typo, words, ratio in skipped_collisions[:5]:
                 logger.info(f"#   {typo}: {words} (ratio: {ratio:.2f})")
 

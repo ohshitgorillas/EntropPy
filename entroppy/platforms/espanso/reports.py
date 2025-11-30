@@ -31,7 +31,9 @@ def generate_espanso_output_report(
     }
 
 
-def _write_overview(f: TextIO, final_corrections: list[Correction], ram_estimate: dict[str, float]) -> None:
+def _write_overview(
+    f: TextIO, final_corrections: list[Correction], ram_estimate: dict[str, float]
+) -> None:
     """Write overview section."""
     write_section_header(f, "OVERVIEW")
     f.write(f"Total corrections:              {len(final_corrections):,}\n")

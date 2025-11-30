@@ -41,7 +41,9 @@ def load_validation_dictionary(
     exclusion_patterns = load_exclusions(exclude_filepath)  # No verbose here
 
     # Filter out patterns that are for typo->word mapping, not single word exclusion
-    word_exclusion_patterns = {p for p in exclusion_patterns if Constants.EXCLUSION_SEPARATOR not in p}
+    word_exclusion_patterns = {
+        p for p in exclusion_patterns if Constants.EXCLUSION_SEPARATOR not in p
+    }
 
     if not word_exclusion_patterns:
         if verbose:

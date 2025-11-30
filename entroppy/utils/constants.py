@@ -32,4 +32,3 @@ class Constants:
 
     QMK_MAX_STRING_LENGTH = 62
     """Maximum string length for QMK corrections."""
-

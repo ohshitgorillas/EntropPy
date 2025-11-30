@@ -7,7 +7,7 @@ def generate_transpositions(word: str) -> list[str]:
         raise ValueError("word cannot be empty")
     if not isinstance(word, str):
         raise TypeError(f"word must be a string, got {type(word)}")
-    
+
     typos = []
     for i in range(len(word) - 1):
         typo = word[:i] + word[i + 1] + word[i] + word[i + 2 :]
@@ -21,7 +21,7 @@ def generate_omissions(word: str) -> list[str]:
         raise ValueError("word cannot be empty")
     if not isinstance(word, str):
         raise TypeError(f"word must be a string, got {type(word)}")
-    
+
     if len(word) < 4:
         return []
 
@@ -38,7 +38,7 @@ def generate_duplications(word: str) -> list[str]:
         raise ValueError("word cannot be empty")
     if not isinstance(word, str):
         raise TypeError(f"word must be a string, got {type(word)}")
-    
+
     typos = []
     for i, char in enumerate(word):
         typo = word[:i] + char + word[i:]
@@ -54,7 +54,7 @@ def generate_insertions(word: str, adj_letters_map: dict[str, str]) -> list[str]
         raise TypeError(f"word must be a string, got {type(word)}")
     if not isinstance(adj_letters_map, dict):
         raise TypeError(f"adj_letters_map must be a dict, got {type(adj_letters_map)}")
-    
+
     if not adj_letters_map:
         return []
 
@@ -76,7 +76,7 @@ def generate_replacements(word: str, adj_letters_map: dict[str, str]) -> list[st
         raise TypeError(f"word must be a string, got {type(word)}")
     if not isinstance(adj_letters_map, dict):
         raise TypeError(f"adj_letters_map must be a dict, got {type(adj_letters_map)}")
-    
+
     if not adj_letters_map:
         return []
 
@@ -97,7 +97,7 @@ def generate_all_typos(word: str, adj_letters_map: dict[str, str] | None = None)
         return []
     if adj_letters_map is not None and not isinstance(adj_letters_map, dict):
         raise TypeError(f"adj_letters_map must be a dict or None, got {type(adj_letters_map)}")
-    
+
     typos = generate_transpositions(word) + generate_omissions(word) + generate_duplications(word)
 
     if adj_letters_map:

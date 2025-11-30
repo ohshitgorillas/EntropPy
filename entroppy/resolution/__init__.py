@@ -21,4 +21,3 @@ __all__ = [
     "get_detector_for_boundary",
     "resolve_conflicts_for_group",
 ]
-

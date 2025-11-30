@@ -25,4 +25,3 @@ __all__ = [
     "generalize_patterns",
     "generate_all_typos",
 ]
-
