@@ -10,7 +10,6 @@ from entroppy.utils.logging import setup_logger
 from entroppy.utils.constants import Constants
 
 
-
 def main():
     """Main entry point."""
     parser = create_parser()
