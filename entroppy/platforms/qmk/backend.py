@@ -190,7 +190,7 @@ class QMKBackend(PlatformBackend):
         We keep the shorter typo and remove the longer one.
         """
 
-        def check_substring_conflict(typo1, word1, typo2, word2):
+        def check_substring_conflict(typo1: str, _word1: str, typo2: str, _word2: str) -> bool:
             # If typo2 is anywhere in typo1, QMK rejects it
             return typo2 in typo1 and typo1 != typo2
 

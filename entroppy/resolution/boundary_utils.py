@@ -9,6 +9,23 @@ if TYPE_CHECKING:
     from entroppy.utils import DebugTypoMatcher
 
 
+def _should_skip_short_typo(
+    typo: str, word: str, min_typo_length: int, min_word_length: int
+) -> bool:
+    """Check if a typo should be skipped for being too short.
+
+    Args:
+        typo: The typo string
+        word: The correct word
+        min_typo_length: Minimum typo length
+        min_word_length: Minimum word length
+
+    Returns:
+        True if typo should be skipped (typo is too short and word is long enough)
+    """
+    return len(typo) < min_typo_length and len(word) > min_word_length
+
+
 def choose_strictest_boundary(boundaries: list[BoundaryType]) -> BoundaryType:
     """Choose the strictest boundary type."""
     if BoundaryType.BOTH in boundaries:
