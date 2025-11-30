@@ -243,6 +243,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Enhanced QMK ranking report with comprehensive visibility**
+  - **New sections added**:
+    - **Summary by Type**: Statistics breakdown showing counts, percentages, and score ranges for user words, patterns, and direct corrections
+    - **Complete Ranked List**: Full list of all corrections that made the final list, showing rank, type, score, correction, and boundary for every entry
+    - **Enhanced Pattern Details**: Complete information for all patterns in the final list, including rank, score, and **all** typos each pattern replaces (not just examples)
+    - **Enhanced Direct Corrections Details**: Complete list of all direct corrections in the final list with their ranks and scores, sorted by score
+  - **Improvements**:
+    - All corrections now show their ranking scores (or "(USER)" for user words)
+    - Patterns show complete replacement lists instead of limited examples
+    - Direct corrections show complete list instead of top 20 only
+    - Report organized in logical flow: Overview → Summary → Filtering → Complete List → Details → Cutoff
+  - **Code cleanup**:
+    - Removed unused functions: `_write_patterns_section()`, `_write_direct_corrections_section()`, `_correction_in_final()`, `_is_pattern()`
+    - Broke up long strings into multiple lines for better readability and linter compliance
+  - **Benefits**:
+    - Full transparency into what made the final list and why
+    - Easy debugging to understand ranking decisions
+    - Complete visibility into pattern effectiveness (all replaced typos visible)
+    - All scores visible for validation and analysis
+
 ## [0.4.3] - 2025-12-01
 
 ### Changed
