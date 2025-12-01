@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Code cleanup and simplification**
+  - **Removed redundant type validation**: Eliminated manual `isinstance()` and type checking from internal functions
+    - `entroppy/core/typos.py`: Removed ~40 lines of manual type validation from all typo generation functions
+    - `entroppy/core/boundaries.py`: Removed ~20 lines of manual type validation from boundary detection functions
+    - Type hints now serve as the contract; Pydantic handles validation at system boundaries
+    - Simplified code without sacrificing correctness
+
 - **Code deduplication and refactoring**
   - **File I/O utilities**: Created centralized file I/O utilities in `entroppy/utils/helpers.py`:
     - `ensure_directory_exists()`: Unified directory creation with consistent error handling
