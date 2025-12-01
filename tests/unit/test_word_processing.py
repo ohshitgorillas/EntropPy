@@ -6,6 +6,7 @@ filtering applied. Each test has a single assertion and focuses on behavior.
 
 from unittest.mock import patch
 
+from entroppy.core.boundaries import BoundaryIndex
 from entroppy.resolution.word_processing import process_word, _add_debug_message
 from entroppy.utils.debug import DebugTypoMatcher
 
@@ -22,8 +23,10 @@ class TestProcessWordGeneratesCorrections:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -32,6 +35,8 @@ class TestProcessWordGeneratesCorrections:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         assert len(corrections) > 0
@@ -45,8 +50,10 @@ class TestProcessWordGeneratesCorrections:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -55,6 +62,8 @@ class TestProcessWordGeneratesCorrections:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         _, _, boundary_type = corrections[0]
@@ -69,6 +78,8 @@ class TestProcessWordGeneratesCorrections:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
@@ -78,6 +89,8 @@ class TestProcessWordGeneratesCorrections:
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
+            validation_index,
+            source_index,
         )
 
         assert corrections == []
@@ -95,8 +108,10 @@ class TestProcessWordFiltersSourceWords:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -105,6 +120,8 @@ class TestProcessWordFiltersSourceWords:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         typos = [typo for typo, _, _ in corrections]
@@ -119,8 +136,10 @@ class TestProcessWordFiltersSourceWords:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -129,6 +148,8 @@ class TestProcessWordFiltersSourceWords:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Should have some corrections (typos not filtered by source words)
@@ -147,6 +168,8 @@ class TestProcessWordFiltersValidationWords:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
@@ -156,6 +179,8 @@ class TestProcessWordFiltersValidationWords:
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
+            validation_index,
+            source_index,
         )
 
         typos = [typo for typo, _, _ in corrections]
@@ -170,8 +195,10 @@ class TestProcessWordFiltersValidationWords:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -180,6 +207,8 @@ class TestProcessWordFiltersValidationWords:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Should have some corrections (typos not filtered by validation set)
@@ -198,8 +227,10 @@ class TestProcessWordAppliesFrequencyThreshold:
         typo_freq_threshold = 0.001  # Non-zero threshold
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.01):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.01):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -208,6 +239,8 @@ class TestProcessWordAppliesFrequencyThreshold:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # High frequency typo should be filtered
@@ -222,8 +255,10 @@ class TestProcessWordAppliesFrequencyThreshold:
         typo_freq_threshold = 0.001  # Non-zero threshold
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0001):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0001):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -232,6 +267,8 @@ class TestProcessWordAppliesFrequencyThreshold:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Low frequency typo should not be filtered by frequency
@@ -246,8 +283,10 @@ class TestProcessWordAppliesFrequencyThreshold:
         typo_freq_threshold = 0.0  # Zero threshold
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency") as mock_freq:
+        with patch("entroppy.utils.helpers.cached_word_frequency") as mock_freq:
             process_word(
                 word,
                 validation_set,
@@ -256,6 +295,8 @@ class TestProcessWordAppliesFrequencyThreshold:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Frequency should not be called when threshold is 0.0
@@ -270,8 +311,10 @@ class TestProcessWordAppliesFrequencyThreshold:
         typo_freq_threshold = 1.0  # Very high threshold
         adj_letters_map = None
         exclusions = {"tset"}  # Explicitly excluded
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0) as mock_freq:
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0) as mock_freq:
             process_word(
                 word,
                 validation_set,
@@ -280,6 +323,8 @@ class TestProcessWordAppliesFrequencyThreshold:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Frequency should not be called for excluded typo (tset bypasses check)
@@ -299,8 +344,10 @@ class TestProcessWordAppliesExclusionPatterns:
         typo_freq_threshold = 1.0  # High threshold
         adj_letters_map = None
         exclusions = {"tset"}  # Exact exclusion - bypasses frequency
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=2.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=2.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -309,6 +356,8 @@ class TestProcessWordAppliesExclusionPatterns:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Excluded typo bypasses frequency, so tset may appear if boundary detection passes
@@ -323,8 +372,10 @@ class TestProcessWordAppliesExclusionPatterns:
         typo_freq_threshold = 1.0  # High threshold
         adj_letters_map = None
         exclusions = {"ts*"}  # Wildcard exclusion - bypasses frequency
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=2.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=2.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -333,6 +384,8 @@ class TestProcessWordAppliesExclusionPatterns:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Excluded typo bypasses frequency, so matching typos may appear
@@ -347,8 +400,10 @@ class TestProcessWordAppliesExclusionPatterns:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = {"tset -> test"}  # Mapping pattern should be ignored
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -357,6 +412,8 @@ class TestProcessWordAppliesExclusionPatterns:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Mapping patterns don't affect word-level filtering
@@ -375,8 +432,10 @@ class TestProcessWordDeterminesBoundaries:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -385,6 +444,8 @@ class TestProcessWordDeterminesBoundaries:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         _, _, boundary_type = corrections[0]
@@ -399,8 +460,10 @@ class TestProcessWordDeterminesBoundaries:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -409,6 +472,8 @@ class TestProcessWordDeterminesBoundaries:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # All corrections must have boundary types (typos without boundaries are filtered)
@@ -429,8 +494,10 @@ class TestProcessWordReturnsDebugMessages:
         adj_letters_map = None
         exclusions = set()
         debug_words = frozenset({"test"})
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             _, debug_messages = process_word(
                 word,
                 validation_set,
@@ -439,6 +506,8 @@ class TestProcessWordReturnsDebugMessages:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
                 debug_words,
             )
 
@@ -454,8 +523,10 @@ class TestProcessWordReturnsDebugMessages:
         adj_letters_map = None
         exclusions = set()
         debug_typo_matcher = DebugTypoMatcher.from_patterns({"tset"})
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             _, debug_messages = process_word(
                 word,
                 validation_set,
@@ -464,6 +535,8 @@ class TestProcessWordReturnsDebugMessages:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
                 debug_typo_matcher=debug_typo_matcher,
             )
 
@@ -479,8 +552,10 @@ class TestProcessWordReturnsDebugMessages:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             _, debug_messages = process_word(
                 word,
                 validation_set,
@@ -489,6 +564,8 @@ class TestProcessWordReturnsDebugMessages:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # No debug messages when not debugging
@@ -507,8 +584,10 @@ class TestProcessWordSkipsEqualTypos:
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
+        validation_index = BoundaryIndex(filtered_validation_set)
+        source_index = BoundaryIndex(source_words)
 
-        with patch("entroppy.resolution.word_processing.word_frequency", return_value=0.0):
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
@@ -517,6 +596,8 @@ class TestProcessWordSkipsEqualTypos:
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
+                validation_index,
+                source_index,
             )
 
         # Word itself should not appear as a typo

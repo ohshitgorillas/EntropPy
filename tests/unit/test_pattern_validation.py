@@ -5,7 +5,7 @@ and don't conflict with validation words or source words. Each test has a single
 assertion and focuses on behavior.
 """
 
-from entroppy.core.boundaries import BoundaryType
+from entroppy.core.boundaries import BoundaryIndex, BoundaryType
 from entroppy.core.pattern_validation import (
     _validate_pattern_result,
     _would_corrupt_source_word,
@@ -237,126 +237,166 @@ class TestCheckPatternConflicts:
 
     def test_accepts_pattern_not_in_validation_set(self) -> None:
         """When pattern is not in validation set, returns True."""
+        validation_set = {"the", "word"}
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "teh", {"the", "word"}, set(), MatchDirection.RIGHT_TO_LEFT
+            "teh", validation_set, set(), MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert is_safe is True
 
     def test_rejects_pattern_that_is_validation_word(self) -> None:
         """When pattern is a validation word, returns False."""
+        validation_set = {"the", "word"}
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "the", {"the", "word"}, set(), MatchDirection.RIGHT_TO_LEFT
+            "the", validation_set, set(), MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert is_safe is False
 
     def test_provides_error_message_for_validation_word_conflict(self) -> None:
         """When pattern conflicts with validation word, provides non-None error message."""
+        validation_set = {"the", "word"}
+        validation_index = BoundaryIndex(validation_set)
         _, error_msg = check_pattern_conflicts(
-            "the", {"the", "word"}, set(), MatchDirection.RIGHT_TO_LEFT
+            "the", validation_set, set(), MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert error_msg is not None
 
     def test_error_message_includes_validation_word(self) -> None:
         """When pattern conflicts with validation word, error message includes the word."""
+        validation_set = {"the", "word"}
+        validation_index = BoundaryIndex(validation_set)
         _, error_msg = check_pattern_conflicts(
-            "the", {"the", "word"}, set(), MatchDirection.RIGHT_TO_LEFT
+            "the", validation_set, set(), MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert "the" in error_msg
 
     def test_rejects_pattern_that_triggers_at_end_of_validation_word(self) -> None:
         """When pattern triggers at end of validation word, returns False."""
+        validation_set = {"wordeh", "other"}
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "eh", {"wordeh", "other"}, set(), MatchDirection.LEFT_TO_RIGHT
+            "eh", validation_set, set(), MatchDirection.LEFT_TO_RIGHT, validation_index
         )
         assert is_safe is False
 
     def test_provides_error_message_for_end_trigger_conflict(self) -> None:
         """When pattern triggers at end, provides non-None error message."""
+        validation_set = {"wordeh", "other"}
+        validation_index = BoundaryIndex(validation_set)
         _, error_msg = check_pattern_conflicts(
-            "eh", {"wordeh", "other"}, set(), MatchDirection.LEFT_TO_RIGHT
+            "eh", validation_set, set(), MatchDirection.LEFT_TO_RIGHT, validation_index
         )
         assert error_msg is not None
 
     def test_error_message_mentions_end_trigger(self) -> None:
         """When pattern triggers at end, error message mentions end."""
+        validation_set = {"wordeh", "other"}
+        validation_index = BoundaryIndex(validation_set)
         _, error_msg = check_pattern_conflicts(
-            "eh", {"wordeh", "other"}, set(), MatchDirection.LEFT_TO_RIGHT
+            "eh", validation_set, set(), MatchDirection.LEFT_TO_RIGHT, validation_index
         )
         assert "end" in error_msg.lower()
 
     def test_rejects_pattern_that_corrupts_source_word_rtl(self) -> None:
         """When RTL pattern corrupts source word, returns False."""
+        validation_set = set()
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "teh", set(), {"tehword"}, MatchDirection.RIGHT_TO_LEFT
+            "teh", validation_set, {"tehword"}, MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert is_safe is False
 
     def test_rejects_pattern_that_corrupts_source_word_ltr(self) -> None:
         """When LTR pattern corrupts source word, returns False."""
+        validation_set = set()
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "eh", set(), {"wordeh"}, MatchDirection.LEFT_TO_RIGHT
+            "eh", validation_set, {"wordeh"}, MatchDirection.LEFT_TO_RIGHT, validation_index
         )
         assert is_safe is False
 
     def test_provides_error_message_for_source_word_corruption(self) -> None:
         """When pattern corrupts source word, provides non-None error message."""
+        validation_set = set()
+        validation_index = BoundaryIndex(validation_set)
         _, error_msg = check_pattern_conflicts(
-            "teh", set(), {"tehword"}, MatchDirection.RIGHT_TO_LEFT
+            "teh", validation_set, {"tehword"}, MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert error_msg is not None
 
     def test_error_message_mentions_corruption(self) -> None:
         """When pattern corrupts source word, error message mentions corruption."""
+        validation_set = set()
+        validation_index = BoundaryIndex(validation_set)
         _, error_msg = check_pattern_conflicts(
-            "teh", set(), {"tehword"}, MatchDirection.RIGHT_TO_LEFT
+            "teh", validation_set, {"tehword"}, MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert "corrupt" in error_msg.lower()
 
     def test_accepts_pattern_when_source_word_has_pattern_in_middle(self) -> None:
         """When pattern appears in middle of source word, does not corrupt."""
+        validation_set = set()
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "teh", set(), {"wordtehword"}, MatchDirection.RIGHT_TO_LEFT
+            "teh", validation_set, {"wordtehword"}, MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert is_safe is True
 
     def test_checks_all_source_words_for_corruption(self) -> None:
         """When checking multiple source words, detects corruption in any."""
+        validation_set = set()
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "teh", set(), {"word", "tehbook", "other"}, MatchDirection.RIGHT_TO_LEFT
+            "teh",
+            validation_set,
+            {"word", "tehbook", "other"},
+            MatchDirection.RIGHT_TO_LEFT,
+            validation_index,
         )
         assert is_safe is False
 
     def test_returns_none_error_when_no_conflicts(self) -> None:
         """When pattern has no conflicts, error message is None."""
+        validation_set = {"the"}
+        validation_index = BoundaryIndex(validation_set)
         _, error_msg = check_pattern_conflicts(
-            "teh", {"the"}, {"word"}, MatchDirection.RIGHT_TO_LEFT
+            "teh", validation_set, {"word"}, MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert error_msg is None
 
     def test_handles_empty_validation_set(self) -> None:
         """When validation set is empty, checks only source words."""
+        validation_set = set()
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "teh", set(), {"word"}, MatchDirection.RIGHT_TO_LEFT
+            "teh", validation_set, {"word"}, MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert is_safe is True
 
     def test_handles_empty_source_words_set(self) -> None:
         """When source words set is empty, checks only validation set."""
+        validation_set = {"the"}
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "teh", {"the"}, set(), MatchDirection.RIGHT_TO_LEFT
+            "teh", validation_set, set(), MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert is_safe is True
 
     def test_prioritizes_validation_word_conflict_over_other_checks(self) -> None:
         """When pattern is validation word, returns False immediately."""
+        validation_set = {"the"}
+        validation_index = BoundaryIndex(validation_set)
         is_safe, _ = check_pattern_conflicts(
-            "the", {"the"}, {"theword"}, MatchDirection.RIGHT_TO_LEFT
+            "the", validation_set, {"theword"}, MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert is_safe is False
 
     def test_validation_word_conflict_error_message_mentions_validation(self) -> None:
         """When pattern is validation word, error message mentions validation word."""
+        validation_set = {"the"}
+        validation_index = BoundaryIndex(validation_set)
         _, error_msg = check_pattern_conflicts(
-            "the", {"the"}, {"theword"}, MatchDirection.RIGHT_TO_LEFT
+            "the", validation_set, {"theword"}, MatchDirection.RIGHT_TO_LEFT, validation_index
         )
         assert "validation word" in error_msg.lower()
