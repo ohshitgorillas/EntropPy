@@ -66,18 +66,18 @@ def _filter_cross_boundary_conflicts(
     # Verbose output for cross-boundary conflicts
     if verbose and conflicting_patterns:
         logger.info(
-            f"# Rejected {len(conflicting_patterns)} patterns due to "
-            f"cross-boundary conflicts with direct corrections."
+            f"  Rejected {len(conflicting_patterns)} patterns due to "
+            f"cross-boundary conflicts with direct corrections"
         )
         # Show first few examples
         for pattern in conflicting_patterns[:3]:
             typo, word, boundary = pattern
             logger.info(
-                f"#   - Pattern ({typo}, {word}, {boundary.value}) "
+                f"    Pattern ({typo}, {word}, {boundary.value}) "
                 f"conflicts with direct correction"
             )
         if len(conflicting_patterns) > 3:
-            logger.info(f"#   ... and {len(conflicting_patterns) - 3} more")
+            logger.info(f"    ... and {len(conflicting_patterns) - 3} more")
 
     return final_corrections, safe_patterns
 
@@ -133,6 +133,8 @@ def generalize_typo_patterns(
     # Resolve collisions for patterns
     resolved_patterns, _, _, _ = resolve_collisions(
         pattern_typo_map,
+        dict_data.filtered_validation_set,
+        dict_data.source_words_set,
         config.freq_ratio,
         config.min_typo_length,
         config.min_word_length,
@@ -144,11 +146,12 @@ def generalize_typo_patterns(
 
     # Remove substring conflicts from patterns
     # Patterns can also have redundancies (e.g., "lectiona" is redundant if "ectiona" exists)
-    resolved_patterns = remove_substring_conflicts(
+    resolved_patterns, _ = remove_substring_conflicts(
         resolved_patterns,
         verbose=False,
         debug_words=config.debug_words,
         debug_typo_matcher=config.debug_typo_matcher,
+        collect_blocking_map=False,
     )
 
     # Cross-boundary deduplication: filter patterns that conflict with direct corrections
@@ -166,10 +169,10 @@ def generalize_typo_patterns(
     if verbose:
         if patterns:
             logger.info(
-                f"# Generalized {len(resolved_patterns)} patterns, "
-                f"removing {removed_count} specific corrections."
+                f"  Generalized {len(resolved_patterns)} patterns, "
+                f"removing {removed_count} specific corrections"
             )
-        logger.info(f"# After pattern generalization: {len(final_corrections)} entries")
+        logger.info(f"  Total corrections after generalization: {len(final_corrections)}")
 
     elapsed_time = time.time() - start_time
 
