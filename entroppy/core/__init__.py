@@ -1,6 +1,7 @@
 """Core domain logic for EntropPy."""
 
 from entroppy.core.boundaries import (
+    BoundaryIndex,
     BoundaryType,
     determine_boundaries,
     format_boundary_display,
@@ -14,6 +15,7 @@ from .patterns import generalize_patterns
 from .typos import generate_all_typos
 
 __all__ = [
+    "BoundaryIndex",
     "BoundaryType",
     "Config",
     "Correction",
