@@ -6,7 +6,6 @@ filtering applied. Each test has a single assertion and focuses on behavior.
 
 from unittest.mock import patch
 
-from entroppy.core.boundaries import BoundaryIndex
 from entroppy.resolution.word_processing import process_word, _add_debug_message
 from entroppy.utils.debug import DebugTypoMatcher
 
@@ -18,25 +17,18 @@ class TestProcessWordGeneratesCorrections:
         """When typo passes all filters, correction is generated."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         assert len(corrections) > 0
@@ -45,52 +37,41 @@ class TestProcessWordGeneratesCorrections:
         """When typo is valid, correction includes boundary type."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = {"test"}  # Allows boundary detection
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
-        _, _, boundary_type = corrections[0]
-        assert boundary_type is not None
+        assert len(corrections) > 0
+        typo, correction_word = corrections[0]
+        assert isinstance(typo, str)
+        assert isinstance(correction_word, str)
 
     def test_returns_empty_list_when_no_valid_typos(self) -> None:
         """When all typos are filtered, returns empty corrections list."""
         word = "a"
         validation_set = {"a", "aa"}  # Word and all generated typos in validation set
-        filtered_validation_set = {"a", "aa"}
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
             validation_set,
-            filtered_validation_set,
             source_words,
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
-            validation_index,
-            source_index,
         )
 
         assert corrections == []
@@ -103,53 +84,39 @@ class TestProcessWordFiltersSourceWords:
         """When typo is in source words, it is filtered out."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = {"tset"}  # Typo is a source word
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
-        typos = [typo for typo, _, _ in corrections]
+        typos = [typo for typo, _ in corrections]
         assert "tset" not in typos
 
     def test_includes_typo_not_in_source_words(self) -> None:
         """When typo is not in source words, it is not filtered."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = {"other"}  # Typo is not a source word
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Should have some corrections (typos not filtered by source words)
@@ -163,52 +130,39 @@ class TestProcessWordFiltersValidationWords:
         """When typo is in validation set, it is filtered out."""
         word = "test"
         validation_set = {"tset"}  # Typo is a validation word
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
             validation_set,
-            filtered_validation_set,
             source_words,
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
-            validation_index,
-            source_index,
         )
 
-        typos = [typo for typo, _, _ in corrections]
+        typos = [typo for typo, _ in corrections]
         assert "tset" not in typos
 
     def test_includes_typo_not_in_validation_set(self) -> None:
         """When typo is not in validation set, it is not filtered."""
         word = "test"
         validation_set = {"other"}  # Typo is not in validation set
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Should have some corrections (typos not filtered by validation set)
@@ -222,25 +176,19 @@ class TestProcessWordAppliesFrequencyThreshold:
         """When typo frequency exceeds threshold, it is filtered out."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.001  # Non-zero threshold
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.01):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # High frequency typo should be filtered
@@ -250,25 +198,19 @@ class TestProcessWordAppliesFrequencyThreshold:
         """When typo frequency is below threshold, it is not filtered."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.001  # Non-zero threshold
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0001):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Low frequency typo should not be filtered by frequency
@@ -278,25 +220,19 @@ class TestProcessWordAppliesFrequencyThreshold:
         """When threshold is zero, frequency check is skipped."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0  # Zero threshold
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency") as mock_freq:
             process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Frequency should not be called when threshold is 0.0
@@ -306,25 +242,19 @@ class TestProcessWordAppliesFrequencyThreshold:
         """When typo is explicitly excluded, frequency check is bypassed."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 1.0  # Very high threshold
         adj_letters_map = None
         exclusions = {"tset"}  # Explicitly excluded
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0) as mock_freq:
             process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Frequency should not be called for excluded typo (tset bypasses check)
@@ -339,25 +269,19 @@ class TestProcessWordAppliesExclusionPatterns:
         """When typo matches exact exclusion pattern, frequency check is bypassed."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 1.0  # High threshold
         adj_letters_map = None
         exclusions = {"tset"}  # Exact exclusion - bypasses frequency
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=2.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Excluded typo bypasses frequency, so tset may appear if boundary detection passes
@@ -367,25 +291,19 @@ class TestProcessWordAppliesExclusionPatterns:
         """When typo matches wildcard exclusion pattern, frequency check is bypassed."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 1.0  # High threshold
         adj_letters_map = None
         exclusions = {"ts*"}  # Wildcard exclusion - bypasses frequency
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=2.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Excluded typo bypasses frequency, so matching typos may appear
@@ -395,25 +313,18 @@ class TestProcessWordAppliesExclusionPatterns:
         """When exclusion contains typo->word mapping, it is ignored for word filtering."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = {"tset -> test"}  # Mapping pattern should be ignored
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Mapping patterns don't affect word-level filtering
@@ -423,62 +334,50 @@ class TestProcessWordAppliesExclusionPatterns:
 class TestProcessWordDeterminesBoundaries:
     """Test process_word determines correct boundaries."""
 
-    def test_uses_filtered_validation_set_for_boundary_detection(self) -> None:
-        """When boundary is detected, uses filtered validation set."""
+    def test_generates_corrections(self) -> None:
+        """When word is processed, corrections are generated."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = {"test"}  # For boundary detection
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
-        _, _, boundary_type = corrections[0]
-        assert boundary_type is not None
+        assert len(corrections) > 0
+        typo, correction_word = corrections[0]
+        assert isinstance(typo, str)
+        assert isinstance(correction_word, str)
 
-    def test_all_corrections_have_boundary_types(self) -> None:
-        """When corrections are returned, all have non-None boundary types."""
+    def test_all_corrections_are_tuples(self) -> None:
+        """When corrections are returned, all are (typo, word) tuples."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = {"test"}  # Allows some boundary detection
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
-        # All corrections must have boundary types (typos without boundaries are filtered)
-        boundary_types = [boundary for _, _, boundary in corrections]
-        assert all(boundary is not None for boundary in boundary_types)
+        # All corrections must be (typo, word) tuples
+        assert all(isinstance(c, tuple) and len(c) == 2 for c in corrections)
+        assert all(isinstance(typo, str) and isinstance(word, str) for typo, word in corrections)
 
 
 class TestProcessWordReturnsDebugMessages:
@@ -488,27 +387,21 @@ class TestProcessWordReturnsDebugMessages:
         """When word is in debug words, debug message is returned."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
         debug_words = frozenset({"test"})
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             _, debug_messages = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
-                debug_words,
+                debug_words=debug_words,
             )
 
         assert any("DEBUG WORD: 'test'" in msg for msg in debug_messages)
@@ -517,26 +410,20 @@ class TestProcessWordReturnsDebugMessages:
         """When typo matches debug pattern, debug message is returned."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = {"test"}  # For boundary detection
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
         debug_typo_matcher = DebugTypoMatcher.from_patterns({"tset"})
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             _, debug_messages = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
                 debug_typo_matcher=debug_typo_matcher,
             )
 
@@ -547,25 +434,19 @@ class TestProcessWordReturnsDebugMessages:
         """When word and typo are not being debugged, no debug messages returned."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             _, debug_messages = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # No debug messages when not debugging
@@ -579,29 +460,22 @@ class TestProcessWordSkipsEqualTypos:
         """When typo equals word exactly, it is skipped."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = set()
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
-
         with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
             corrections, _ = process_word(
                 word,
                 validation_set,
-                filtered_validation_set,
                 source_words,
                 typo_freq_threshold,
                 adj_letters_map,
                 exclusions,
-                validation_index,
-                source_index,
             )
 
         # Word itself should not appear as a typo
-        typos = [typo for typo, _, _ in corrections]
+        typos = [typo for typo, _ in corrections]
         assert word not in typos
 
 

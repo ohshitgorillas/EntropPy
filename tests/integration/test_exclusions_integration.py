@@ -7,7 +7,6 @@ behavior in all three refactored modules.
 import os
 import tempfile
 
-from entroppy.core.boundaries import BoundaryIndex
 from entroppy.data import load_validation_dictionary
 from entroppy.matching import ExclusionMatcher
 from entroppy.resolution import process_word
@@ -21,52 +20,40 @@ class TestProcessingIntegration:
         """Verify exact exclusion patterns work correctly."""
         word = "test"
         validation_set = {"tset", "tets"}
-        filtered_validation_set = validation_set.copy()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = {"tset"}  # Exact exclusion
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
             validation_set,
-            filtered_validation_set,
             source_words,
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
-            validation_index,
-            source_index,
         )
 
         # tset is explicitly excluded, should not appear in corrections
-        typos = [typo for typo, _, _ in corrections]
+        typos = [typo for typo, _ in corrections]
         assert "tset" not in typos
 
     def test_process_word_exclusions_bypass_frequency_check(self) -> None:
         """Verify exclusion patterns allow typos to bypass frequency threshold."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 1.0  # High threshold that would normally block all typos
         adj_letters_map = None
         exclusions = {"tset"}  # This typo should bypass frequency check
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
             validation_set,
-            filtered_validation_set,
             source_words,
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
-            validation_index,
-            source_index,
         )
 
         # The typo may or may not appear depending on boundary detection,
@@ -77,24 +64,18 @@ class TestProcessingIntegration:
         """Verify typo->word mappings in exclusions don't affect word-level filtering."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 0.0
         adj_letters_map = None
         exclusions = {"tset -> test"}  # This should be ignored by process_word
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
             validation_set,
-            filtered_validation_set,
             source_words,
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
-            validation_index,
-            source_index,
         )
         # tset might or might not be in corrections depending on boundary detection,
         # but the pattern shouldn't cause an error
@@ -104,24 +85,18 @@ class TestProcessingIntegration:
         """Verify mixed exact and wildcard exclusion patterns work together."""
         word = "test"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 1.0  # High threshold
         adj_letters_map = None
         exclusions = {"tset", "test*"}  # Mix of exact and wildcard
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
             validation_set,
-            filtered_validation_set,
             source_words,
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
-            validation_index,
-            source_index,
         )
 
         # Exclusions bypass frequency check, so we should get results
@@ -289,24 +264,18 @@ class TestRealWorldPatterns:
         """Verify process_word with '*teh*' exclusion pattern."""
         word = "the"
         validation_set = set()
-        filtered_validation_set = set()
         source_words = set()
         typo_freq_threshold = 1.0  # High threshold
         adj_letters_map = None
         exclusions = {"*teh*"}
-        validation_index = BoundaryIndex(filtered_validation_set)
-        source_index = BoundaryIndex(source_words)
 
         corrections, _ = process_word(
             word,
             validation_set,
-            filtered_validation_set,
             source_words,
             typo_freq_threshold,
             adj_letters_map,
             exclusions,
-            validation_index,
-            source_index,
         )
 
         # Exclusion pattern should bypass frequency check
