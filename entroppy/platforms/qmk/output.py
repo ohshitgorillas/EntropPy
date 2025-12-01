@@ -7,6 +7,7 @@ from loguru import logger
 from entroppy.core import BoundaryType, Config, Correction
 from entroppy.platforms.qmk.formatting import format_boundary_markers
 from entroppy.utils import Constants
+from entroppy.utils.helpers import ensure_directory_exists, write_file_safely
 
 
 def format_correction_line(typo: str, word: str, boundary: BoundaryType) -> str:
@@ -49,30 +50,16 @@ def generate_output(corrections: list[Correction], output_path: str | None, conf
     output_file = determine_output_path(output_path)
 
     if output_file:
-        try:
-            os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
-        except PermissionError:
-            logger.error(f"✗ Permission denied creating output directory: {output_file}")
-            logger.error("  Please check directory permissions and try again")
-            raise
-        except OSError as e:
-            logger.error(f"✗ OS error creating output directory {output_file}: {e}")
-            raise
+        # Ensure parent directory exists
+        parent_dir = os.path.dirname(output_file) or "."
+        ensure_directory_exists(parent_dir)
 
-        try:
-            with open(output_file, "w", encoding="utf-8") as f:
-                for line in lines:
-                    f.write(line + "\n")
-        except PermissionError:
-            logger.error(f"✗ Permission denied writing file: {output_file}")
-            logger.error("  Please check file permissions and try again")
-            raise
-        except OSError as e:
-            logger.error(f"✗ OS error writing file {output_file}: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"✗ Unexpected error writing file {output_file}: {e}")
-            raise
+        # Write file with consistent error handling
+        def write_content(f):
+            for line in lines:
+                f.write(line + "\n")
+
+        write_file_safely(output_file, write_content, "writing QMK output file")
 
         if config.verbose:
             logger.info(f"  Wrote {len(lines)} corrections to: {output_file}")

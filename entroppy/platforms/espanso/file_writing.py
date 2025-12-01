@@ -7,6 +7,7 @@ import yaml
 from loguru import logger
 
 from entroppy.utils import expand_file_path
+from entroppy.utils.helpers import ensure_directory_exists, write_file_safely
 
 
 def write_single_yaml_file(args: tuple) -> tuple[str, int]:
@@ -15,8 +16,8 @@ def write_single_yaml_file(args: tuple) -> tuple[str, int]:
 
     yaml_output = {"matches": chunk}
 
-    try:
-        with open(filename, "w", encoding="utf-8") as f:
+    def write_yaml_content(f):
+        try:
             yaml.safe_dump(
                 yaml_output,
                 f,
@@ -25,19 +26,11 @@ def write_single_yaml_file(args: tuple) -> tuple[str, int]:
                 sort_keys=False,
                 width=float("inf"),
             )
-    except PermissionError:
-        logger.error(f"✗ Permission denied writing file: {filename}")
-        logger.error("  Please check file permissions and try again")
-        raise
-    except OSError as e:
-        logger.error(f"✗ OS error writing file {filename}: {e}")
-        raise
-    except yaml.YAMLError as e:
-        logger.error(f"✗ YAML serialization error writing file {filename}: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"✗ Unexpected error writing file {filename}: {e}")
-        raise
+        except yaml.YAMLError as e:
+            logger.error(f"✗ YAML serialization error writing file {filename}: {e}")
+            raise
+
+    write_file_safely(filename, write_yaml_content, "writing YAML file")
 
     return (os.path.basename(filename), len(chunk))
 
@@ -51,15 +44,7 @@ def write_yaml_files(
 ) -> None:
     """Write YAML files in parallel, splitting large files into chunks."""
     output_dir = expand_file_path(output_dir) or output_dir
-    try:
-        os.makedirs(output_dir, exist_ok=True)
-    except PermissionError:
-        logger.error(f"✗ Permission denied creating output directory: {output_dir}")
-        logger.error("  Please check directory permissions and try again")
-        raise
-    except OSError as e:
-        logger.error(f"✗ OS error creating output directory {output_dir}: {e}")
-        raise
+    ensure_directory_exists(output_dir)
 
     write_tasks = []
 

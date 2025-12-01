@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Code deduplication and refactoring**
+  - **File I/O utilities**: Created centralized file I/O utilities in `entroppy/utils/helpers.py`:
+    - `ensure_directory_exists()`: Unified directory creation with consistent error handling
+    - `write_file_safely()`: Unified file writing with standardized error handling
+  - **Refactored file operations**: Eliminated ~100+ lines of duplicated error handling code:
+    - `entroppy/platforms/qmk/output.py`: Uses shared file writing utilities
+    - `entroppy/platforms/espanso/file_writing.py`: Uses shared directory and file utilities
+    - `entroppy/reports/statistics.py`: Uses shared file writing utilities
+    - `entroppy/reports/summary.py`: Uses shared file writing utilities
+  - **Boundary details collection**: Extracted duplicated boundary details collection logic:
+    - Added `_collect_boundary_details()` function in `entroppy/resolution/correction_processing.py`
+    - Eliminated ~20 lines of duplicated code between `process_single_word_correction()` and `process_collision_case()`
+  - **Impact**: Improved maintainability with single source of truth for file I/O operations and reduced code duplication
+
 ## [0.5.2] - 2025-12-01
 
 ### Changed
