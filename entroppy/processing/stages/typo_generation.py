@@ -9,60 +9,29 @@ from loguru import logger
 from tqdm import tqdm
 
 from entroppy.core import Config, Correction
-from entroppy.core.boundaries import BoundaryIndex
 from entroppy.resolution import process_word
 from entroppy.processing.stages.data_models import DictionaryData, TypoGenerationResult
 from entroppy.processing.stages.worker_context import WorkerContext, init_worker, get_worker_context
 
-# Thread-local storage for indexes (built once per worker)
-_worker_indexes = threading.local()
 
-
-def init_worker_with_indexes(context: WorkerContext) -> None:
-    """Initialize worker process with context and build indexes eagerly.
-
-    Args:
-        context: WorkerContext to store in thread-local storage
-    """
-    # Initialize worker context first
-    init_worker(context)
-
-    # Build indexes eagerly during initialization
-    # This prevents the progress bar from freezing when workers start
-    _worker_indexes.validation_index = BoundaryIndex(context.filtered_validation_set)
-    _worker_indexes.source_index = BoundaryIndex(context.source_words_set)
-
-
-def _get_worker_indexes() -> tuple[BoundaryIndex, BoundaryIndex]:
-    """Get boundary indexes for the current worker.
-
-    Returns:
-        Tuple of (validation_index, source_index)
-    """
-    return _worker_indexes.validation_index, _worker_indexes.source_index
-
-
-def process_word_worker(word: str) -> tuple[str, list[Correction], list[str]]:
+def process_word_worker(word: str) -> tuple[str, list[tuple[str, str]], list[str]]:
     """Worker function for multiprocessing.
 
     Args:
         word: The word to process
 
     Returns:
-        Tuple of (word, list of corrections, list of debug messages)
+        Tuple of (word, list of (typo, word) pairs, list of debug messages)
+        Note: Boundaries are determined later in Stage 3 (collision resolution)
     """
     context = get_worker_context()
-    validation_index, source_index = _get_worker_indexes()
     corrections, debug_messages = process_word(
         word,
         context.validation_set,
-        context.filtered_validation_set,
         context.source_words_set,
         context.typo_freq_threshold,
         context.adjacent_letters_map,
         context.exclusions_set,
-        validation_index,
-        source_index,
         context.debug_words,
         context.debug_typo_matcher,
     )
@@ -103,7 +72,7 @@ def generate_typos(
 
         with Pool(
             processes=config.jobs,
-            initializer=init_worker_with_indexes,
+            initializer=init_worker,
             initargs=(context,),
         ) as pool:
             results = pool.imap_unordered(process_word_worker, dict_data.source_words)
@@ -118,8 +87,8 @@ def generate_typos(
                 )
 
             for word, corrections, debug_messages in results:
-                for typo, correction_word, boundary_type in corrections:
-                    typo_map[typo].append((correction_word, boundary_type))
+                for typo, correction_word in corrections:
+                    typo_map[typo].append(correction_word)
                 # Collect debug messages from workers
                 all_debug_messages.extend(debug_messages)
 
@@ -128,13 +97,6 @@ def generate_typos(
             logger.debug(message)
     else:
         # Single-threaded mode
-        # Build boundary indexes for efficient lookups
-        # These are built once and reused for all words
-        if verbose:
-            logger.info("  Building boundary indexes...")
-        validation_index = BoundaryIndex(dict_data.filtered_validation_set)
-        source_index = BoundaryIndex(dict_data.source_words_set)
-
         words_iter = dict_data.source_words
         if verbose:
             words_iter = tqdm(dict_data.source_words, desc="Processing words", unit="word")
@@ -143,18 +105,15 @@ def generate_typos(
             corrections, debug_messages = process_word(
                 word,
                 dict_data.validation_set,
-                dict_data.filtered_validation_set,
                 dict_data.source_words_set,
                 config.typo_freq_threshold,
                 dict_data.adjacent_letters_map,
                 dict_data.exclusions,
-                validation_index,
-                source_index,
                 frozenset(config.debug_words),
                 config.debug_typo_matcher,
             )
-            for typo, correction_word, boundary_type in corrections:
-                typo_map[typo].append((correction_word, boundary_type))
+            for typo, correction_word in corrections:
+                typo_map[typo].append(correction_word)
             # In single-threaded mode, log immediately
             for message in debug_messages:
                 logger.debug(message)
