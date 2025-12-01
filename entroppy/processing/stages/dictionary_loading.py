@@ -43,7 +43,7 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
 
     if verbose and len(filtered_validation_set) != len(validation_set):
         removed = len(validation_set) - len(filtered_validation_set)
-        logger.info(f"Filtered {removed} words from validation set using exclusion patterns")
+        logger.info(f"  Filtered {removed} words from validation set using exclusion patterns")
 
     # Load adjacent letters mapping
     adjacent_letters_map = load_adjacent_letters_map(config.adjacent_letters, verbose)
@@ -51,14 +51,14 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
     # Load source words
     user_words = load_word_list(config.include, verbose)
     if verbose and user_words:
-        logger.info(f"Loaded {len(user_words)} words from include file")
+        logger.info(f"  Loaded {len(user_words)} words from include file")
 
     user_words_set = set(user_words)
     source_words = load_source_words(config, verbose)
     source_words.extend(user_words)
 
     if verbose and user_words:
-        logger.info(f"Included {len(user_words)} user words (bypassed filters)")
+        logger.info(f"  Included {len(user_words)} user words (bypassed filters)")
 
     source_words_set = set(source_words)
 
