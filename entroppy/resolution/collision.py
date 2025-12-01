@@ -6,13 +6,15 @@ from typing import TYPE_CHECKING
 from loguru import logger
 from tqdm import tqdm
 
-from entroppy.core import BoundaryType, Correction
+from entroppy.core import Correction
 from entroppy.core.boundaries import BoundaryIndex
 from entroppy.matching import ExclusionMatcher
 from entroppy.utils.helpers import cached_word_frequency
 
+from entroppy.core import BoundaryType
+
+from .boundary_selection import log_boundary_selection_details
 from .correction_processing import process_collision_case, process_single_word_correction
-from .typo_index import build_typo_substring_index
 from .worker_context import (
     CollisionResolutionContext,
     get_collision_worker_context,
@@ -24,17 +26,18 @@ if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher
 
 
-def _process_typo_worker(item: tuple[str, list[tuple[str, BoundaryType]]]) -> tuple[
+def _process_typo_worker(item: tuple[str, list[str]]) -> tuple[
     Correction | None,
     bool,
     tuple[str, str, str | None] | None,
     tuple[str, list[str], float] | None,
     tuple[str, str, int] | None,
+    dict | None,  # boundary_details
 ]:
     """Worker function to process a single typo collision.
 
     Args:
-        item: Tuple of (typo, word_boundary_list)
+        item: Tuple of (typo, word_list)
 
     Returns:
         Tuple of (correction, was_skipped_short, excluded_info, skipped_collision, skipped_short_info)
@@ -44,7 +47,7 @@ def _process_typo_worker(item: tuple[str, list[tuple[str, BoundaryType]]]) -> tu
         - skipped_collision: (typo, unique_words, ratio) if ambiguous collision, None otherwise
         - skipped_short_info: (typo, word, len(typo)) if skipped short, None otherwise
     """
-    typo, word_boundary_list = item
+    typo, word_list = item
     context = get_collision_worker_context()
     validation_index, source_index = get_worker_indexes()
 
@@ -57,57 +60,55 @@ def _process_typo_worker(item: tuple[str, list[tuple[str, BoundaryType]]]) -> tu
     user_words = set(context.user_words)
     debug_words = set(context.debug_words)
 
-    unique_pairs = list(set(word_boundary_list))
-    unique_words = list(set(w for w, _ in unique_pairs))
+    unique_words = list(set(word_list))
 
     if len(unique_words) == 1:
         # Single word case: no collision
         word = unique_words[0]
-        boundaries = [b for w, b in unique_pairs if w == word]
 
-        correction, was_skipped_short, excluded_info = process_single_word_correction(
-            typo,
-            word,
-            boundaries,
-            context.typo_substring_index,
-            validation_set,
-            source_words,
-            context.min_typo_length,
-            context.min_word_length,
-            user_words,
-            exclusion_matcher,
-            debug_words,
-            None,  # debug_typo_matcher not passed to workers (not easily serializable)
-            validation_index,
-            source_index,
+        correction, was_skipped_short, excluded_info, boundary_details = (
+            process_single_word_correction(
+                typo,
+                word,
+                validation_set,
+                source_words,
+                context.min_typo_length,
+                context.min_word_length,
+                user_words,
+                exclusion_matcher,
+                debug_words,
+                None,  # debug_typo_matcher not passed to workers (not easily serializable)
+                validation_index,
+                source_index,
+            )
         )
 
         if was_skipped_short:
-            return None, True, None, None, (typo, word, len(typo))
+            return None, True, None, None, (typo, word, len(typo)), boundary_details
         elif excluded_info:
-            return None, False, excluded_info, None, None
+            return None, False, excluded_info, None, None, boundary_details
         elif correction:
-            return correction, False, None, None, None
+            return correction, False, None, None, None, boundary_details
         else:
-            return None, False, None, None, None
+            return None, False, None, None, None, boundary_details
     else:
         # Collision case: multiple words compete for same typo
-        correction, was_skipped_short, excluded_info, ratio = process_collision_case(
-            typo,
-            unique_words,
-            unique_pairs,
-            context.typo_substring_index,
-            validation_set,
-            source_words,
-            context.freq_ratio,
-            context.min_typo_length,
-            context.min_word_length,
-            user_words,
-            exclusion_matcher,
-            debug_words,
-            None,  # debug_typo_matcher not passed to workers
-            validation_index,
-            source_index,
+        correction, was_skipped_short, excluded_info, ratio, boundary_details = (
+            process_collision_case(
+                typo,
+                unique_words,
+                validation_set,
+                source_words,
+                context.freq_ratio,
+                context.min_typo_length,
+                context.min_word_length,
+                user_words,
+                exclusion_matcher,
+                debug_words,
+                None,  # debug_typo_matcher not passed to workers
+                validation_index,
+                source_index,
+            )
         )
 
         if was_skipped_short:
@@ -115,18 +116,18 @@ def _process_typo_worker(item: tuple[str, list[tuple[str, BoundaryType]]]) -> tu
             word_freqs = [(w, cached_word_frequency(w, "en")) for w in unique_words]
             word_freqs.sort(key=lambda x: x[1], reverse=True)
             selected_word = word_freqs[0][0]
-            return None, True, None, None, (typo, selected_word, len(typo))
+            return None, True, None, None, (typo, selected_word, len(typo)), boundary_details
         elif excluded_info:
-            return None, False, excluded_info, None, None
+            return None, False, excluded_info, None, None, boundary_details
         elif correction:
-            return correction, False, None, None, None
+            return correction, False, None, None, None, boundary_details
         else:
             # Ambiguous collision - ratio too low
-            return None, False, None, (typo, unique_words, ratio), None
+            return None, False, None, (typo, unique_words, ratio), None, boundary_details
 
 
 def resolve_collisions(
-    typo_map: dict[str, list[tuple[str, BoundaryType]]],
+    typo_map: dict[str, list[str]],
     validation_set: set[str],
     source_words: set[str],
     freq_ratio: float,
@@ -143,7 +144,7 @@ def resolve_collisions(
     """Resolve collisions where multiple words map to same typo.
 
     Args:
-        typo_map: Map of typos to (word, boundary) pairs
+        typo_map: Map of typos to word lists (boundaries determined during resolution)
         validation_set: Set of validation words
         source_words: Set of source words
         freq_ratio: Minimum frequency ratio for collision resolution
@@ -168,14 +169,6 @@ def resolve_collisions(
         # This should only happen in single-threaded mode
         exclusion_set = set()
 
-    # Build set of all typos for checking multi-position appearances
-    all_typos = set(typo_map.keys())
-
-    # Build substring index once for all typos (optimization: eliminates O(n²) repeated checks)
-    if verbose:
-        logger.info(f"  Building typo substring index for {len(all_typos):,} typos...")
-    typo_substring_index = build_typo_substring_index(all_typos, verbose, jobs)
-
     final_corrections = []
     skipped_collisions = []
     skipped_short = []
@@ -197,7 +190,6 @@ def resolve_collisions(
             user_words=frozenset(user_words),
             exclusion_set=frozenset(exclusion_set),
             debug_words=frozenset(debug_words),
-            typo_substring_index=typo_substring_index,
         )
 
         if verbose:
@@ -220,12 +212,14 @@ def resolve_collisions(
                     unit="typo",
                 )
 
+            all_boundary_details = []
             for (
                 correction,
                 was_skipped_short,
                 excluded_info,
                 skipped_collision,
                 skipped_short_info,
+                boundary_details,
             ) in results:
                 if was_skipped_short and skipped_short_info:
                     skipped_short.append(skipped_short_info)
@@ -235,6 +229,20 @@ def resolve_collisions(
                     skipped_collisions.append(skipped_collision)
                 elif correction:
                     final_corrections.append(correction)
+
+                if boundary_details:
+                    all_boundary_details.append(boundary_details)
+
+            # Log boundary selection details AFTER processing completes
+            if all_boundary_details and debug_typo_matcher:
+                for bd in all_boundary_details:
+                    log_boundary_selection_details(
+                        bd["typo"],
+                        bd["word"],
+                        BoundaryType(bd["boundary"]),
+                        bd["details"],
+                        debug_typo_matcher,
+                    )
     else:
         # Single-threaded mode (original implementation)
         # Build boundary indexes for efficient lookups
@@ -253,20 +261,16 @@ def resolve_collisions(
                 unit="typo",
             )
 
-        for typo, word_boundary_list in items_iter:
-            unique_pairs = list(set(word_boundary_list))
-            unique_words = list(set(w for w, _ in unique_pairs))
+        for typo, word_list in items_iter:
+            unique_words = list(set(word_list))
 
             if len(unique_words) == 1:
                 # Single word case: no collision
                 word = unique_words[0]
-                boundaries = [b for w, b in unique_pairs if w == word]
 
-                correction, was_skipped_short, excluded_info = process_single_word_correction(
+                correction, was_skipped_short, excluded_info, _ = process_single_word_correction(
                     typo,
                     word,
-                    boundaries,
-                    typo_substring_index,
                     validation_set,
                     source_words,
                     min_typo_length,
@@ -287,11 +291,9 @@ def resolve_collisions(
                     final_corrections.append(correction)
             else:
                 # Collision case: multiple words compete for same typo
-                correction, was_skipped_short, excluded_info, ratio = process_collision_case(
+                correction, was_skipped_short, excluded_info, ratio, _ = process_collision_case(
                     typo,
                     unique_words,
-                    unique_pairs,
-                    typo_substring_index,
                     validation_set,
                     source_words,
                     freq_ratio,
