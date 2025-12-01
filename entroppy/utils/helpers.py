@@ -1,9 +1,11 @@
 """Shared utility functions for the autocorrect generator."""
 
+import functools
 import os
 import re
-from pathlib import Path
 from re import Pattern
+
+from wordfreq import word_frequency as _word_frequency
 
 
 def compile_wildcard_regex(pattern: str) -> Pattern:
@@ -30,3 +32,26 @@ def expand_file_path(filepath: str | None) -> str | None:
     if not filepath:
         return None
     return os.path.expanduser(filepath)
+
+
+@functools.lru_cache(maxsize=None)
+def cached_word_frequency(word: str, lang: str = "en") -> float:
+    """Cached wrapper for word_frequency to avoid repeated lookups.
+
+    This function caches word frequency lookups to improve performance when
+    the same words are looked up multiple times across different stages of
+    the pipeline (e.g., collision resolution, typo filtering, QMK ranking).
+
+    Args:
+        word: The word to look up
+        lang: Language code (default: "en")
+
+    Returns:
+        Word frequency as a float
+
+    Note:
+        The cache persists across the entire pipeline execution, providing
+        significant performance improvements for large datasets with many
+        repeated word lookups.
+    """
+    return _word_frequency(word, lang)
