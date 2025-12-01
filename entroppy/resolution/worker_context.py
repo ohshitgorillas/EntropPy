@@ -22,7 +22,6 @@ class CollisionResolutionContext:
         user_words: Set of user-provided words
         exclusion_set: Set of exclusion patterns (raw strings, not matcher)
         debug_words: Set of words to debug (exact matches)
-        typo_substring_index: Pre-computed index of substring relationships between typos
     """
 
     validation_set: frozenset[str]
@@ -33,7 +32,6 @@ class CollisionResolutionContext:
     user_words: frozenset[str]
     exclusion_set: frozenset[str]
     debug_words: frozenset[str]
-    typo_substring_index: dict[str, dict[str, bool]]
 
 
 # Thread-local storage for worker context and indexes

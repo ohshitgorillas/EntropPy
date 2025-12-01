@@ -126,9 +126,11 @@ def generalize_typo_patterns(
     removed_count = pre_generalization_count - len(final_corrections)
 
     # Patterns need collision resolution - multiple words might generate same pattern
+    # Note: Patterns already have boundaries from collision resolution, but we need to
+    # re-resolve collisions for patterns themselves (multiple words can generate same pattern)
     pattern_typo_map = defaultdict(list)
-    for typo, word, boundary in patterns:
-        pattern_typo_map[typo].append((word, boundary))
+    for typo, word, _boundary in patterns:
+        pattern_typo_map[typo].append(word)
 
     # Resolve collisions for patterns
     resolved_patterns, _, _, _ = resolve_collisions(

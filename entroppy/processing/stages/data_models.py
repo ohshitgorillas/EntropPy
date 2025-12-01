@@ -34,9 +34,7 @@ class DictionaryData(StageResult):
 class TypoGenerationResult(StageResult):
     """Output from typo generation stage."""
 
-    typo_map: dict[str, list[tuple[str, BoundaryType]]] = Field(
-        default_factory=lambda: defaultdict(list)
-    )
+    typo_map: dict[str, list[str]] = Field(default_factory=lambda: defaultdict(list))
 
 
 class CollisionResolutionResult(StageResult):

@@ -212,7 +212,7 @@ def determine_boundaries(
     source_words: set[str] | frozenset[str],
     validation_index: BoundaryIndex,
     source_index: BoundaryIndex,
-) -> BoundaryType | None:
+) -> BoundaryType:
     """Determine what boundaries are needed for a typo.
 
     Args:
@@ -223,8 +223,7 @@ def determine_boundaries(
         source_index: Pre-built index for source_words (must match source_words)
 
     Returns:
-        BoundaryType indicating what boundaries are needed,
-        or None if correction should be skipped
+        BoundaryType indicating what boundaries are needed
 
     Raises:
         TypeError: If typo is not a string or sets are not sets
