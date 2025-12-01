@@ -49,7 +49,8 @@ class ExclusionMatcher:
 
         # Create a PatternMatcher for word patterns used in typo->word mappings
         word_patterns_in_mappings = {word_pat for _, word_pat, _ in self.wildcard_typo_map}
-        word_patterns_in_mappings.update(self.exact_typo_map.values())
+        # Extract word patterns from exact_typo_map (values are tuples of (word_pat, boundary))
+        word_patterns_in_mappings.update(word_pat for word_pat, _ in self.exact_typo_map.values())
         self.word_matcher = PatternMatcher(word_patterns_in_mappings)
 
     def _match_wildcard(self, text: str, pattern: str) -> bool:
