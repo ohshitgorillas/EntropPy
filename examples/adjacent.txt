@@ -1,9 +1,30 @@
-# letters you intended -> letters you hit instead/in addition
-b -> vn
-p -> o
-o -> pi
-i -> uo8
-c -> v
-e -> wdr
-n -> bm
+# top row
+w -> qe
+e -> wr
+r -> et
+t -> ry
+y -> tu
+u -> yi
+i -> uo
+o -> ip
+p -> o9
+
+# home row
+a -> s
+s -> ad
+d -> sf
+f -> dg
+g -> fh
+h -> gj
+j -> hk
+k -> jl
 l -> k;
+
+# bottom row
+z -> xa
+x -> zc
+c -> vx
+v -> cb
+b -> vn
+n -> bm
+m -> n,
