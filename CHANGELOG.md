@@ -6,7 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.5.2] - 2025-12-01
+
 ### Changed
+
+- **Simplified boundary selection algorithm**
+  - Removed candidate boundary preparation logic - boundaries are now always checked in fixed order (NONE → LEFT → RIGHT → BOTH)
+  - Removed unused `boundaries` and `typo_substring_index` parameters from boundary selection functions
+  - Removed `typo_substring_index` from worker context (no longer needed)
+  - Removed unused `filtered_validation_set`, `validation_index`, and `source_index` parameters from `process_word()` function
+
+- **Enhanced boundary selection debugging**
+  - Added detailed logging for boundary selection decisions when using `--debug-typos`
+  - Logs show why boundaries were chosen/rejected with example words and breakdown by source (validation vs source words)
+  - Boundary details collected during parallel processing and logged after completion (not during scan)
 
 - **Refactored collision resolution module**
   - Split `entroppy/resolution/collision.py` (928 lines) into smaller, focused modules:
