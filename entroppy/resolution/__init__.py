@@ -1,15 +1,13 @@
 """Collision and conflict resolution for EntropPy."""
 
 from .boundary_utils import choose_strictest_boundary
-from .collision import (
-    resolve_collisions,
-    remove_substring_conflicts,
-)
+from .collision import resolve_collisions
 from .conflicts import (
     ConflictDetector,
     get_detector_for_boundary,
     resolve_conflicts_for_group,
 )
+from .substring_conflicts import remove_substring_conflicts
 from .word_processing import process_word
 
 __all__ = [
