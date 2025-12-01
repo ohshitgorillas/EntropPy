@@ -1,8 +1,7 @@
 """QMK ranking and scoring logic."""
 
-from wordfreq import word_frequency
-
 from entroppy.core import BoundaryType, Correction
+from entroppy.utils.helpers import cached_word_frequency
 
 
 def separate_by_type(
@@ -45,7 +44,7 @@ def score_patterns(
         pattern_key = (typo, word, boundary)
         if pattern_key in pattern_replacements:
             total_freq = sum(
-                word_frequency(replaced_word, "en")
+                cached_word_frequency(replaced_word, "en")
                 for _, replaced_word, _ in pattern_replacements[pattern_key]
             )
             scores.append((total_freq, typo, word, boundary))
@@ -58,7 +57,7 @@ def score_direct_corrections(
     """Score direct corrections by word frequency."""
     scores = []
     for typo, word, boundary in direct_corrections:
-        freq = word_frequency(word, "en")
+        freq = cached_word_frequency(word, "en")
         scores.append((freq, typo, word, boundary))
     return scores
 
