@@ -78,13 +78,7 @@ def parse_boundary_markers(pattern: str) -> tuple[str, BoundaryType | None]:
 
     Returns:
         Tuple of (core_pattern, boundary_type)
-
-    Raises:
-        TypeError: If pattern is not a string
     """
-    if not isinstance(pattern, str):
-        raise TypeError(f"pattern must be a string, got {type(pattern)}")
-
     if not pattern:
         return pattern, None
 
@@ -124,20 +118,7 @@ def _check_typo_in_wordset(
 
     Returns:
         True if typo matches any word according to check_type
-
-    Raises:
-        TypeError: If typo is not a string or word_set is not a set
-        ValueError: If check_type is invalid or index doesn't match word_set
     """
-    if not isinstance(typo, str):
-        raise TypeError(f"typo must be a string, got {type(typo)}")
-    if not isinstance(word_set, (set, frozenset)):
-        raise TypeError(f"word_set must be a set or frozenset, got {type(word_set)}")
-    if check_type not in ("substring", "prefix", "suffix"):
-        raise ValueError(f"check_type must be 'substring', 'prefix', or 'suffix', got {check_type}")
-    if index.word_set is not word_set and index.word_set != word_set:
-        raise ValueError("index.word_set must match the provided word_set")
-
     if check_type == "substring":
         return typo in index.substring_set
     if check_type == "prefix":
@@ -224,17 +205,7 @@ def determine_boundaries(
 
     Returns:
         BoundaryType indicating what boundaries are needed
-
-    Raises:
-        TypeError: If typo is not a string or sets are not sets
     """
-    if not isinstance(typo, str):
-        raise TypeError(f"typo must be a string, got {type(typo)}")
-    if not isinstance(validation_set, (set, frozenset)):
-        raise TypeError(f"validation_set must be a set or frozenset, got {type(validation_set)}")
-    if not isinstance(source_words, (set, frozenset)):
-        raise TypeError(f"source_words must be a set or frozenset, got {type(source_words)}")
-
     # Check if typo appears as substring in other contexts
     is_substring_source = is_substring_of_any(typo, source_words, source_index)
     is_substring_validation = is_substring_of_any(typo, validation_set, validation_index)
