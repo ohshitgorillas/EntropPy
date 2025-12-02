@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Refactored `generalize_patterns` function for better maintainability**: Split the large 317-line function into smaller, focused helper functions
+  - **New structure**: Extracted pattern extraction, validation, and processing logic into separate functions (`_extract_and_merge_patterns`, `_validate_single_pattern_single_threaded`, `_run_single_threaded_validation`, `_run_parallel_validation`, etc.)
+  - **Impact**: Improved code readability and maintainability without changing functionality
+  - **Files modified**: `entroppy/core/patterns.py`
+
 - **Pattern generalization performance optimization**: Optimized pattern extraction and validation for faster processing
   - **Pattern extraction**: Removed unnecessary grouping by word length, simplified loop structure
   - **Pattern validation**: Added `CorrectionIndex` class to pre-build suffix/prefix indexes for O(1) lookups instead of O(n) linear scans
