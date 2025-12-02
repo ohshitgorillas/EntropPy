@@ -31,21 +31,7 @@ def _cached_would_corrupt(
     Returns:
         True if the pattern would corrupt the source word, False otherwise
     """
-    idx = source_word.find(typo_pattern)
-    while idx != -1:
-        if match_direction == MatchDirection.RIGHT_TO_LEFT:
-            # PREFIX pattern: check if there's a word boundary before
-            if idx == 0 or not source_word[idx - 1].isalpha():
-                return True
-        else:
-            # SUFFIX pattern: check if there's a word boundary after
-            char_after_idx = idx + len(typo_pattern)
-            if char_after_idx >= len(source_word) or not source_word[char_after_idx].isalpha():
-                return True
-        # Look for next occurrence
-        idx = source_word.find(typo_pattern, idx + 1)
-
-    return False
+    return _would_corrupt_source_word(typo_pattern, source_word, match_direction)
 
 
 def _validate_pattern_result(

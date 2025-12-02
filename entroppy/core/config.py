@@ -145,17 +145,3 @@ def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Conf
         logger.error(f"✗ Configuration validation failed: {e}")
         logger.error("  Please check your configuration values")
         raise ValueError(f"Invalid configuration: {e}") from e
-
-
-# Rebuild model to resolve forward references after DebugTypoMatcher is available
-def _rebuild_config_model():
-    """Rebuild Config model to resolve forward references."""
-    try:
-        Config.model_rebuild()
-    except (TypeError, ValueError, AttributeError):
-        # Model rebuild failed (can happen if forward references aren't resolved yet),
-        # skip silently as this is an optional optimization
-        pass
-
-
-_rebuild_config_model()

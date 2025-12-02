@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Eliminated redundant code in core modules**: Removed duplicate implementations and unused code
+  - **Pattern validation**: Refactored `_cached_would_corrupt()` to call `_would_corrupt_source_word()` instead of duplicating the same logic (~20 lines eliminated)
+  - **Config module**: Removed redundant `_rebuild_config_model()` function and call - `DebugTypoMatcher` is imported at module level, so Pydantic v2 handles forward references automatically (~10 lines eliminated)
+  - **Files modified**: `entroppy/core/pattern_validation.py`, `entroppy/core/config.py`
+  - **Impact**: Cleaner codebase with no functional changes, reduced maintenance burden
+
 - **Simplified redundant garbage correction checks**: Removed redundant condition checks in `false_trigger_check.py`
   - **Previous behavior**: LEFT and RIGHT boundary checks redundantly checked individual conditions that were already included in `would_trigger_start` and `would_trigger_end`
   - **New behavior**: Simplified to use the already-combined `would_trigger_start` and `would_trigger_end` variables directly
