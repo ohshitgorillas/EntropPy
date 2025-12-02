@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Debug logging for QMK filtering and ranking phase**: Added `debug_words` and `debug_typos` support for Stage 6 (platform-specific filtering and ranking)
+  - **Filtering**: Logs when corrections are filtered due to invalid characters, same-typo conflicts, suffix conflicts, or substring conflicts
+  - **Ranking**: Logs separation by type (user words, patterns, direct corrections), scoring details, final ranking position, and max corrections limit application
+  - **Files modified**: `entroppy/platforms/qmk/backend.py`, `entroppy/platforms/qmk/filtering.py`, `entroppy/platforms/qmk/ranking.py`
+  - **Impact**: Enables tracing specific words and typos through QMK's filtering and ranking process
+
 ### Fixed
 
 - **QMK substring conflict detection now catches all substring relationships**: Fixed QMK compilation errors by ensuring all substring conflicts (prefix, suffix, and middle) are detected and removed

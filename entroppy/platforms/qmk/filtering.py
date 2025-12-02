@@ -1,12 +1,17 @@
 """QMK filtering logic for corrections."""
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from loguru import logger
 from tqdm import tqdm
 
 from entroppy.core import BoundaryType, Correction
 from entroppy.platforms.qmk.typo_index import TypoIndex
+from entroppy.utils.debug import is_debug_correction, log_debug_correction
+
+if TYPE_CHECKING:
+    from entroppy.utils.debug import DebugTypoMatcher
 
 
 def filter_character_set(corrections: list[Correction]) -> tuple[list[Correction], list]:
@@ -28,7 +33,10 @@ def filter_character_set(corrections: list[Correction]) -> tuple[list[Correction
 
 
 def filter_character_set_and_resolve_same_typo(
-    corrections: list[Correction], verbose: bool = False
+    corrections: list[Correction],
+    verbose: bool = False,
+    debug_words: set[str] | None = None,
+    debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], list, list]:
     """
     Combined pass: filter invalid characters and resolve same-typo conflicts.
@@ -40,6 +48,8 @@ def filter_character_set_and_resolve_same_typo(
     Args:
         corrections: List of corrections to filter
         verbose: Whether to show progress bar
+        debug_words: Set of words to debug (exact matches)
+        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
 
     Returns:
         Tuple of (filtered_corrections, char_filtered, same_typo_conflicts)
@@ -55,12 +65,31 @@ def filter_character_set_and_resolve_same_typo(
         )
 
     for typo, word, boundary in corrections_iter:
+        correction = (typo, word, boundary)
+        is_debug = is_debug_correction(correction, debug_words or set(), debug_typo_matcher)
+
         # Character validation
         if not all(c.isalpha() or c == "'" for c in typo.lower()):
             char_filtered.append((typo, word, "typo contains invalid chars"))
+            if is_debug:
+                log_debug_correction(
+                    correction,
+                    "Filtered - typo contains invalid characters",
+                    debug_words or set(),
+                    debug_typo_matcher,
+                    "Stage 6",
+                )
             continue
         if not all(c.isalpha() or c == "'" for c in word.lower()):
             char_filtered.append((typo, word, "word contains invalid chars"))
+            if is_debug:
+                log_debug_correction(
+                    correction,
+                    "Filtered - word contains invalid characters",
+                    debug_words or set(),
+                    debug_typo_matcher,
+                    "Stage 6",
+                )
             continue
 
         # Convert to lowercase and group by typo
@@ -89,6 +118,27 @@ def filter_character_set_and_resolve_same_typo(
 
             for removed in sorted_by_restriction[1:]:
                 same_typo_conflicts.append((removed[0], removed[1], kept[0], kept[1], removed[2]))
+                # Debug logging for same-typo conflicts
+                removed_correction = (removed[0], removed[1], removed[2])
+                if is_debug_correction(
+                    removed_correction, debug_words or set(), debug_typo_matcher
+                ):
+                    log_debug_correction(
+                        removed_correction,
+                        f"Filtered - same-typo conflict (kept: {kept[0]} -> {kept[1]} with boundary {kept[2].name})",
+                        debug_words or set(),
+                        debug_typo_matcher,
+                        "Stage 6",
+                    )
+                kept_correction = (kept[0], kept[1], kept[2])
+                if is_debug_correction(kept_correction, debug_words or set(), debug_typo_matcher):
+                    log_debug_correction(
+                        kept_correction,
+                        f"Kept - same-typo conflict (removed: {removed[0]} -> {removed[1]} with boundary {removed[2].name})",
+                        debug_words or set(),
+                        debug_typo_matcher,
+                        "Stage 6",
+                    )
 
     return deduped, char_filtered, same_typo_conflicts
 
@@ -129,7 +179,10 @@ def resolve_same_typo_conflicts(corrections: list[Correction]) -> tuple[list[Cor
 
 
 def detect_suffix_conflicts(
-    corrections: list[Correction], verbose: bool = False
+    corrections: list[Correction],
+    verbose: bool = False,
+    debug_words: set[str] | None = None,
+    debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], list]:
     """
     Detect RTL suffix conflicts across ALL typos.
@@ -147,6 +200,8 @@ def detect_suffix_conflicts(
     Args:
         corrections: List of corrections to check
         verbose: Whether to show progress bar
+        debug_words: Set of words to debug (exact matches)
+        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
     """
     if not corrections:
         return [], []
@@ -156,11 +211,38 @@ def detect_suffix_conflicts(
         logger.info("  Building suffix conflict index...")
     index = TypoIndex(corrections)
 
-    return index.find_suffix_conflicts(corrections, verbose)
+    filtered, conflicts = index.find_suffix_conflicts(corrections, verbose)
+
+    # Debug logging for suffix conflicts
+    if debug_words or debug_typo_matcher:
+        for long_typo, long_word, short_typo, short_word, boundary in conflicts:
+            long_correction = (long_typo, long_word, boundary)
+            if is_debug_correction(long_correction, debug_words or set(), debug_typo_matcher):
+                log_debug_correction(
+                    long_correction,
+                    f"Filtered - suffix conflict (shorter typo '{short_typo}' -> '{short_word}' blocks it)",
+                    debug_words or set(),
+                    debug_typo_matcher,
+                    "Stage 6",
+                )
+            short_correction = (short_typo, short_word, boundary)
+            if is_debug_correction(short_correction, debug_words or set(), debug_typo_matcher):
+                log_debug_correction(
+                    short_correction,
+                    f"Kept - suffix conflict (blocks longer typo '{long_typo}' -> '{long_word}')",
+                    debug_words or set(),
+                    debug_typo_matcher,
+                    "Stage 6",
+                )
+
+    return filtered, conflicts
 
 
 def detect_substring_conflicts(
-    corrections: list[Correction], verbose: bool = False
+    corrections: list[Correction],
+    verbose: bool = False,
+    debug_words: set[str] | None = None,
+    debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], list]:
     """
     Detect general substring conflicts required by QMK.
@@ -181,6 +263,8 @@ def detect_substring_conflicts(
     Args:
         corrections: List of corrections to check
         verbose: Whether to show progress bar
+        debug_words: Set of words to debug (exact matches)
+        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
     """
     if not corrections:
         return [], []
@@ -190,11 +274,38 @@ def detect_substring_conflicts(
         logger.info("  Building substring conflict index...")
     index = TypoIndex(corrections)
 
-    return index.find_substring_conflicts(corrections, verbose)
+    filtered, conflicts = index.find_substring_conflicts(corrections, verbose)
+
+    # Debug logging for substring conflicts
+    if debug_words or debug_typo_matcher:
+        for long_typo, long_word, short_typo, short_word, boundary in conflicts:
+            long_correction = (long_typo, long_word, boundary)
+            if is_debug_correction(long_correction, debug_words or set(), debug_typo_matcher):
+                log_debug_correction(
+                    long_correction,
+                    f"Filtered - substring conflict (shorter typo '{short_typo}' -> '{short_word}' is substring)",
+                    debug_words or set(),
+                    debug_typo_matcher,
+                    "Stage 6",
+                )
+            short_correction = (short_typo, short_word, boundary)
+            if is_debug_correction(short_correction, debug_words or set(), debug_typo_matcher):
+                log_debug_correction(
+                    short_correction,
+                    f"Kept - substring conflict (blocks longer typo '{long_typo}' -> '{long_word}')",
+                    debug_words or set(),
+                    debug_typo_matcher,
+                    "Stage 6",
+                )
+
+    return filtered, conflicts
 
 
 def filter_corrections(
-    corrections: list[Correction], verbose: bool = False
+    corrections: list[Correction],
+    verbose: bool = False,
+    debug_words: set[str] | None = None,
+    debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], dict]:
     """
     Apply QMK-specific filtering.
@@ -209,18 +320,24 @@ def filter_corrections(
     Args:
         corrections: List of corrections to filter
         verbose: Whether to show progress bars
+        debug_words: Set of words to debug (exact matches)
+        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
 
     Returns:
         Tuple of (filtered_corrections, metadata)
     """
     # Combined pass: character filtering + same-typo conflict resolution
     deduped, char_filtered, same_typo_conflicts = filter_character_set_and_resolve_same_typo(
-        corrections, verbose
+        corrections, verbose, debug_words, debug_typo_matcher
     )
 
     # Conflict detection passes (require sorted/grouped data, so kept separate)
-    after_suffix, suffix_conflicts = detect_suffix_conflicts(deduped, verbose)
-    final, substring_conflicts = detect_substring_conflicts(after_suffix, verbose)
+    after_suffix, suffix_conflicts = detect_suffix_conflicts(
+        deduped, verbose, debug_words, debug_typo_matcher
+    )
+    final, substring_conflicts = detect_substring_conflicts(
+        after_suffix, verbose, debug_words, debug_typo_matcher
+    )
 
     # Debug: Check for toin-related conflicts
     toin_patterns = [c for c in final if "toin" in c[0].lower()]
