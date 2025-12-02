@@ -111,10 +111,18 @@ class TypoIndex:
 
         A substring conflict occurs when:
         - typo2 is a substring of typo1 (typo1 is longer)
-        - This is a hard QMK constraint
+        - For QMK (right-to-left matching), typo2 must appear as a SUFFIX of typo1
+          (at the end), since QMK scans right-to-left and would see the suffix first
+        - Applying the pattern (typo2 → word2) to typo1 must produce word1
+          (i.e., remaining + word2 == word1)
+        - This is a hard QMK constraint, but only if the pattern produces correct result
+
+        If the pattern would produce an incorrect result, the longer typo is kept
+        (e.g., `toin → tion` pattern should NOT block `washingtoin → washington` because
+        applying the pattern would produce `washingtion` ≠ `washington`).
 
         Uses substring index for efficient lookup: check if shorter typos
-        appear in the substring set of longer typos.
+        appear as suffixes of longer typos.
 
         Args:
             corrections: List of corrections to check (should be sorted by length)
@@ -138,21 +146,27 @@ class TypoIndex:
 
             is_blocked = False
 
-            # Use pre-computed substring index for this typo
-            # This allows O(1) set membership check instead of O(m) string search
-            substrings = self.substring_index.get(typo1, set())
-
-            # Check if any shorter typo is in the substring set
+            # For QMK (right-to-left), only check if shorter typos appear as SUFFIXES
+            # QMK scans right-to-left, so it would see suffixes first
             for typo2, word2, _ in shorter_typos.values():
                 if typo2 in removed_typos:
                     continue
 
-                # O(1) set membership check instead of O(m) "in" string check
-                if typo2 in substrings:
-                    is_blocked = True
-                    conflicts.append((typo1, word1, typo2, word2, bound1))
-                    removed_typos.add(typo1)
-                    break
+                # Only block if shorter typo appears as SUFFIX (at the end)
+                # This is where QMK would match first when scanning right-to-left
+                if typo1.endswith(typo2) and typo1 != typo2:
+                    # Verify it would produce the same correction
+                    # If applying the pattern doesn't produce the expected result,
+                    # it's not a valid conflict - keep the longer typo
+                    remaining = typo1[: -len(typo2)]
+                    expected = remaining + word2
+                    if expected == word1:
+                        # Valid conflict: pattern produces same result
+                        is_blocked = True
+                        conflicts.append((typo1, word1, typo2, word2, bound1))
+                        removed_typos.add(typo1)
+                        break
+                    # Invalid conflict: pattern would produce wrong result, keep longer typo
 
             if not is_blocked:
                 kept.append((typo1, word1, bound1))

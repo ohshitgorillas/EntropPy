@@ -19,58 +19,58 @@ class TestValidatePatternResult:
     """Test pattern result validation behavior."""
 
     def test_validates_rtl_prefix_pattern_correctly(self) -> None:
-        """When RTL prefix pattern matches correctly, returns True with expected result."""
+        """When prefix pattern matches correctly, returns True with expected result."""
         is_valid, _ = _validate_pattern_result(
-            "teh", "the", "tehword", "theword", MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", "tehword", "theword", BoundaryType.LEFT
         )
         assert is_valid is True
 
     def test_computes_correct_result_for_rtl_prefix_pattern(self) -> None:
-        """When RTL prefix pattern is applied, computes correct expected result."""
+        """When prefix pattern is applied, computes correct expected result."""
         _, expected_result = _validate_pattern_result(
-            "teh", "the", "tehword", "theword", MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", "tehword", "theword", BoundaryType.LEFT
         )
         assert expected_result == "theword"
 
     def test_validates_ltr_suffix_pattern_correctly(self) -> None:
-        """When LTR suffix pattern matches correctly, returns True."""
+        """When suffix pattern matches correctly, returns True."""
         is_valid, _ = _validate_pattern_result(
-            "eh", "he", "wordeh", "wordhe", MatchDirection.LEFT_TO_RIGHT
+            "eh", "he", "wordeh", "wordhe", BoundaryType.RIGHT
         )
         assert is_valid is True
 
     def test_computes_correct_result_for_ltr_suffix_pattern(self) -> None:
-        """When LTR suffix pattern is applied, computes correct expected result."""
+        """When suffix pattern is applied, computes correct expected result."""
         _, expected_result = _validate_pattern_result(
-            "eh", "he", "wordeh", "wordhe", MatchDirection.LEFT_TO_RIGHT
+            "eh", "he", "wordeh", "wordhe", BoundaryType.RIGHT
         )
         assert expected_result == "wordhe"
 
     def test_rejects_rtl_pattern_when_result_does_not_match(self) -> None:
-        """When RTL prefix pattern produces wrong result, returns False."""
+        """When prefix pattern produces wrong result, returns False."""
         is_valid, _ = _validate_pattern_result(
-            "teh", "the", "tehword", "thewrd", MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", "tehword", "thewrd", BoundaryType.LEFT
         )
         assert is_valid is False
 
     def test_rejects_ltr_pattern_when_result_does_not_match(self) -> None:
-        """When LTR suffix pattern produces wrong result, returns False."""
+        """When suffix pattern produces wrong result, returns False."""
         is_valid, _ = _validate_pattern_result(
-            "eh", "he", "wordeh", "wordhr", MatchDirection.LEFT_TO_RIGHT
+            "eh", "he", "wordeh", "wordhr", BoundaryType.RIGHT
         )
         assert is_valid is False
 
     def test_handles_rtl_pattern_with_no_remaining_suffix(self) -> None:
-        """When RTL pattern is the entire typo, handles correctly."""
+        """When prefix pattern is the entire typo, handles correctly."""
         is_valid, _ = _validate_pattern_result(
-            "teh", "the", "teh", "the", MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", "teh", "the", BoundaryType.LEFT
         )
         assert is_valid is True
 
     def test_handles_ltr_pattern_with_no_remaining_prefix(self) -> None:
-        """When LTR pattern is the entire typo, handles correctly."""
+        """When suffix pattern is the entire typo, handles correctly."""
         is_valid, _ = _validate_pattern_result(
-            "eh", "he", "eh", "he", MatchDirection.LEFT_TO_RIGHT
+            "eh", "he", "eh", "he", BoundaryType.RIGHT
         )
         assert is_valid is True
 
@@ -134,7 +134,7 @@ class TestValidatePatternForAllOccurrences:
             ("tehbook", "thebook", BoundaryType.LEFT),
         ]
         is_valid, _ = validate_pattern_for_all_occurrences(
-            "teh", "the", occurrences, MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", occurrences, BoundaryType.LEFT
         )
         assert is_valid is True
 
@@ -145,7 +145,7 @@ class TestValidatePatternForAllOccurrences:
             ("tehbook", "thebook", BoundaryType.LEFT),
         ]
         _, error_msg = validate_pattern_for_all_occurrences(
-            "teh", "the", occurrences, MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", occurrences, BoundaryType.LEFT
         )
         assert error_msg is None
 
@@ -156,7 +156,7 @@ class TestValidatePatternForAllOccurrences:
             ("tehbook", "thewrong", BoundaryType.LEFT),
         ]
         is_valid, _ = validate_pattern_for_all_occurrences(
-            "teh", "the", occurrences, MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", occurrences, BoundaryType.LEFT
         )
         assert is_valid is False
 
@@ -167,7 +167,7 @@ class TestValidatePatternForAllOccurrences:
             ("tehbook", "thewrong", BoundaryType.LEFT),
         ]
         _, error_msg = validate_pattern_for_all_occurrences(
-            "teh", "the", occurrences, MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", occurrences, BoundaryType.LEFT
         )
         assert error_msg is not None
 
@@ -178,7 +178,7 @@ class TestValidatePatternForAllOccurrences:
             ("tehbook", "thewrong", BoundaryType.LEFT),
         ]
         _, error_msg = validate_pattern_for_all_occurrences(
-            "teh", "the", occurrences, MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", occurrences, BoundaryType.LEFT
         )
         assert "tehbook" in error_msg
 
@@ -189,29 +189,29 @@ class TestValidatePatternForAllOccurrences:
             ("tehbook", "thewrong", BoundaryType.LEFT),
         ]
         _, error_msg = validate_pattern_for_all_occurrences(
-            "teh", "the", occurrences, MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", occurrences, BoundaryType.LEFT
         )
         assert "thewrong" in error_msg
 
     def test_validates_ltr_suffix_patterns_correctly(self) -> None:
-        """When LTR suffix pattern works for all occurrences, returns True."""
+        """When suffix pattern works for all occurrences, returns True."""
         occurrences = [
             ("wordeh", "wordhe", BoundaryType.RIGHT),
             ("bookeh", "bookhe", BoundaryType.RIGHT),
         ]
         is_valid, _ = validate_pattern_for_all_occurrences(
-            "eh", "he", occurrences, MatchDirection.LEFT_TO_RIGHT
+            "eh", "he", occurrences, BoundaryType.RIGHT
         )
         assert is_valid is True
 
     def test_rejects_ltr_pattern_when_occurrence_fails(self) -> None:
-        """When LTR suffix pattern fails for any occurrence, returns False."""
+        """When suffix pattern fails for any occurrence, returns False."""
         occurrences = [
             ("wordeh", "wordhe", BoundaryType.RIGHT),
             ("bookeh", "bookhr", BoundaryType.RIGHT),
         ]
         is_valid, _ = validate_pattern_for_all_occurrences(
-            "eh", "he", occurrences, MatchDirection.LEFT_TO_RIGHT
+            "eh", "he", occurrences, BoundaryType.RIGHT
         )
         assert is_valid is False
 
@@ -219,7 +219,7 @@ class TestValidatePatternForAllOccurrences:
         """When pattern has single occurrence, validates correctly."""
         occurrences = [("tehword", "theword", BoundaryType.LEFT)]
         is_valid, _ = validate_pattern_for_all_occurrences(
-            "teh", "the", occurrences, MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", occurrences, BoundaryType.LEFT
         )
         assert is_valid is True
 
@@ -227,7 +227,7 @@ class TestValidatePatternForAllOccurrences:
         """When occurrences list is empty, returns True."""
         occurrences: list[tuple[str, str, BoundaryType]] = []
         is_valid, _ = validate_pattern_for_all_occurrences(
-            "teh", "the", occurrences, MatchDirection.RIGHT_TO_LEFT
+            "teh", "the", occurrences, BoundaryType.LEFT
         )
         assert is_valid is True
 

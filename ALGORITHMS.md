@@ -164,11 +164,25 @@ Patterns are extracted from the **end** of words (suffix patterns) for Espanso, 
 
 #### Suffix Patterns (Espanso - Left-to-Right Matching)
 
-Patterns are extracted from the end of words. The algorithm groups corrections by their "other part" (the prefix that doesn't change) and then tries different suffix lengths from 2 to the maximum possible. A pattern is found when multiple corrections share the same typo suffix and word suffix, and their remaining prefix parts match exactly.
+Patterns are extracted from the end of words. The algorithm:
+1. Groups corrections by word length (for efficiency)
+2. For each correction, extracts all valid pattern candidates at different suffix lengths (2 to max)
+3. Groups directly by `(typo_pattern, word_pattern, boundary)` across ALL corrections, regardless of their "other part" (prefix)
+4. A pattern is found when 2+ corrections share the same typo suffix and word suffix
+
+**Key improvement**: Patterns are found even when corrections have different prefixes. For example, "action" → "action" and "lection" → "lection" both share the pattern "tion" → "tion" despite having different prefixes ("ac" vs "lec").
+
+**Boundary inclusion**: For suffix patterns, corrections with both `RIGHT` and `NONE` boundaries are included, since NONE boundary corrections can still have valid suffix patterns.
 
 #### Prefix Patterns (QMK - Right-to-Left Matching)
 
-Prefix patterns work similarly but extract from the beginning of words. The algorithm groups corrections by their "other part" (the suffix that doesn't change) and tries different prefix lengths.
+Prefix patterns work similarly but extract from the beginning of words:
+1. Groups corrections by word length (for efficiency)
+2. For each correction, extracts all valid pattern candidates at different prefix lengths (2 to max)
+3. Groups directly by `(typo_pattern, word_pattern, boundary)` across ALL corrections, regardless of their "other part" (suffix)
+4. A pattern is found when 2+ corrections share the same typo prefix and word prefix
+
+**Boundary inclusion**: For prefix patterns, corrections with both `LEFT` and `NONE` boundaries are included, since NONE boundary corrections can still have valid prefix patterns.
 
 ### Pattern Validation
 
@@ -181,6 +195,10 @@ Not all patterns are valid. Each pattern must:
 5. **Not corrupt target words (highest priority)** - Pattern must not incorrectly transform any target word from corrections that use the pattern (prevents predictive corrections)
 6. **Not corrupt source words** - Pattern must not incorrectly transform any source word
 7. **Not conflict with existing corrections** - Pattern's (typo, word) pair shouldn't already exist as a direct correction (checked during cross-boundary deduplication)
+8. **Not incorrectly match other corrections** - Pattern must not appear as a substring (prefix or suffix) of another correction's typo where applying the pattern would produce a different result. This check applies in both directions regardless of platform or matching direction:
+   - **Suffix conflicts**: If pattern appears as suffix of another correction's typo, applying the pattern must produce the same result as the direct correction
+   - **Prefix conflicts**: If pattern appears as prefix of another correction's typo, applying the pattern must produce the same result as the direct correction
+   - Example: Pattern `toin → tion` is rejected because it would incorrectly match `washingtoin → washington` as a suffix, producing `washingtion` instead of `washington`
 
 ### Pattern Collision Resolution
 

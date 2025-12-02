@@ -1,5 +1,6 @@
 """Pattern generalization for typo corrections."""
 
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -12,6 +13,7 @@ from entroppy.core.pattern_validation import (
     _log_pattern_acceptance,
     _log_pattern_rejection,
     check_pattern_conflicts,
+    check_pattern_would_incorrectly_match_other_corrections,
     validate_pattern_for_all_occurrences,
 )
 from entroppy.platforms.base import MatchDirection
@@ -74,22 +76,52 @@ def generalize_patterns(
         # Extract exact patterns from matcher for debug logging
         debug_typos_set = set(debug_typo_matcher.exact_patterns)
 
-    # Choose pattern finding strategy based on match direction
-    if match_direction == MatchDirection.RIGHT_TO_LEFT:
-        # RTL matching (QMK): look for prefix patterns (LEFT boundary)
-        found_patterns = find_prefix_patterns(corrections, debug_typos=debug_typos_set)
-        pattern_type = "prefix"
-    else:
-        # LTR matching (Espanso): look for suffix patterns (RIGHT boundary)
-        found_patterns = find_suffix_patterns(corrections, debug_typos=debug_typos_set)
-        pattern_type = "suffix"
+    # Extract BOTH prefix and suffix patterns
+    # Both types are useful regardless of match direction:
+    # - Prefix patterns: match at start of words (e.g., "teh" → "the")
+    # - Suffix patterns: match at end of words (e.g., "toin" → "tion")
+    prefix_patterns = find_prefix_patterns(corrections, debug_typos=debug_typos_set)
+    suffix_patterns = find_suffix_patterns(corrections, debug_typos=debug_typos_set)
+
+    # Combine both pattern types into single dict
+    # If same pattern key exists in both, merge the occurrences
+    found_patterns = defaultdict(list)
+    for pattern_key, occurrences in prefix_patterns.items():
+        found_patterns[pattern_key].extend(occurrences)
+    for pattern_key, occurrences in suffix_patterns.items():
+        # Merge occurrences if pattern already exists, otherwise add new
+        if pattern_key in found_patterns:
+            # Deduplicate: same correction might appear in both prefix and suffix patterns
+            existing_typos = {
+                (typo, word, boundary) for typo, word, boundary in found_patterns[pattern_key]
+            }
+            for occ in occurrences:
+                if occ not in existing_typos:
+                    found_patterns[pattern_key].append(occ)
+        else:
+            found_patterns[pattern_key].extend(occurrences)
 
     if verbose:
-        logger.info(f"Generalizing {len(found_patterns)} {pattern_type} patterns...")
+        logger.info(
+            f"Found {len(prefix_patterns)} prefix and {len(suffix_patterns)} suffix pattern candidates "
+            f"({len(found_patterns)} unique patterns)..."
+        )
+        logger.info("Generalizing patterns...")
 
     for (typo_pattern, word_pattern, boundary), occurrences in found_patterns.items():
         # Skip patterns with only one occurrence (not worth generalizing)
         if len(occurrences) < 2:
+            if verbose and debug_typo_matcher:
+                # Check if this pattern matches any debug typos
+                if any(
+                    debug_typo.lower() in typo_pattern.lower()
+                    or any(debug_typo.lower() in occ[0].lower() for occ in occurrences)
+                    for debug_typo in debug_typo_matcher.exact_patterns
+                ):
+                    logger.debug(
+                        f"[PATTERN GENERALIZATION] Skipping pattern '{typo_pattern}' → '{word_pattern}': "
+                        f"only {len(occurrences)} occurrence (need 2+)"
+                    )
             continue
 
         # Check if any of the occurrences involve debug items (for logging)
@@ -97,10 +129,28 @@ def generalize_patterns(
             is_debug_correction(occ, debug_words, debug_typo_matcher) for occ in occurrences
         )
 
+        # Debug logging for pattern candidates
+        is_debug_pattern = False
+        if debug_typo_matcher:
+            is_debug_pattern = any(
+                debug_typo.lower() in typo_pattern.lower()
+                or any(debug_typo.lower() in occ[0].lower() for occ in occurrences)
+                for debug_typo in debug_typo_matcher.exact_patterns
+            )
+            if is_debug_pattern:
+                logger.debug(
+                    f"[PATTERN GENERALIZATION] Processing pattern candidate: "
+                    f"'{typo_pattern}' → '{word_pattern}' ({len(occurrences)} occurrences)"
+                )
+
         # Reject patterns that are too short
         if len(typo_pattern) < min_typo_length:
             reason = f"Too short (< {min_typo_length})"
             rejected_patterns.append((typo_pattern, word_pattern, reason))
+            if is_debug_pattern:
+                logger.debug(
+                    f"[PATTERN GENERALIZATION] REJECTED: '{typo_pattern}' → '{word_pattern}': {reason}"
+                )
             _log_pattern_rejection(
                 typo_pattern,
                 word_pattern,
@@ -113,11 +163,17 @@ def generalize_patterns(
             continue
 
         # Validate that pattern works correctly for all occurrences
+        # Use boundary to determine if pattern is prefix or suffix, not match_direction
         is_valid, validation_error = validate_pattern_for_all_occurrences(
-            typo_pattern, word_pattern, occurrences, match_direction
+            typo_pattern, word_pattern, occurrences, boundary
         )
         if not is_valid:
             rejected_patterns.append((typo_pattern, word_pattern, validation_error))
+            if is_debug_pattern:
+                logger.debug(
+                    f"[PATTERN GENERALIZATION] REJECTED: '{typo_pattern}' → '{word_pattern}': "
+                    f"{validation_error}"
+                )
             _log_pattern_rejection(
                 typo_pattern,
                 word_pattern,
@@ -144,11 +200,44 @@ def generalize_patterns(
         )
         if not is_safe:
             rejected_patterns.append((typo_pattern, word_pattern, conflict_error))
+            if is_debug_pattern:
+                logger.debug(
+                    f"[PATTERN GENERALIZATION] REJECTED: '{typo_pattern}' → '{word_pattern}': "
+                    f"{conflict_error}"
+                )
             _log_pattern_rejection(
                 typo_pattern,
                 word_pattern,
                 boundary,
                 conflict_error,
+                has_debug_occurrence,
+                debug_words,
+                debug_typo_matcher,
+            )
+            continue
+
+        # Check if pattern would incorrectly match other corrections
+        # This is critical for QMK where patterns can incorrectly match longer typos
+        is_safe, incorrect_match_error = check_pattern_would_incorrectly_match_other_corrections(
+            typo_pattern,
+            word_pattern,
+            boundary,
+            corrections,  # All corrections to check against
+            occurrences,  # Corrections this pattern replaces (exclude from check)
+            match_direction,
+        )
+        if not is_safe:
+            rejected_patterns.append((typo_pattern, word_pattern, incorrect_match_error))
+            if is_debug_pattern:
+                logger.debug(
+                    f"[PATTERN GENERALIZATION] REJECTED: '{typo_pattern}' → '{word_pattern}': "
+                    f"{incorrect_match_error}"
+                )
+            _log_pattern_rejection(
+                typo_pattern,
+                word_pattern,
+                boundary,
+                incorrect_match_error,
                 has_debug_occurrence,
                 debug_words,
                 debug_typo_matcher,

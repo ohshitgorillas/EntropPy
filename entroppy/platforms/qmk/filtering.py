@@ -191,6 +191,16 @@ def filter_corrections(
     after_suffix, suffix_conflicts = detect_suffix_conflicts(deduped)
     final, substring_conflicts = detect_substring_conflicts(after_suffix)
 
+    # Debug: Check for toin-related conflicts
+    from loguru import logger
+
+    toin_patterns = [c for c in final if "toin" in c[0].lower()]
+    if len(toin_patterns) > 1:
+        logger.debug(
+            f"[QMK FILTERING] Found {len(toin_patterns)} toin-related patterns after substring conflict detection: "
+            f"{[c[0] for c in toin_patterns]}"
+        )
+
     metadata = {
         "total_input": len(corrections),
         "total_output": len(final),

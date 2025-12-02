@@ -66,10 +66,23 @@ def _find_patterns(
     patterns = defaultdict(list)
     debug_enabled = debug_typos is not None and len(debug_typos) > 0
 
-    # Filter corrections by boundary type first
-    filtered_corrections = [
-        (typo, word, boundary) for typo, word, boundary in corrections if boundary == boundary_type
-    ]
+    # Filter corrections by boundary type
+    # For suffix patterns (RIGHT), also include NONE boundary (matches anywhere, so suffix is valid)
+    # For prefix patterns (LEFT), also include NONE boundary (matches anywhere, so prefix is valid)
+    if is_suffix:
+        # Suffix patterns: include RIGHT and NONE boundaries
+        filtered_corrections = [
+            (typo, word, boundary)
+            for typo, word, boundary in corrections
+            if boundary == boundary_type or boundary == BoundaryType.NONE
+        ]
+    else:
+        # Prefix patterns: include LEFT and NONE boundaries
+        filtered_corrections = [
+            (typo, word, boundary)
+            for typo, word, boundary in corrections
+            if boundary == boundary_type or boundary == BoundaryType.NONE
+        ]
 
     if not filtered_corrections:
         return patterns
@@ -88,9 +101,9 @@ def _find_patterns(
     # Group directly by (typo_pattern, word_pattern, boundary) across ALL corrections
     # This finds patterns even when corrections have different "other parts"
     # Example: "action" and "lection" both share pattern "tion" → "tion" despite different prefixes
-    pattern_candidates: dict[
-        tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]
-    ] = defaultdict(list)
+    pattern_candidates: dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]] = (
+        defaultdict(list)
+    )
 
     # Track debug info for specific typos
     debug_corrections = {}
@@ -182,12 +195,12 @@ def _find_patterns(
                             f"(boundary={boundary.value}, {len(unique_matches)} occurrences)"
                         )
                         for typo, word, orig_boundary in unique_matches:
-                            logger.debug(f"  - '{typo}' → '{word}' (boundary={orig_boundary.value})")
+                            logger.debug(
+                                f"  - '{typo}' → '{word}' (boundary={orig_boundary.value})"
+                            )
 
     if debug_enabled:
-        logger.debug(
-            f"[PATTERN EXTRACTION] Final: {len(patterns)} patterns with 2+ occurrences"
-        )
+        logger.debug(f"[PATTERN EXTRACTION] Final: {len(patterns)} patterns with 2+ occurrences")
         # Show debug corrections summary
         for (typo, word, boundary), candidates in debug_corrections.items():
             if candidates:

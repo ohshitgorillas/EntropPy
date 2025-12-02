@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Pattern validation now checks substring conflicts in both directions**: Fixed unsafe pattern acceptance where patterns could incorrectly match other corrections
+  - **Previous behavior**: Only checked suffix conflicts for LEFT boundary patterns in RTL matching, missing unsafe patterns with NONE boundary
+  - **New behavior**: Checks both suffix and prefix conflicts for all patterns regardless of boundary type, platform, or matching direction
+  - **Example**: Pattern `toin → tion` (boundary NONE) now correctly rejected because it would incorrectly match `washingtoin → washington` as suffix, producing `washingtion` instead
+  - **Files modified**: `entroppy/core/pattern_validation.py`
+  - **Impact**: Unsafe patterns are now rejected during generalization, preventing incorrect corrections
+
 - **Pattern extraction algorithm fix**: Fixed pattern extraction to find patterns across corrections with different "other parts"
   - **Previous behavior**: Grouped corrections by `(other_part, length)` first, then looked for patterns within each group
     - Missed patterns like "tion" → "tion" when corrections had different prefixes (e.g., "action" vs "lection")
@@ -16,6 +23,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Example: Now correctly finds "tion" → "tion" pattern from "action" → "action" and "lection" → "lection" despite different prefixes
   - **Files modified**: `entroppy/core/pattern_extraction.py`
   - **Impact**: Discovers more patterns, especially for suffix patterns like "tion", "ing", etc.
+
+- **Pattern extraction now finds both prefix and suffix patterns**: Changed pattern generalization to extract both prefix and suffix patterns for all platforms
+  - **Previous behavior**: Only extracted prefix patterns for QMK (RTL) or suffix patterns for Espanso (LTR) based on match direction
+  - **New behavior**: Extracts both prefix and suffix patterns regardless of platform
+    - QMK now finds both prefix patterns (e.g., `teh → the`) and suffix patterns (e.g., `toin → tion`)
+    - Espanso now finds both suffix patterns and prefix patterns
+  - **Files modified**: `entroppy/core/patterns.py`
+  - **Impact**: Significantly more patterns discovered (e.g., 1785 patterns vs 923 patterns), better dictionary compression
+
+- **Pattern validation now uses boundary type instead of match direction**: Fixed pattern validation to correctly determine if a pattern is prefix or suffix based on its boundary type
+  - **Previous behavior**: Used `match_direction` to determine if pattern was prefix (RTL) or suffix (LTR)
+    - Caused validation failures for suffix patterns in QMK (e.g., `toin → tion` was validated as prefix pattern)
+  - **New behavior**: Uses pattern's boundary type (LEFT=prefix, RIGHT=suffix, NONE=check position) to determine validation logic
+    - Suffix patterns (RIGHT boundary) validated as suffixes regardless of match direction
+    - Prefix patterns (LEFT boundary) validated as prefixes regardless of match direction
+  - **Files modified**: `entroppy/core/pattern_validation.py`, `tests/unit/test_pattern_validation.py`
+  - **Impact**: Patterns now validate correctly, allowing suffix patterns like `toin → tion` to be accepted for QMK
+
+- **QMK substring conflict detection now only checks suffixes**: Fixed substring conflict detection to only remove longer typos when shorter typo appears as suffix (not anywhere in the string)
+  - **Previous behavior**: Removed longer typos if shorter typo appeared anywhere as substring
+    - Caused false positives: `washingtoin` was removed because it contained `gto` in the middle
+    - Produced incorrect results: `washingtoin` → `washington` was blocked by `gto` → `got`, producing `washgottion`
+  - **New behavior**: Only removes longer typos if shorter typo appears as suffix (at the end)
+    - QMK scans right-to-left, so it would see suffixes first
+    - Only suffixes can actually block longer typos in QMK's matching
+  - **Files modified**: `entroppy/platforms/qmk/typo_index.py`
+  - **Impact**: Eliminates false positive substring conflicts, prevents valid corrections from being incorrectly removed
 
 ### Added
 

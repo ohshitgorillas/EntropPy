@@ -4,6 +4,7 @@ import functools
 from typing import TYPE_CHECKING
 
 from entroppy.core.boundaries import BoundaryIndex, BoundaryType, would_trigger_at_end
+from entroppy.core.types import Correction
 from entroppy.platforms.base import MatchDirection
 from entroppy.utils.debug import DebugTypoMatcher, log_debug_correction
 
@@ -112,7 +113,7 @@ def _validate_pattern_result(
     word_pattern: str,
     full_typo: str,
     full_word: str,
-    match_direction: MatchDirection,
+    boundary: BoundaryType,
 ) -> tuple[bool, str]:
     """Validate that a pattern produces the expected result for a specific case.
 
@@ -121,19 +122,37 @@ def _validate_pattern_result(
         word_pattern: The word pattern to validate
         full_typo: The full typo string
         full_word: The full correct word
-        match_direction: The match direction (RTL for prefix, LTR for suffix)
+        boundary: The boundary type (LEFT/RIGHT indicates prefix/suffix, NONE/BOTH need pattern position)
 
     Returns:
         Tuple of (is_valid, expected_result)
     """
-    if match_direction == MatchDirection.RIGHT_TO_LEFT:
+    # Determine if pattern is prefix or suffix based on boundary
+    # RIGHT boundary = suffix pattern (matches at end)
+    # LEFT boundary = prefix pattern (matches at start)
+    # NONE/BOTH boundaries: need to check if pattern appears at start or end of typo
+    if boundary == BoundaryType.RIGHT:
+        # SUFFIX pattern: typo_pattern at end
+        remaining_prefix = full_typo[: -len(typo_pattern)]
+        expected_result = remaining_prefix + word_pattern
+    elif boundary == BoundaryType.LEFT:
         # PREFIX pattern: typo_pattern at start
         remaining_suffix = full_typo[len(typo_pattern) :]
         expected_result = word_pattern + remaining_suffix
     else:
-        # SUFFIX pattern: typo_pattern at end
-        remaining_prefix = full_typo[: -len(typo_pattern)]
-        expected_result = remaining_prefix + word_pattern
+        # NONE or BOTH boundary: check if pattern appears at start or end
+        # Try suffix first (more common), then prefix
+        if full_typo.endswith(typo_pattern):
+            # SUFFIX pattern
+            remaining_prefix = full_typo[: -len(typo_pattern)]
+            expected_result = remaining_prefix + word_pattern
+        elif full_typo.startswith(typo_pattern):
+            # PREFIX pattern
+            remaining_suffix = full_typo[len(typo_pattern) :]
+            expected_result = word_pattern + remaining_suffix
+        else:
+            # Pattern doesn't match - validation fails
+            return False, f"Pattern '{typo_pattern}' not found in '{full_typo}'"
 
     return expected_result == full_word, expected_result
 
@@ -242,7 +261,7 @@ def validate_pattern_for_all_occurrences(
     typo_pattern: str,
     word_pattern: str,
     occurrences: list[tuple[str, str, BoundaryType]],
-    match_direction: MatchDirection,
+    boundary: BoundaryType,
 ) -> tuple[bool, str | None]:
     """Validate that a pattern works correctly for all its occurrences.
 
@@ -250,14 +269,14 @@ def validate_pattern_for_all_occurrences(
         typo_pattern: The typo pattern to validate
         word_pattern: The word pattern to validate
         occurrences: List of (full_typo, full_word, boundary) tuples
-        match_direction: The match direction
+        boundary: The boundary type of the pattern (determines if prefix or suffix)
 
     Returns:
         Tuple of (is_valid, error_message). error_message is None if valid.
     """
     for full_typo, full_word, _ in occurrences:
         is_valid, expected_result = _validate_pattern_result(
-            typo_pattern, word_pattern, full_typo, full_word, match_direction
+            typo_pattern, word_pattern, full_typo, full_word, boundary
         )
         if not is_valid:
             error_msg = (
@@ -320,5 +339,89 @@ def check_pattern_conflicts(
         )
     if would_corrupt_source:
         return False, "Would corrupt source words"
+
+    return True, None
+
+
+def check_pattern_would_incorrectly_match_other_corrections(
+    typo_pattern: str,
+    word_pattern: str,
+    boundary: BoundaryType,
+    all_corrections: list[Correction],
+    pattern_occurrences: list[Correction],
+    match_direction: MatchDirection,
+) -> tuple[bool, str | None]:
+    """Check if a pattern would incorrectly match other corrections.
+
+    Checks for substring conflicts in BOTH directions regardless of platform or matching direction:
+    - SUFFIX conflicts: If pattern appears as suffix of another correction's typo
+      (relevant for QMK RTL matching where patterns match at end)
+    - PREFIX conflicts: If pattern appears as prefix of another correction's typo
+      (relevant for Espanso LTR matching where patterns match at start)
+
+    If applying the pattern would produce a different result than the direct correction,
+    the pattern is unsafe and should be rejected.
+
+    Example:
+        Pattern: `toin → tion` (suffix pattern, boundary LEFT or NONE)
+        Direct correction: `washingtoin → washington`
+        Problem: Pattern would match `washingtoin` as suffix and produce `washingtion` ≠ `washington`
+        Result: Pattern should be rejected
+
+    Args:
+        typo_pattern: The typo pattern to check
+        word_pattern: The word pattern to check
+        boundary: The boundary type of the pattern (checked regardless of value)
+        all_corrections: All corrections that exist (to check against)
+        pattern_occurrences: Corrections that this pattern would replace (exclude from check)
+        match_direction: The match direction (unused, kept for API compatibility)
+
+    Returns:
+        Tuple of (is_safe, error_message). error_message is None if safe.
+    """
+    # Build set of corrections that this pattern replaces (to exclude from check)
+    pattern_typos = {(typo, word) for typo, word, _ in pattern_occurrences}
+
+    # Check if pattern would incorrectly match other corrections
+    # We need to check in both directions regardless of platform/matching direction:
+    # 1. For RTL/QMK: Check if pattern appears as SUFFIX (matches at end)
+    # 2. For LTR/Espanso: Check if pattern appears as PREFIX (matches at start)
+    # This covers all cases where a pattern could incorrectly match a longer correction
+
+    # Check all other corrections
+    for other_typo, other_word, _ in all_corrections:
+        # Skip corrections that this pattern replaces
+        if (other_typo, other_word) in pattern_typos:
+            continue
+
+        # Check if pattern appears as SUFFIX of other correction's typo
+        # This is relevant for QMK RTL matching (patterns match at end)
+        # Also check NONE boundary patterns that could match as suffixes
+        if other_typo.endswith(typo_pattern) and other_typo != typo_pattern:
+            # Calculate what applying the pattern would produce
+            remaining = other_typo[: -len(typo_pattern)]
+            pattern_result = remaining + word_pattern
+
+            # If pattern would produce different result, it's unsafe
+            if pattern_result != other_word:
+                return False, (
+                    f"Would incorrectly match '{other_typo}' → '{other_word}' "
+                    f"as suffix (would produce '{pattern_result}' instead)"
+                )
+
+        # Check if pattern appears as PREFIX of other correction's typo
+        # This is relevant for Espanso LTR matching (patterns match at start)
+        # Also check NONE boundary patterns that could match as prefixes
+        if other_typo.startswith(typo_pattern) and other_typo != typo_pattern:
+            # Calculate what applying the pattern would produce
+            remaining = other_typo[len(typo_pattern) :]
+            pattern_result = word_pattern + remaining
+
+            # If pattern would produce different result, it's unsafe
+            if pattern_result != other_word:
+                return False, (
+                    f"Would incorrectly match '{other_typo}' → '{other_word}' "
+                    f"as prefix (would produce '{pattern_result}' instead)"
+                )
 
     return True, None
