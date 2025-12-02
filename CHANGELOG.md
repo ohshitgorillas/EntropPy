@@ -25,6 +25,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - **Impact**: Improved code readability and maintainability without changing functionality
   - **Files modified**: `entroppy/core/patterns.py`
 
+- **Refactored `choose_boundary_for_typo` function for better maintainability**: Split the large 278-line function into smaller, focused helper functions
+  - **New structure**: Extracted debug checking, boundary order determination, logging, and rejection handling into separate functions (`_should_debug_boundary_selection`, `_determine_boundary_order`, `_log_boundary_order_selection`, `_log_boundary_rejection`, etc.)
+  - **Impact**: Improved code readability and maintainability without changing functionality
+  - **Files modified**: `entroppy/resolution/boundary_selection.py`
+
 - **Pattern generalization performance optimization**: Optimized pattern extraction and validation for faster processing
   - **Pattern extraction**: Removed unnecessary grouping by word length, simplified loop structure
   - **Pattern validation**: Added `CorrectionIndex` class to pre-build suffix/prefix indexes for O(1) lookups instead of O(n) linear scans

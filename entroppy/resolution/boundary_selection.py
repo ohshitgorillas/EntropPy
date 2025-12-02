@@ -44,6 +44,99 @@ def _check_typo_in_target_word(
     return is_prefix, is_suffix, is_substring
 
 
+def _get_example_words_with_prefix(
+    typo: str, validation_index: BoundaryIndex, source_index: BoundaryIndex
+) -> list[str]:
+    """Get example words that have typo as a prefix.
+
+    Args:
+        typo: The typo string
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+
+    Returns:
+        List of example words (up to 3 total, prioritizing validation words)
+    """
+    examples = []
+    # Check validation index first
+    if typo in validation_index.prefix_index:
+        for word in validation_index.prefix_index[typo]:
+            if word != typo and len(examples) < 3:
+                examples.append(word)
+    # Then check source index if we need more examples
+    if len(examples) < 3 and typo in source_index.prefix_index:
+        for word in source_index.prefix_index[typo]:
+            if word != typo and word not in examples and len(examples) < 3:
+                examples.append(word)
+    return examples
+
+
+def _get_example_words_with_suffix(
+    typo: str, validation_index: BoundaryIndex, source_index: BoundaryIndex
+) -> list[str]:
+    """Get example words that have typo as a suffix.
+
+    Args:
+        typo: The typo string
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+
+    Returns:
+        List of example words (up to 3 total, prioritizing validation words)
+    """
+    examples = []
+    # Check validation index first
+    if typo in validation_index.suffix_index:
+        for word in validation_index.suffix_index[typo]:
+            if word != typo and len(examples) < 3:
+                examples.append(word)
+    # Then check source index if we need more examples
+    if len(examples) < 3 and typo in source_index.suffix_index:
+        for word in source_index.suffix_index[typo]:
+            if word != typo and word not in examples and len(examples) < 3:
+                examples.append(word)
+    return examples
+
+
+def _get_example_words_with_substring(
+    typo: str, validation_index: BoundaryIndex, source_index: BoundaryIndex
+) -> list[str]:
+    """Get example words that contain typo as a substring (not prefix/suffix).
+
+    Args:
+        typo: The typo string
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+
+    Returns:
+        List of example words (up to 3 total, prioritizing validation words)
+    """
+    examples = []
+    # Check validation index first
+    for word in validation_index.word_set:
+        if (
+            typo in word
+            and word != typo
+            and not word.startswith(typo)
+            and not word.endswith(typo)
+            and len(examples) < 3
+        ):
+            examples.append(word)
+    # Then check source index if we need more examples
+    if len(examples) < 3:
+        for word in source_index.word_set:
+            if (
+                typo in word
+                and word != typo
+                and not word.startswith(typo)
+                and not word.endswith(typo)
+                and word not in examples
+                and len(examples) < 3
+            ):
+                examples.append(word)
+    return examples
+
+
 def _check_false_trigger_with_details(
     typo: str,
     boundary: BoundaryType,
@@ -192,6 +285,310 @@ def _would_cause_false_trigger(
     return would_cause
 
 
+def _should_debug_boundary_selection(
+    typo: str,
+    word: str | None,
+    debug_words: set[str] | None,
+    debug_typo_matcher: DebugTypoMatcher | None,
+) -> bool:
+    """Check if boundary selection should be debugged.
+
+    Args:
+        typo: The typo string
+        word: Optional word associated with this typo
+        debug_words: Set of words to debug (exact matches)
+        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
+
+    Returns:
+        True if debugging should be enabled, False otherwise
+    """
+    if word:
+        if is_debug_word(word, debug_words or set()):
+            return True
+    if debug_typo_matcher:
+        # Check if typo matches any debug pattern (try with NONE boundary as placeholder)
+        return is_debug_typo(typo, BoundaryType.NONE, debug_typo_matcher)
+    return False
+
+
+def _determine_boundary_order(
+    typo: str, word: str | None
+) -> tuple[list[BoundaryType], tuple[bool, bool, bool]]:
+    """Determine the boundary order based on typo's relationship to target word.
+
+    Args:
+        typo: The typo string
+        word: Optional target word to check relationship against
+
+    Returns:
+        Tuple of (boundary_order, relationship) where relationship is
+        (is_prefix, is_suffix, is_middle)
+    """
+    # Check target word relationship first to determine appropriate boundary order
+    target_is_prefix, target_is_suffix, target_is_middle = (
+        _check_typo_in_target_word(typo, word) if word else (False, False, False)
+    )
+
+    # Build boundary order based on target word relationship
+    if target_is_suffix:
+        # Typo is suffix of target - skip LEFT (doesn't match relationship)
+        # LEFT boundary means "match at word start", but typo appears at word end
+        # Try: NONE, RIGHT, BOTH
+        boundary_order = [BoundaryType.NONE, BoundaryType.RIGHT, BoundaryType.BOTH]
+    elif target_is_prefix:
+        # Typo is prefix of target - skip RIGHT (doesn't match relationship)
+        # RIGHT boundary means "match at word end", but typo appears at word start
+        # Try: NONE, LEFT, BOTH
+        boundary_order = [BoundaryType.NONE, BoundaryType.LEFT, BoundaryType.BOTH]
+    elif target_is_middle:
+        # Typo is middle substring - skip LEFT and RIGHT (both incompatible)
+        # Neither LEFT nor RIGHT make sense for middle substrings
+        # Try: NONE, BOTH
+        boundary_order = [BoundaryType.NONE, BoundaryType.BOTH]
+    else:
+        # Default order: no target word relationship detected
+        # Try all boundaries: NONE, LEFT, RIGHT, BOTH
+        boundary_order = [
+            BoundaryType.NONE,
+            BoundaryType.LEFT,
+            BoundaryType.RIGHT,
+            BoundaryType.BOTH,
+        ]
+
+    return boundary_order, (target_is_prefix, target_is_suffix, target_is_middle)
+
+
+def _log_boundary_order_selection(
+    typo: str,
+    word: str | None,
+    relationship: tuple[bool, bool, bool],
+    debug_typo_matcher: DebugTypoMatcher | None,
+) -> None:
+    """Log the boundary order selection for debugging.
+
+    Args:
+        typo: The typo string
+        word: Optional word associated with this typo
+        relationship: Tuple of (is_prefix, is_suffix, is_middle)
+        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
+    """
+    target_is_prefix, target_is_suffix, target_is_middle = relationship
+    word_info = f" (word: {word})" if word else ""
+
+    if target_is_suffix:
+        message = (
+            f"Boundary selection starting{word_info} - typo is SUFFIX of target, "
+            f"skipping LEFT boundary"
+        )
+    elif target_is_prefix:
+        message = (
+            f"Boundary selection starting{word_info} - typo is PREFIX of target, "
+            f"skipping RIGHT boundary"
+        )
+    elif target_is_middle:
+        message = (
+            f"Boundary selection starting{word_info} - typo is MIDDLE substring of target, "
+            f"skipping LEFT and RIGHT boundaries"
+        )
+    else:
+        message = f"Boundary selection starting{word_info}"
+
+    log_debug_typo(
+        typo,
+        message,
+        (
+            debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
+            if debug_typo_matcher
+            else None
+        ),
+        "Stage 3",
+    )
+
+
+def _format_incorrect_transformation(
+    conflict_word: str, typo_str: str, word_str: str
+) -> str:
+    """Format how the correction would incorrectly apply.
+
+    Args:
+        conflict_word: The word that would be incorrectly transformed
+        typo_str: The typo string
+        word_str: The target word string
+
+    Returns:
+        Formatted string showing the incorrect transformation
+    """
+    if conflict_word.startswith(typo_str):
+        # Prefix case
+        replacement = conflict_word.replace(typo_str, word_str, 1)
+        return (
+            f'"{typo_str}" -> "{word_str}" in {conflict_word} -> '
+            f"{replacement}  xx INCORRECT"
+        )
+    if conflict_word.endswith(typo_str):
+        # Suffix case
+        replacement = conflict_word.rsplit(typo_str, 1)[0] + word_str
+        return (
+            f'"{typo_str}" -> "{word_str}" in {conflict_word} -> '
+            f"{replacement}  xx INCORRECT"
+        )
+    # Middle substring case
+    replacement = conflict_word.replace(typo_str, word_str, 1)
+    return (
+        f'"{typo_str}" -> "{word_str}" in {conflict_word} -> '
+        f"{replacement}  xx INCORRECT"
+    )
+
+
+def _log_boundary_rejection(
+    typo: str,
+    word: str | None,
+    boundary: BoundaryType,
+    details: dict[str, bool],
+    validation_index: BoundaryIndex,
+    source_index: BoundaryIndex,
+    debug_typo_matcher: DebugTypoMatcher | None,
+) -> None:
+    """Log why a boundary was rejected with concrete examples.
+
+    Args:
+        typo: The typo string
+        word: Optional word associated with this typo
+        boundary: The boundary that was rejected
+        details: Details dictionary from false trigger check
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
+    """
+    word_info = f" (word: {word})" if word else ""
+    example_lines = []
+
+    # Get example words for each type of conflict
+    # Priority: validation words > source words (exclude target word from examples)
+    if boundary == BoundaryType.NONE:
+        # NONE boundary would match anywhere, so show substring examples
+        if details["is_substring"]:
+            # Get examples from validation/source indexes
+            examples = _get_example_words_with_substring(
+                typo, validation_index, source_index
+            )
+            if not examples:
+                # Fallback: check if it's a prefix or suffix
+                if details["would_trigger_start"]:
+                    examples = _get_example_words_with_prefix(
+                        typo, validation_index, source_index
+                    )
+                elif details["would_trigger_end"]:
+                    examples = _get_example_words_with_suffix(
+                        typo, validation_index, source_index
+                    )
+
+            if examples:
+                example_word = examples[0]
+                example_lines.append(
+                    f'"{typo}" -> "{word}" with NONE boundary would conflict '
+                    f'with source word "{example_word}"'
+                )
+                example_lines.append(
+                    _format_incorrect_transformation(example_word, typo, word or "")
+                )
+                example_lines.append("NONE BOUNDARY REJECTED")
+
+    elif boundary == BoundaryType.LEFT:
+        # LEFT boundary matches at word start, so show prefix examples
+        if details["would_trigger_start"]:
+            examples = _get_example_words_with_prefix(typo, validation_index, source_index)
+            if examples:
+                example_word = examples[0]
+                example_lines.append(
+                    f'"{typo}" -> "{word}" with LEFT boundary would conflict '
+                    f'with source word "{example_word}"'
+                )
+                example_lines.append(
+                    _format_incorrect_transformation(example_word, typo, word or "")
+                )
+                example_lines.append("LEFT BOUNDARY REJECTED")
+
+    elif boundary == BoundaryType.RIGHT:
+        # RIGHT boundary matches at word end, so show suffix examples
+        if details["would_trigger_end"]:
+            examples = _get_example_words_with_suffix(typo, validation_index, source_index)
+            if examples:
+                example_word = examples[0]
+                example_lines.append(
+                    f'"{typo}" -> "{word}" with RIGHT boundary would conflict '
+                    f'with source word "{example_word}"'
+                )
+                example_lines.append(
+                    _format_incorrect_transformation(example_word, typo, word or "")
+                )
+                example_lines.append("RIGHT BOUNDARY REJECTED")
+
+    elif boundary == BoundaryType.BOTH:
+        # BOTH boundary is always safe (prevents all substring matches)
+        # This shouldn't be rejected, but if it is, log it
+        example_lines.append(
+            "BOTH boundary requires standalone word, prevents all substring matches"
+        )
+
+    # Format the message
+    if example_lines:
+        message = "\n".join(example_lines)
+    else:
+        # Fallback if no examples found
+        reason_parts = []
+        if details["would_trigger_start"]:
+            reason_parts.append("appears as prefix")
+        if details["would_trigger_end"]:
+            reason_parts.append("appears as suffix")
+        if details["is_substring"] and not (
+            details["would_trigger_start"] or details["would_trigger_end"]
+        ):
+            reason_parts.append("appears as substring")
+        reason_str = ", ".join(reason_parts) if reason_parts else "unknown reason"
+        message = (
+            f"Rejected boundary '{boundary.value}'{word_info} - "
+            f"would cause false triggers: {reason_str}"
+        )
+
+    log_debug_typo(
+        typo,
+        message,
+        (
+            debug_typo_matcher.get_matching_patterns(typo, boundary)
+            if debug_typo_matcher
+            else None
+        ),
+        "Stage 3",
+    )
+
+
+def _log_fallback_boundary(
+    typo: str,
+    word: str | None,
+    debug_typo_matcher: DebugTypoMatcher | None,
+) -> None:
+    """Log when falling back to BOTH boundary.
+
+    Args:
+        typo: The typo string
+        word: Optional word associated with this typo
+        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
+    """
+    word_info = f" (word: {word})" if word else ""
+    log_debug_typo(
+        typo,
+        f"All boundaries would cause false triggers, using fallback "
+        f"'{BoundaryType.BOTH.value}'{word_info}",
+        (
+            debug_typo_matcher.get_matching_patterns(typo, BoundaryType.BOTH)
+            if debug_typo_matcher
+            else None
+        ),
+        "Stage 3",
+    )
+
+
 def choose_boundary_for_typo(
     typo: str,
     validation_index: BoundaryIndex,
@@ -221,94 +618,16 @@ def choose_boundary_for_typo(
         The chosen boundary type (least restrictive that doesn't cause false triggers)
     """
     # Check if we should debug this boundary selection
-    is_debug = False
-    if word:
-        is_debug = is_debug_word(word, debug_words or set())
-    if not is_debug and debug_typo_matcher:
-        # Check if typo matches any debug pattern (try with NONE boundary as placeholder)
-        is_debug = is_debug_typo(typo, BoundaryType.NONE, debug_typo_matcher)
-
-    # Check target word relationship first to determine appropriate boundary order
-    target_is_prefix, target_is_suffix, target_is_middle = (
-        _check_typo_in_target_word(typo, word) if word else (False, False, False)
+    is_debug = _should_debug_boundary_selection(
+        typo, word, debug_words, debug_typo_matcher
     )
 
-    # Build boundary order based on target word relationship
-    if target_is_suffix:
-        # Typo is suffix of target - skip LEFT (doesn't match relationship)
-        # LEFT boundary means "match at word start", but typo appears at word end
-        # Try: NONE, RIGHT, BOTH
-        boundary_order = [BoundaryType.NONE, BoundaryType.RIGHT, BoundaryType.BOTH]
-        if is_debug:
-            word_info = f" (word: {word})" if word else ""
-            log_debug_typo(
-                typo,
-                f"Boundary selection starting{word_info} - typo is SUFFIX of target, "
-                f"skipping LEFT boundary",
-                (
-                    debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
-                    if debug_typo_matcher
-                    else None
-                ),
-                "Stage 3",
-            )
-    elif target_is_prefix:
-        # Typo is prefix of target - skip RIGHT (doesn't match relationship)
-        # RIGHT boundary means "match at word end", but typo appears at word start
-        # Try: NONE, LEFT, BOTH
-        boundary_order = [BoundaryType.NONE, BoundaryType.LEFT, BoundaryType.BOTH]
-        if is_debug:
-            word_info = f" (word: {word})" if word else ""
-            log_debug_typo(
-                typo,
-                f"Boundary selection starting{word_info} - typo is PREFIX of target, "
-                f"skipping RIGHT boundary",
-                (
-                    debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
-                    if debug_typo_matcher
-                    else None
-                ),
-                "Stage 3",
-            )
-    elif target_is_middle:
-        # Typo is middle substring - skip LEFT and RIGHT (both incompatible)
-        # Neither LEFT nor RIGHT make sense for middle substrings
-        # Try: NONE, BOTH
-        boundary_order = [BoundaryType.NONE, BoundaryType.BOTH]
-        if is_debug:
-            word_info = f" (word: {word})" if word else ""
-            log_debug_typo(
-                typo,
-                f"Boundary selection starting{word_info} - typo is MIDDLE substring of target, "
-                f"skipping LEFT and RIGHT boundaries",
-                (
-                    debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
-                    if debug_typo_matcher
-                    else None
-                ),
-                "Stage 3",
-            )
-    else:
-        # Default order: no target word relationship detected
-        # Try all boundaries: NONE, LEFT, RIGHT, BOTH
-        boundary_order = [
-            BoundaryType.NONE,
-            BoundaryType.LEFT,
-            BoundaryType.RIGHT,
-            BoundaryType.BOTH,
-        ]
-        if is_debug:
-            word_info = f" (word: {word})" if word else ""
-            log_debug_typo(
-                typo,
-                f"Boundary selection starting{word_info}",
-                (
-                    debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
-                    if debug_typo_matcher
-                    else None
-                ),
-                "Stage 3",
-            )
+    # Determine boundary order based on target word relationship
+    boundary_order, relationship = _determine_boundary_order(typo, word)
+
+    # Log boundary order selection if debugging
+    if is_debug:
+        _log_boundary_order_selection(typo, word, relationship, debug_typo_matcher)
 
     # Check each boundary from least to most restrictive
     for boundary in boundary_order:
@@ -320,60 +639,26 @@ def choose_boundary_for_typo(
             target_word=word,
         )
         if not would_cause:
-            if is_debug:
-                word_info = f" (word: {word})" if word else ""
-                log_debug_typo(
-                    typo,
-                    f"Selected boundary '{boundary.value}'{word_info} - no false triggers detected",
-                    (
-                        debug_typo_matcher.get_matching_patterns(typo, boundary)
-                        if debug_typo_matcher
-                        else None
-                    ),
-                    "Stage 3",
-                )
+            # Boundary selected - logging will be done by log_boundary_selection_details
+            # which is called from collision.py after processing
             return boundary
-        if is_debug:
-            # Log why this boundary was rejected
-            reason_parts = []
-            if details["would_trigger_start"]:
-                reason_parts.append("appears as prefix")
-            if details["would_trigger_end"]:
-                reason_parts.append("appears as suffix")
-            if details["is_substring"] and not (
-                details["would_trigger_start"] or details["would_trigger_end"]
-            ):
-                reason_parts.append("appears as substring")
 
-            reason_str = ", ".join(reason_parts) if reason_parts else "unknown reason"
-            word_info = f" (word: {word})" if word else ""
-            log_debug_typo(
+        # Log why this boundary was rejected with concrete examples
+        if is_debug:
+            _log_boundary_rejection(
                 typo,
-                f"Rejected boundary '{boundary.value}'{word_info} - "
-                f"would cause false triggers: {reason_str}",
-                (
-                    debug_typo_matcher.get_matching_patterns(typo, boundary)
-                    if debug_typo_matcher
-                    else None
-                ),
-                "Stage 3",
+                word,
+                boundary,
+                details,
+                validation_index,
+                source_index,
+                debug_typo_matcher,
             )
 
     # If all boundaries would cause false triggers, return BOTH as safest fallback
     # (most restrictive, least likely to cause issues)
     if is_debug:
-        word_info = f" (word: {word})" if word else ""
-        log_debug_typo(
-            typo,
-            f"All boundaries would cause false triggers, using fallback "
-            f"'{BoundaryType.BOTH.value}'{word_info}",
-            (
-                debug_typo_matcher.get_matching_patterns(typo, BoundaryType.BOTH)
-                if debug_typo_matcher
-                else None
-            ),
-            "Stage 3",
-        )
+        _log_fallback_boundary(typo, word, debug_typo_matcher)
     return BoundaryType.BOTH
 
 
