@@ -291,7 +291,7 @@ class CandidateSelectionPass(Pass):
             return False
 
         correction = (typo, word, boundary)
-        return self.context.exclusion_matcher.matches_correction(correction)
+        return self.context.exclusion_matcher.should_exclude(correction)
 
     @staticmethod
     def _get_boundary_order(natural_boundary: BoundaryType) -> list[BoundaryType]:
