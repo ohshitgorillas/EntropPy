@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.6.0] - 2025-12-02
 
 ### Changed
 
@@ -1015,6 +1015,10 @@ This is the first beta release of the Autocorrect Dictionary Generator for Espan
 
 ## Version History
 
+- **0.6.0** (2025-12-02): Code refactoring, pattern improvements, QMK enhancements, and performance optimizations
+- **0.5.3** (2025-12-01): Critical security fix for predictive corrections, code cleanup and simplification
+- **0.5.2** (2025-12-01): Simplified boundary selection, collision resolution refactoring, parallelization, and improved logging
+- **0.5.1** (2025-11-30): Fixed pattern classification bug in QMK ranking reports
 - **0.5.0** (2025-01-29): Pydantic v2 type validation system and code quality improvements
 - **0.4.0** (2025-11-30): Debug tracing system and QMK substring conflict fix
 - **0.3.1** (2025-11-29): Platform-specific reporting and initial QMK pattern generation support
