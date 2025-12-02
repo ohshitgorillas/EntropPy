@@ -31,7 +31,7 @@ class TestWorkerContextBehavior:
 
     def test_context_can_be_created_from_dict_data(self):
         """Workers need context created from pipeline data."""
-        
+
         dict_data = DictionaryData(
             validation_set={"word1", "word2"},
             filtered_validation_set={"word1"},

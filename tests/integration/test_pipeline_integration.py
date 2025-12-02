@@ -101,9 +101,7 @@ class TestPipelineIntegration:
         include_file.write_text("test\ndata\nwork\n")
 
         adjacent_file = tmp_path / "adjacent.txt"
-        adjacent_file.write_text(
-            "t -> y\ne -> w\nd -> s\na -> e\nw -> q\no -> i\nr -> t\nk -> l\n"
-        )
+        adjacent_file.write_text("t -> y\ne -> w\nd -> s\na -> e\nw -> q\no -> i\nr -> t\nk -> l\n")
 
         output_dir = tmp_path / "output"
 

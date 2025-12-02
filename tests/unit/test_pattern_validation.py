@@ -34,9 +34,7 @@ class TestValidatePatternResult:
 
     def test_validates_ltr_suffix_pattern_correctly(self) -> None:
         """When suffix pattern matches correctly, returns True."""
-        is_valid, _ = _validate_pattern_result(
-            "eh", "he", "wordeh", "wordhe", BoundaryType.RIGHT
-        )
+        is_valid, _ = _validate_pattern_result("eh", "he", "wordeh", "wordhe", BoundaryType.RIGHT)
         assert is_valid is True
 
     def test_computes_correct_result_for_ltr_suffix_pattern(self) -> None:
@@ -48,30 +46,22 @@ class TestValidatePatternResult:
 
     def test_rejects_rtl_pattern_when_result_does_not_match(self) -> None:
         """When prefix pattern produces wrong result, returns False."""
-        is_valid, _ = _validate_pattern_result(
-            "teh", "the", "tehword", "thewrd", BoundaryType.LEFT
-        )
+        is_valid, _ = _validate_pattern_result("teh", "the", "tehword", "thewrd", BoundaryType.LEFT)
         assert is_valid is False
 
     def test_rejects_ltr_pattern_when_result_does_not_match(self) -> None:
         """When suffix pattern produces wrong result, returns False."""
-        is_valid, _ = _validate_pattern_result(
-            "eh", "he", "wordeh", "wordhr", BoundaryType.RIGHT
-        )
+        is_valid, _ = _validate_pattern_result("eh", "he", "wordeh", "wordhr", BoundaryType.RIGHT)
         assert is_valid is False
 
     def test_handles_rtl_pattern_with_no_remaining_suffix(self) -> None:
         """When prefix pattern is the entire typo, handles correctly."""
-        is_valid, _ = _validate_pattern_result(
-            "teh", "the", "teh", "the", BoundaryType.LEFT
-        )
+        is_valid, _ = _validate_pattern_result("teh", "the", "teh", "the", BoundaryType.LEFT)
         assert is_valid is True
 
     def test_handles_ltr_pattern_with_no_remaining_prefix(self) -> None:
         """When suffix pattern is the entire typo, handles correctly."""
-        is_valid, _ = _validate_pattern_result(
-            "eh", "he", "eh", "he", BoundaryType.RIGHT
-        )
+        is_valid, _ = _validate_pattern_result("eh", "he", "eh", "he", BoundaryType.RIGHT)
         assert is_valid is True
 
 

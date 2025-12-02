@@ -166,9 +166,7 @@ class TestPatternGeneralization:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
@@ -203,9 +201,7 @@ class TestPatternGeneralization:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
@@ -243,9 +239,7 @@ class TestPatternGeneralization:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
 
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
@@ -267,9 +261,7 @@ class TestPatternGeneralization:
         include_file.write_text("section\nselection\n")
 
         adjacent_file = tmp_path / "adjacent.txt"
-        adjacent_file.write_text(
-            "s -> z\ne -> w\nc -> x\nt -> y\ni -> u\no -> p\nn -> m\n"
-        )
+        adjacent_file.write_text("s -> z\ne -> w\nc -> x\nt -> y\ni -> u\no -> p\nn -> m\n")
 
         config = Config(
             exclude=str(exclude_file),
@@ -281,9 +273,7 @@ class TestPatternGeneralization:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
@@ -314,9 +304,7 @@ class TestPatternGeneralization:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
@@ -347,9 +335,7 @@ class TestPatternGeneralization:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
@@ -380,9 +366,7 @@ class TestPatternGeneralization:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         result = generalize_typo_patterns(
@@ -417,9 +401,7 @@ class TestConflictRemoval:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
@@ -457,9 +439,7 @@ class TestOutputGeneration:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
@@ -499,9 +479,7 @@ class TestOutputGeneration:
 
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(

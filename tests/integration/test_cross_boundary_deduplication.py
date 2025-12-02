@@ -37,9 +37,7 @@ class TestCrossBoundaryDeduplication:
         # Run through pipeline stages
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
@@ -92,9 +90,7 @@ class TestCrossBoundaryDeduplication:
         # Run pipeline
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
@@ -131,9 +127,7 @@ class TestCrossBoundaryDeduplication:
         # Run pipeline
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
@@ -141,9 +135,7 @@ class TestCrossBoundaryDeduplication:
         )
 
         # BEHAVIOR: Verify corrections for target word exist
-        cat_corrections = [
-            (t, w) for t, w, _ in pattern_result.corrections if w == "cat"
-        ]
+        cat_corrections = [(t, w) for t, w, _ in pattern_result.corrections if w == "cat"]
         assert len(cat_corrections) > 0, "Expected corrections for 'cat'"
 
     def test_patterns_work_when_no_conflicts(self, tmp_path):
@@ -180,9 +172,7 @@ class TestCrossBoundaryDeduplication:
         # Run pipeline
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
@@ -234,9 +224,7 @@ class TestCrossBoundaryDeduplication:
         # Run full pipeline
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
@@ -283,9 +271,7 @@ class TestCrossBoundaryDeduplication:
         # Run pipeline
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(
-            typo_result, dict_data, config, verbose=False
-        )
+        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
         platform = EspansoBackend()
         match_direction = platform.get_constraints().match_direction
         pattern_result = generalize_typo_patterns(
@@ -300,6 +286,5 @@ class TestCrossBoundaryDeduplication:
             else:
                 # Same trigger should always map to same word
                 assert trigger_words[typo] == word, (
-                    f"Trigger '{typo}' maps to multiple words: "
-                    f"{trigger_words[typo]} and {word}"
+                    f"Trigger '{typo}' maps to multiple words: " f"{trigger_words[typo]} and {word}"
                 )

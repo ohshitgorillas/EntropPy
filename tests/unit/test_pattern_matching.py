@@ -165,9 +165,7 @@ def test_pattern_matching_edge_cases(pattern: str, text: str, expected: bool) ->
         (set(), {"keep1", "keep2"}, {"keep1", "keep2"}),
     ],
 )
-def test_filter_set_edge_cases(
-    patterns: set[str], items: set[str], expected: set[str]
-) -> None:
+def test_filter_set_edge_cases(patterns: set[str], items: set[str], expected: set[str]) -> None:
     """Test edge cases for filter_set with various pattern/item combinations."""
     matcher = PatternMatcher(patterns)
     assert matcher.filter_set(items) == expected
