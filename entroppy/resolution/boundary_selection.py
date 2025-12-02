@@ -202,13 +202,12 @@ def choose_boundary_for_typo(
 ) -> BoundaryType:
     """Choose the least restrictive boundary that doesn't produce garbage corrections.
 
-    Tries boundaries from least restrictive to most restrictive:
-    1. NONE (matches anywhere)
-    2. LEFT (matches at word start only)
-    3. RIGHT (matches at word end only)
-    4. BOTH (matches as standalone word only)
-
-    Returns the first boundary that doesn't cause false triggers.
+    Tries boundaries from least restrictive to most restrictive, but adjusts the order
+    based on the typo's relationship to the target word:
+    - If typo is a suffix of target word → skip LEFT (incompatible)
+    - If typo is a prefix of target word → skip RIGHT (incompatible)
+    - If typo is a middle substring → skip LEFT and RIGHT (both incompatible)
+    - Otherwise → try all boundaries in default order
 
     Args:
         typo: The typo string
@@ -229,27 +228,87 @@ def choose_boundary_for_typo(
         # Check if typo matches any debug pattern (try with NONE boundary as placeholder)
         is_debug = is_debug_typo(typo, BoundaryType.NONE, debug_typo_matcher)
 
-    # Try boundaries from least restrictive to most restrictive
-    # Order: NONE, LEFT, RIGHT, BOTH
-    boundary_order = [
-        BoundaryType.NONE,
-        BoundaryType.LEFT,
-        BoundaryType.RIGHT,
-        BoundaryType.BOTH,
-    ]
+    # Check target word relationship first to determine appropriate boundary order
+    target_is_prefix, target_is_suffix, target_is_middle = (
+        _check_typo_in_target_word(typo, word) if word else (False, False, False)
+    )
 
-    if is_debug:
-        word_info = f" (word: {word})" if word else ""
-        log_debug_typo(
-            typo,
-            f"Boundary selection starting{word_info}",
-            (
-                debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
-                if debug_typo_matcher
-                else None
-            ),
-            "Stage 3",
-        )
+    # Build boundary order based on target word relationship
+    if target_is_suffix:
+        # Typo is suffix of target - skip LEFT (doesn't match relationship)
+        # LEFT boundary means "match at word start", but typo appears at word end
+        # Try: NONE, RIGHT, BOTH
+        boundary_order = [BoundaryType.NONE, BoundaryType.RIGHT, BoundaryType.BOTH]
+        if is_debug:
+            word_info = f" (word: {word})" if word else ""
+            log_debug_typo(
+                typo,
+                f"Boundary selection starting{word_info} - typo is SUFFIX of target, "
+                f"skipping LEFT boundary",
+                (
+                    debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
+                    if debug_typo_matcher
+                    else None
+                ),
+                "Stage 3",
+            )
+    elif target_is_prefix:
+        # Typo is prefix of target - skip RIGHT (doesn't match relationship)
+        # RIGHT boundary means "match at word end", but typo appears at word start
+        # Try: NONE, LEFT, BOTH
+        boundary_order = [BoundaryType.NONE, BoundaryType.LEFT, BoundaryType.BOTH]
+        if is_debug:
+            word_info = f" (word: {word})" if word else ""
+            log_debug_typo(
+                typo,
+                f"Boundary selection starting{word_info} - typo is PREFIX of target, "
+                f"skipping RIGHT boundary",
+                (
+                    debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
+                    if debug_typo_matcher
+                    else None
+                ),
+                "Stage 3",
+            )
+    elif target_is_middle:
+        # Typo is middle substring - skip LEFT and RIGHT (both incompatible)
+        # Neither LEFT nor RIGHT make sense for middle substrings
+        # Try: NONE, BOTH
+        boundary_order = [BoundaryType.NONE, BoundaryType.BOTH]
+        if is_debug:
+            word_info = f" (word: {word})" if word else ""
+            log_debug_typo(
+                typo,
+                f"Boundary selection starting{word_info} - typo is MIDDLE substring of target, "
+                f"skipping LEFT and RIGHT boundaries",
+                (
+                    debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
+                    if debug_typo_matcher
+                    else None
+                ),
+                "Stage 3",
+            )
+    else:
+        # Default order: no target word relationship detected
+        # Try all boundaries: NONE, LEFT, RIGHT, BOTH
+        boundary_order = [
+            BoundaryType.NONE,
+            BoundaryType.LEFT,
+            BoundaryType.RIGHT,
+            BoundaryType.BOTH,
+        ]
+        if is_debug:
+            word_info = f" (word: {word})" if word else ""
+            log_debug_typo(
+                typo,
+                f"Boundary selection starting{word_info}",
+                (
+                    debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
+                    if debug_typo_matcher
+                    else None
+                ),
+                "Stage 3",
+            )
 
     # Check each boundary from least to most restrictive
     for boundary in boundary_order:
