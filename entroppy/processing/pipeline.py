@@ -15,6 +15,9 @@ from entroppy.processing.stages import (
     resolve_typo_collisions,
     generate_typos,
 )
+from entroppy.processing.stages.platform_filtering_logging import (
+    log_max_corrections_limit_application,
+)
 
 
 def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> None:
@@ -208,6 +211,20 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
                 f"  Limiting to {constraints.max_corrections} corrections (platform constraint)"
             )
         final_corrections = ranked_corrections[: constraints.max_corrections]
+
+        # Debug logging for max_corrections limit
+        if config.debug_words or config.debug_typo_matcher:
+            for i, correction in enumerate(ranked_corrections, 1):
+                within_limit = i <= constraints.max_corrections
+                log_max_corrections_limit_application(
+                    correction,
+                    i,
+                    constraints.max_corrections,
+                    len(ranked_corrections),
+                    within_limit,
+                    config.debug_words or set(),
+                    config.debug_typo_matcher,
+                )
     else:
         final_corrections = ranked_corrections
 

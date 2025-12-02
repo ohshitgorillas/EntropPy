@@ -14,9 +14,16 @@ from entroppy.processing.stages.data_models import (
     PatternGeneralizationResult,
 )
 from entroppy.processing.stages.helpers import call_resolve_collisions
+from entroppy.processing.stages.pattern_generalization_logging import (
+    log_cross_boundary_pattern_conflict,
+    log_pattern_collision_resolution,
+    log_pattern_replacement_restored,
+    log_pattern_substring_conflict_removal,
+)
 
 if TYPE_CHECKING:
     from entroppy.platforms.base import MatchDirection
+    from entroppy.utils.debug import DebugTypoMatcher
 
 
 def _filter_cross_boundary_conflicts(
@@ -25,6 +32,8 @@ def _filter_cross_boundary_conflicts(
     pattern_replacements: dict[Correction, list[Correction]],
     rejected_patterns: list[tuple[str, str, list[str]]],
     verbose: bool = False,
+    debug_words: set[str] | None = None,
+    debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], list[Correction]]:
     """Filter out patterns that conflict with direct corrections across boundaries.
 
@@ -38,12 +47,21 @@ def _filter_cross_boundary_conflicts(
         pattern_replacements: Map of patterns to the corrections they replaced
         rejected_patterns: List to append rejected patterns to
         verbose: Whether to print verbose output
+        debug_words: Set of words to debug
+        debug_typo_matcher: Matcher for debug typos
 
     Returns:
         Tuple of (final_corrections with restored replacements, safe patterns)
     """
+    if debug_words is None:
+        debug_words = set()
+
     # Build index of (typo, word) pairs from direct corrections
     direct_pairs = {(typo, word) for typo, word, _ in final_corrections}
+    # Also build a map for finding conflicting corrections
+    direct_corrections_map = {
+        (typo, word): (typo, word, boundary) for typo, word, boundary in final_corrections
+    }
 
     # Check each pattern for conflicts and separate into safe/conflicting
     safe_patterns = []
@@ -59,7 +77,19 @@ def _filter_cross_boundary_conflicts(
     # Restore replacements for conflicting patterns
     for pattern in conflicting_patterns:
         if pattern in pattern_replacements:
-            final_corrections.extend(pattern_replacements[pattern])
+            # Find the conflicting direct correction for logging
+            typo, word, _ = pattern
+            conflicting_correction = direct_corrections_map.get((typo, word))
+            if conflicting_correction:
+                log_cross_boundary_pattern_conflict(
+                    pattern, conflicting_correction, debug_words, debug_typo_matcher
+                )
+            # Restore replacements
+            for restored_correction in pattern_replacements[pattern]:
+                final_corrections.append(restored_correction)
+                log_pattern_replacement_restored(
+                    restored_correction, pattern, debug_words, debug_typo_matcher
+                )
         # Add to rejected patterns with reason
         typo, word, _ = pattern
         rejected_patterns.append((typo, word, ["Cross-boundary conflict with direct correction"]))
@@ -142,15 +172,46 @@ def generalize_typo_patterns(
         verbose=verbose,
     )
 
+    # Log pattern collision resolution for debug
+    if config.debug_words or config.debug_typo_matcher:
+        for typo, word_list in pattern_typo_map.items():
+            if len(word_list) > 1:
+                # Find resolved corrections for this typo
+                matching_resolved = [c for c in resolved_patterns if c[0] == typo]
+                if matching_resolved:
+                    log_pattern_collision_resolution(
+                        typo,
+                        word_list,
+                        matching_resolved,
+                        config.debug_words or set(),
+                        config.debug_typo_matcher,
+                    )
+
     # Remove substring conflicts from patterns
     # Patterns can also have redundancies (e.g., "lectiona" is redundant if "ectiona" exists)
-    resolved_patterns, _ = remove_substring_conflicts(
+    resolved_patterns_before_conflicts = resolved_patterns.copy()
+    resolved_patterns, blocking_map = remove_substring_conflicts(
         resolved_patterns,
         verbose=False,
         debug_words=config.debug_words,
         debug_typo_matcher=config.debug_typo_matcher,
-        collect_blocking_map=False,
+        collect_blocking_map=True,
     )
+
+    # Log pattern substring conflicts for debug
+    if config.debug_words or config.debug_typo_matcher:
+        removed_patterns = [
+            c for c in resolved_patterns_before_conflicts if c not in resolved_patterns
+        ]
+        for removed_pattern in removed_patterns:
+            blocking_pattern = blocking_map.get(removed_pattern)
+            if blocking_pattern:
+                log_pattern_substring_conflict_removal(
+                    removed_pattern,
+                    blocking_pattern,
+                    config.debug_words or set(),
+                    config.debug_typo_matcher,
+                )
 
     # Cross-boundary deduplication: filter patterns that conflict with direct corrections
     final_corrections, safe_patterns = _filter_cross_boundary_conflicts(
@@ -159,6 +220,8 @@ def generalize_typo_patterns(
         pattern_replacements,
         rejected_patterns,
         verbose,
+        config.debug_words,
+        config.debug_typo_matcher,
     )
 
     # Add only safe patterns to final corrections

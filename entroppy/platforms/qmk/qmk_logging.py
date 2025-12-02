@@ -141,6 +141,13 @@ def log_max_corrections_limit(
         debug_words: Set of words to debug
         debug_typo_matcher: Matcher for debug typos
     """
+    # pylint: disable=duplicate-code
+    # This function intentionally duplicates logic from
+    # platform_filtering_logging.log_max_corrections_limit_application
+    # to maintain separation between platform-specific (QMK) and general pipeline logging.
+    # The QMK version is used during platform ranking, while the general version is used in the
+    # general pipeline stage. Keeping them separate preserves existing debug logging
+    # behavior and allows for platform-specific message customization.
     if is_debug_correction(correction, debug_words, debug_typo_matcher):
         if within_limit:
             log_debug_correction(
