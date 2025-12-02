@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Simplified redundant garbage correction checks**: Removed redundant condition checks in `false_trigger_check.py`
+  - **Previous behavior**: LEFT and RIGHT boundary checks redundantly checked individual conditions that were already included in `would_trigger_start` and `would_trigger_end`
+  - **New behavior**: Simplified to use the already-combined `would_trigger_start` and `would_trigger_end` variables directly
+  - **Files modified**: `entroppy/resolution/false_trigger_check.py`
+  - **Impact**: Cleaner code with equivalent functionality, eliminates redundancy in boundary validation logic
+
 - **Refactored large files into smaller modules**: Split files >500 lines into focused, maintainable modules
   - **Pattern generalization** (`entroppy/core/patterns.py`, 618 → 90 lines):
     - Created `pattern_validation_worker.py` (147 lines) for parallel validation worker functions

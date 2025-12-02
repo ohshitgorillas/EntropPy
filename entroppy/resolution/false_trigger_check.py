@@ -77,22 +77,12 @@ def _would_cause_false_trigger(
     elif boundary == BoundaryType.LEFT:
         # LEFT matches at word start, so false trigger if typo appears as prefix
         # (LEFT would match words starting with typo, which is incorrect)
-        would_cause = (
-            would_trigger_start
-            or would_trigger_start_target
-            or would_trigger_start_val
-            or would_trigger_start_src
-        )
+        would_cause = would_trigger_start
         reason = "typo appears as prefix" if would_cause else None
     elif boundary == BoundaryType.RIGHT:
         # RIGHT matches at word end, so false trigger if typo appears as suffix
         # (RIGHT would match words ending with typo, which is incorrect)
-        would_cause = (
-            would_trigger_end
-            or would_trigger_end_target
-            or would_trigger_end_val
-            or would_trigger_end_src
-        )
+        would_cause = would_trigger_end
         reason = "typo appears as suffix" if would_cause else None
     elif boundary == BoundaryType.BOTH:
         # BOTH matches as standalone word only, so it would NOT cause false triggers
