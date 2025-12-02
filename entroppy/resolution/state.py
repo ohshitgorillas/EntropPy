@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from entroppy.core import BoundaryType, Correction
-from entroppy.matching import TypoMatcher
+from entroppy.utils.debug import DebugTypoMatcher
 
 
 class RejectionReason(Enum):
@@ -70,7 +70,7 @@ class DictionaryState:
         self,
         raw_typo_map: dict[str, list[str]],
         debug_words: set[str] | None = None,
-        debug_typo_matcher: TypoMatcher | None = None,
+        debug_typo_matcher: DebugTypoMatcher | None = None,
     ) -> None:
         """Initialize the dictionary state.
 
@@ -138,7 +138,7 @@ class DictionaryState:
         self.graveyard[(typo, word, boundary)] = entry
 
         # Log if this is a debug target
-        if self._is_debug_target(typo, word):
+        if self._is_debug_target(typo, word, boundary):
             self.debug_trace.append(
                 DebugTraceEntry(
                     iteration=self.current_iteration,
@@ -179,7 +179,7 @@ class DictionaryState:
         self.is_dirty = True
 
         # Log if this is a debug target
-        if self._is_debug_target(typo, word):
+        if self._is_debug_target(typo, word, boundary):
             self.debug_trace.append(
                 DebugTraceEntry(
                     iteration=self.current_iteration,
@@ -223,7 +223,7 @@ class DictionaryState:
         self.is_dirty = True
 
         # Log if this is a debug target
-        if self._is_debug_target(typo, word):
+        if self._is_debug_target(typo, word, boundary):
             self.debug_trace.append(
                 DebugTraceEntry(
                     iteration=self.current_iteration,
@@ -265,7 +265,7 @@ class DictionaryState:
         self.is_dirty = True
 
         # Log if this is a debug target
-        if self._is_debug_target(typo, word):
+        if self._is_debug_target(typo, word, boundary):
             self.debug_trace.append(
                 DebugTraceEntry(
                     iteration=self.current_iteration,
@@ -308,7 +308,7 @@ class DictionaryState:
         self.is_dirty = True
 
         # Log if this is a debug target
-        if self._is_debug_target(typo, word):
+        if self._is_debug_target(typo, word, boundary):
             self.debug_trace.append(
                 DebugTraceEntry(
                     iteration=self.current_iteration,
@@ -383,12 +383,13 @@ class DictionaryState:
 
         return "\n".join(lines)
 
-    def _is_debug_target(self, typo: str, word: str) -> bool:
+    def _is_debug_target(self, typo: str, word: str, boundary: BoundaryType) -> bool:
         """Check if a correction should be tracked for debugging.
 
         Args:
             typo: The typo string
             word: The correct word
+            boundary: The boundary type
 
         Returns:
             True if this should be tracked
@@ -396,7 +397,7 @@ class DictionaryState:
         if word in self.debug_words:
             return True
 
-        if self.debug_typo_matcher and self.debug_typo_matcher.matches(typo):
+        if self.debug_typo_matcher and self.debug_typo_matcher.matches(typo, boundary):
             return True
 
         return False
