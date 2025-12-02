@@ -3,7 +3,12 @@
 import functools
 from typing import TYPE_CHECKING
 
-from entroppy.core.boundaries import BoundaryIndex, BoundaryType, would_trigger_at_end
+from entroppy.core.boundaries import (
+    BoundaryIndex,
+    BoundaryType,
+    would_trigger_at_end,
+    would_trigger_at_start,
+)
 from entroppy.core.types import Correction
 from entroppy.platforms.base import MatchDirection
 from entroppy.utils.debug import log_debug_correction
@@ -322,6 +327,10 @@ def check_pattern_conflicts(
     # Check if pattern would trigger at end of validation words
     if would_trigger_at_end(typo_pattern, validation_index):
         return False, "Would trigger at end of validation words"
+
+    # Check if pattern would trigger at start of validation words
+    if would_trigger_at_start(typo_pattern, validation_index):
+        return False, "Would trigger at start of validation words"
 
     # FIRST: Check if pattern would corrupt target words
     # (highest priority - prevents predictive corrections)
