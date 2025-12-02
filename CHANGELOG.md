@@ -8,211 +8,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
-- **Eliminated redundant code in core modules**: Removed duplicate implementations and unused code
-  - **Pattern validation**: Refactored `_cached_would_corrupt()` to call `_would_corrupt_source_word()` instead of duplicating the same logic (~20 lines eliminated)
-  - **Config module**: Removed redundant `_rebuild_config_model()` function and call - `DebugTypoMatcher` is imported at module level, so Pydantic v2 handles forward references automatically (~10 lines eliminated)
-  - **Files modified**: `entroppy/core/pattern_validation.py`, `entroppy/core/config.py`
-  - **Impact**: Cleaner codebase with no functional changes, reduced maintenance burden
+- **Code refactoring and modularization**: Split large files (>500 lines) into focused modules, extracted debug logging into separate modules, and refactored large functions into smaller helpers
+  - Pattern generalization: Split `patterns.py` (618 → 90 lines) into validation workers/runners and index/conflict modules
+  - Pattern validation: Split into `pattern_indexes.py` and `pattern_conflicts.py` modules
+  - Boundary selection: Split `boundary_selection.py` (717 lines) into selection, logging, utils, and false trigger check modules
+  - Collision processing: Split large functions into focused helpers
+  - Debug logging: Moved to dedicated modules (`word_processing_logging.py`, `pattern_logging.py`, `conflict_logging.py`, `qmk_logging.py`)
+  - Removed redundant code: Eliminated duplicate implementations in pattern validation and config modules, simplified boundary checks
 
-- **Simplified redundant garbage correction checks**: Removed redundant condition checks in `false_trigger_check.py`
-  - **Previous behavior**: LEFT and RIGHT boundary checks redundantly checked individual conditions that were already included in `would_trigger_start` and `would_trigger_end`
-  - **New behavior**: Simplified to use the already-combined `would_trigger_start` and `would_trigger_end` variables directly
-  - **Files modified**: `entroppy/resolution/false_trigger_check.py`
-  - **Impact**: Cleaner code with equivalent functionality, eliminates redundancy in boundary validation logic
+- **Pattern extraction and validation improvements**: Enhanced pattern discovery and validation logic
+  - Now extracts both prefix and suffix patterns for all platforms (previously platform-specific)
+  - Fixed pattern extraction to find patterns across corrections with different prefixes/suffixes
+  - Pattern validation now checks substring conflicts in both directions and uses boundary type instead of match direction
+  - Added `CorrectionIndex` class for O(1) lookups in pattern validation
 
-- **Refactored large files into smaller modules**: Split files >500 lines into focused, maintainable modules
-  - **Pattern generalization** (`entroppy/core/patterns.py`, 618 → 90 lines):
-    - Created `pattern_validation_worker.py` (147 lines) for parallel validation worker functions
-    - Created `pattern_validation_runner.py` (415 lines) for single-threaded and parallel validation runners
-    - Main `patterns.py` now focuses on orchestration only
-  - **Pattern validation** (`entroppy/core/pattern_validation.py`, 522 → 346 lines):
-    - Created `pattern_indexes.py` (129 lines) for `SourceWordIndex`, `CorrectionIndex`, and `ValidationIndexes` classes
-    - Created `pattern_conflicts.py` (121 lines) for pattern conflict checking functions
-    - Main `pattern_validation.py` now focuses on core validation logic
-  - **Collision processing** (`entroppy/resolution/correction_processing.py`):
-    - Split `process_collision_case` (225 lines) into smaller helper functions:
-      - `_process_single_word_boundary_group()` for single-word boundary groups
-      - `_process_collision_boundary_group()` for collision resolution within boundary groups
-    - Improved code readability and maintainability
-  - **Impact**: All files are now <500 lines, with better separation of concerns and easier maintenance
+- **QMK platform enhancements**: Improved filtering, ranking, and reporting
+  - Performance optimizations: Indexed conflict detection (10-50x speedup), combined filtering passes (20-30% faster), unified ranking sort (10-20% faster), pattern set caching
+  - Enhanced ranking report: Added summary by type, complete ranked list, enhanced pattern/direct correction details with full replacement lists
+  - Debug logging: Added comprehensive logging for filtering, ranking, substring conflicts, and pattern extraction
 
-- **Refactored debug logging into separate modules**: Moved debug logging code from processing modules into dedicated logging modules for better separation of concerns
-  - **Word processing**: Created `entroppy/resolution/word_processing_logging.py` for Stage 2 debug logging
-  - **Pattern generalization**: Created `entroppy/core/pattern_logging.py` for Stage 4 debug logging
-  - **Conflict resolution**: Created `entroppy/resolution/conflict_logging.py` for Stage 5 debug logging
-  - **QMK platform**: Created `entroppy/platforms/qmk/qmk_logging.py` for Stage 6 debug logging
-  - **Impact**: Processing code is now cleaner and easier to maintain, with debug logging isolated in separate modules
+### Fixed
+
+- **QMK substring conflict detection**: Fixed multiple issues preventing garbage corrections and compilation errors
+  - Now prevents garbage corrections by checking if shorter typos would produce incorrect results for longer typos
+  - Catches all substring relationships (prefix, suffix, middle) to satisfy QMK's hard constraint
+  - Only checks suffixes (not middle substrings) to eliminate false positives
+
+- **Collision resolution architecture**: Fixed issue where valid corrections with different boundaries were incorrectly rejected
+  - Now determines boundaries before frequency comparison, allowing multiple valid corrections per typo when using different boundaries
+
+### Performance
+
+- **Word frequency lookup caching**: Added `@functools.lru_cache` wrapper, reducing collision resolution time by 30-50% for large datasets
+- **Boundary detection indexing**: Created `BoundaryIndex` class with pre-built prefix/suffix/substring indexes, achieving 37x speedup (5 → 188 words/sec) and 80-95% reduction in boundary detection time
+- **Pattern extraction optimization**: Optimized grouping and filtering, reducing extraction time by 40-60% for large correction sets
+- **Substring index optimization**: Pre-computes substring relationships for collision resolution, reducing boundary selection time by 60-80% for large typo maps
+- **Blocking map optimization**: Pre-computes blocking relationships during conflict removal, reducing conflict analysis time by 70-90%
 
 ### Added
 
-- **Debug logging for QMK filtering and ranking phase**: Added `debug_words` and `debug_typos` support for Stage 6 (platform-specific filtering and ranking)
-  - **Filtering**: Logs when corrections are filtered due to invalid characters, same-typo conflicts, suffix conflicts, or substring conflicts
-  - **Ranking**: Logs separation by type (user words, patterns, direct corrections), scoring details, final ranking position, and max corrections limit application
-  - **Files modified**: `entroppy/platforms/qmk/backend.py`, `entroppy/platforms/qmk/filtering.py`, `entroppy/platforms/qmk/ranking.py`
-  - **Impact**: Enables tracing specific words and typos through QMK's filtering and ranking process
-
-### Changed
-
-- **Enhanced debug logging for QMK substring conflicts**: Added detailed logging when shorter typos are removed due to garbage corrections
-  - **New logging**: Shows the garbage result that would be produced, which longer typo is being protected, and which shorter typo is being removed
-  - **Files modified**: `entroppy/platforms/qmk/typo_index.py`, `entroppy/platforms/qmk/filtering.py`
-  - **Impact**: Better visibility into why certain corrections are removed during substring conflict detection
-
-- **Enhanced debug logging for QMK ranking**: Added comprehensive ranking position information
-  - **New information**: Shows overall position, tier (user words/patterns/direct), position within tier, score, nearby corrections, and whether correction made the final cut
-  - **Files modified**: `entroppy/platforms/qmk/ranking.py`
-  - **Impact**: Complete visibility into where debug typos end up in the ranked list and why
-
-### Fixed
-
-- **QMK substring conflict detection now prevents garbage corrections**: Fixed issue where shorter patterns were kept even when they would produce garbage corrections for longer typos
-  - **Previous behavior**: When a shorter typo was a substring of a longer typo, the shorter one was always kept, even if it would produce incorrect results (e.g., 'lal' -> 'all' kept, causing 'lale' -> 'alle' instead of 'lake')
-  - **New behavior**: Checks if keeping the shorter typo would produce garbage (incorrect result) for the longer typo, and removes the shorter one instead if it would
-  - **Example**: 'lal' -> 'all' is now removed when it would produce 'alle' for 'lale' -> 'lake', allowing the longer correction to be kept
-  - **Files modified**: `entroppy/platforms/qmk/typo_index.py`
-  - **Impact**: Prevents garbage corrections like 'lale' -> 'alle', 'dolalrs' -> 'doallrs', 'particulalry' -> 'particuallry'
-
-### Fixed
-
-- **QMK substring conflict detection now catches all substring relationships**: Fixed QMK compilation errors by ensuring all substring conflicts (prefix, suffix, and middle) are detected and removed
-  - **Previous behavior**: Only checked if shorter typos appeared as suffixes of longer typos, and only removed conflicts where applying the pattern would produce the correct result
-    - Missed cases like "sll" vs "asll" where "sll" is a suffix but the pattern wouldn't work correctly
-    - QMK compiler rejected these cases with errors like "Typos may not be substrings of one another"
-  - **New behavior**: Checks for ANY substring relationship (prefix, suffix, or middle) and removes ALL conflicts regardless of whether the pattern would work correctly
-    - QMK's compiler rejects ALL substring relationships as a hard constraint in its trie structure
-    - Catches all cases that weren't already removed by suffix conflict detection (which only removes conflicts where patterns work correctly)
-  - **Files modified**: `entroppy/platforms/qmk/typo_index.py`
-  - **Impact**: QMK dictionaries now compile successfully without substring violation errors
-
-### Changed
-
-- **Refactored `generalize_patterns` function for better maintainability**: Split the large 317-line function into smaller, focused helper functions
-  - **New structure**: Extracted pattern extraction, validation, and processing logic into separate functions (`_extract_and_merge_patterns`, `_validate_single_pattern_single_threaded`, `_run_single_threaded_validation`, `_run_parallel_validation`, etc.)
-  - **Impact**: Improved code readability and maintainability without changing functionality
-  - **Files modified**: `entroppy/core/patterns.py`
-
-- **Refactored `choose_boundary_for_typo` function for better maintainability**: Split the large 278-line function into smaller, focused helper functions
-  - **New structure**: Extracted debug checking, boundary order determination, logging, and rejection handling into separate functions (`_should_debug_boundary_selection`, `_determine_boundary_order`, `_log_boundary_order_selection`, `_log_boundary_rejection`, etc.)
-  - **Impact**: Improved code readability and maintainability without changing functionality
-  - **Files modified**: `entroppy/resolution/boundary_selection.py`
-
-- **Split `boundary_selection.py` into multiple focused modules**: Broke up the 717-line file into smaller, more manageable modules
-  - **New structure**: 
-    - `boundary_selection.py` (141 lines) - Main public API with `choose_boundary_for_typo()` and `log_boundary_selection_details()`
-    - `false_trigger_check.py` (160 lines) - False trigger detection logic
-    - `boundary_logging.py` (283 lines) - Debug and logging functions
-    - `boundary_utils.py` (227 lines) - Utility functions for relationship checking and example retrieval
-  - **Impact**: Improved code organization, easier maintenance, and better separation of concerns
-  - **Files modified**: `entroppy/resolution/boundary_selection.py`, `entroppy/resolution/false_trigger_check.py` (new), `entroppy/resolution/boundary_logging.py` (new), `entroppy/resolution/boundary_utils.py`, `entroppy/resolution/correction_processing.py`
-
-- **Pattern generalization performance optimization**: Optimized pattern extraction and validation for faster processing
-  - **Pattern extraction**: Removed unnecessary grouping by word length, simplified loop structure
-  - **Pattern validation**: Added `CorrectionIndex` class to pre-build suffix/prefix indexes for O(1) lookups instead of O(n) linear scans
-    - Index built once and reused for all pattern validations
-    - Reduces complexity from O(p × c) to O(c × m + p × k) where p=patterns, c=corrections, m=avg typo length, k=avg matches per pattern
-  - **Impact**: Significantly faster pattern generalization, especially for large correction sets (10K+ corrections)
-  - **Files modified**: `entroppy/core/pattern_extraction.py`, `entroppy/core/pattern_validation.py`, `entroppy/core/patterns.py`
-
-- **QMK filtering performance optimization**: Removed expensive unused substring index building from `TypoIndex` class
-  - **Previous behavior**: Built all substrings for each typo (O(n × m²) complexity) that were never used
-  - **New behavior**: Only builds necessary indexes (typo-to-correction mapping and length grouping)
-  - **Conflict detection**: Optimized to use O(1) dictionary lookups instead of O(n²) nested loops
-  - **Impact**: Significantly faster filtering, especially for large correction sets (10K+ corrections)
-  - **Files modified**: `entroppy/platforms/qmk/typo_index.py`
-
-### Fixed
-
-- **Collision resolution now determines boundaries before frequency comparison**: Fixed architectural issue where collision resolution happened before boundary determination, causing valid corrections with different boundaries to be incorrectly rejected as ambiguous
-  - **Previous behavior**: Checked frequency ratio between competing words first, then determined boundary for the winner
-    - Example: "nto" → ["not", "onto", "into"] would be rejected as ambiguous even though "nto" with BOTH boundary → "not" doesn't conflict with "nto" with NONE boundary → "onto"
-  - **New behavior**: Determines boundaries for all competing words first, groups by boundary type, then applies frequency resolution within each boundary group
-    - Allows multiple valid corrections for the same typo when they use different boundaries (e.g., "nto" with BOTH → "not" coexists with "nto" with NONE → "onto")
-    - Each boundary group is processed independently, preventing false conflicts
-  - **Files modified**: `entroppy/resolution/correction_processing.py`, `entroppy/resolution/collision.py`, `entroppy/processing/stages/data_models.py`, `entroppy/reports/data.py`, `entroppy/processing/stages/collision_resolution.py`, `entroppy/reports/collisions.py`
-  - **Impact**: More corrections accepted, especially for typos that can map to multiple words with different boundary requirements
-
-### Fixed
-
-- **Pattern validation now checks substring conflicts in both directions**: Fixed unsafe pattern acceptance where patterns could incorrectly match other corrections
-  - **Previous behavior**: Only checked suffix conflicts for LEFT boundary patterns in RTL matching, missing unsafe patterns with NONE boundary
-  - **New behavior**: Checks both suffix and prefix conflicts for all patterns regardless of boundary type, platform, or matching direction
-  - **Example**: Pattern `toin → tion` (boundary NONE) now correctly rejected because it would incorrectly match `washingtoin → washington` as suffix, producing `washingtion` instead
-  - **Files modified**: `entroppy/core/pattern_validation.py`
-  - **Impact**: Unsafe patterns are now rejected during generalization, preventing incorrect corrections
-
-- **Pattern extraction algorithm fix**: Fixed pattern extraction to find patterns across corrections with different "other parts"
-  - **Previous behavior**: Grouped corrections by `(other_part, length)` first, then looked for patterns within each group
-    - Missed patterns like "tion" → "tion" when corrections had different prefixes (e.g., "action" vs "lection")
-  - **New behavior**: Groups directly by `(typo_pattern, word_pattern, boundary)` across ALL corrections
-    - Finds patterns regardless of whether corrections share the same prefix/suffix
-    - Example: Now correctly finds "tion" → "tion" pattern from "action" → "action" and "lection" → "lection" despite different prefixes
-  - **Files modified**: `entroppy/core/pattern_extraction.py`
-  - **Impact**: Discovers more patterns, especially for suffix patterns like "tion", "ing", etc.
-
-- **Pattern extraction now finds both prefix and suffix patterns**: Changed pattern generalization to extract both prefix and suffix patterns for all platforms
-  - **Previous behavior**: Only extracted prefix patterns for QMK (RTL) or suffix patterns for Espanso (LTR) based on match direction
-  - **New behavior**: Extracts both prefix and suffix patterns regardless of platform
-    - QMK now finds both prefix patterns (e.g., `teh → the`) and suffix patterns (e.g., `toin → tion`)
-    - Espanso now finds both suffix patterns and prefix patterns
-  - **Files modified**: `entroppy/core/patterns.py`
-  - **Impact**: Significantly more patterns discovered (e.g., 1785 patterns vs 923 patterns), better dictionary compression
-
-- **Pattern validation now uses boundary type instead of match direction**: Fixed pattern validation to correctly determine if a pattern is prefix or suffix based on its boundary type
-  - **Previous behavior**: Used `match_direction` to determine if pattern was prefix (RTL) or suffix (LTR)
-    - Caused validation failures for suffix patterns in QMK (e.g., `toin → tion` was validated as prefix pattern)
-  - **New behavior**: Uses pattern's boundary type (LEFT=prefix, RIGHT=suffix, NONE=check position) to determine validation logic
-    - Suffix patterns (RIGHT boundary) validated as suffixes regardless of match direction
-    - Prefix patterns (LEFT boundary) validated as prefixes regardless of match direction
-  - **Files modified**: `entroppy/core/pattern_validation.py`, `tests/unit/test_pattern_validation.py`
-  - **Impact**: Patterns now validate correctly, allowing suffix patterns like `toin → tion` to be accepted for QMK
-
-- **QMK substring conflict detection now only checks suffixes**: Fixed substring conflict detection to only remove longer typos when shorter typo appears as suffix (not anywhere in the string)
-  - **Previous behavior**: Removed longer typos if shorter typo appeared anywhere as substring
-    - Caused false positives: `washingtoin` was removed because it contained `gto` in the middle
-    - Produced incorrect results: `washingtoin` → `washington` was blocked by `gto` → `got`, producing `washgottion`
-  - **New behavior**: Only removes longer typos if shorter typo appears as suffix (at the end)
-    - QMK scans right-to-left, so it would see suffixes first
-    - Only suffixes can actually block longer typos in QMK's matching
-  - **Files modified**: `entroppy/platforms/qmk/typo_index.py`
-  - **Impact**: Eliminates false positive substring conflicts, prevents valid corrections from being incorrectly removed
-
-### Added
-
-- **Progress bars for pattern generalization**: Added progress indicators for pattern extraction and validation
-  - Shows progress when extracting prefix patterns
-  - Shows progress when extracting suffix patterns
-  - Shows progress when validating patterns
-  - Only displayed when `--verbose` flag is used
-  - **Files modified**: `entroppy/core/pattern_extraction.py`, `entroppy/core/patterns.py`
-  - **Impact**: Better visibility into pattern generalization progress for large datasets
-
-- **Debug logging for pattern extraction**: Added comprehensive debug logging to pattern extraction process
-  - Shows which corrections are being analyzed
-  - Logs pattern candidates at each length being checked
-  - Explains why patterns are skipped (identical pattern, other_part mismatch, etc.)
-  - Shows final patterns found with occurrence counts
-  - Activated with `--debug --verbose --debug-typos "pattern"` flags
-  - **Files modified**: `entroppy/core/pattern_extraction.py`, `entroppy/core/patterns.py`
-  - **Impact**: Makes it easier to diagnose why specific patterns aren't being found
-
-### Changed
-
-- **QMK platform performance optimizations**
-  - **Optimized conflict detection with indexing**: Created `TypoIndex` class for O(n log n) conflict detection instead of O(n²)
-    - Pre-builds suffix and substring indexes to enable O(1) set lookups
-    - Replaces nested loop comparisons with efficient index-based lookups
-    - **Impact**: 10-50x speedup for conflict detection on large datasets
-  - **Combined filtering passes**: Merged character filtering and same-typo conflict resolution into single pass
-    - Reduces iterations from 4 passes to 3 passes through correction lists
-    - **Impact**: 20-30% reduction in filtering time
-  - **Unified ranking sort**: Replaced separate sorts with single unified sort using tier-based comparison
-    - Patterns and direct corrections sorted together with tier priority
-    - **Impact**: 10-20% reduction in ranking time
-  - **Pattern set caching**: Pattern sets now cached in `QMKBackend` and reused across ranking calls
-    - Eliminates redundant set building on every ranking operation
-    - **Impact**: 5-10% reduction in ranking time for repeated calls
-  - **Files modified**: `entroppy/platforms/qmk/typo_index.py` (new), `filtering.py`, `ranking.py`, `backend.py`
-  - **Implementation**: Tasks 1.1, 1.2, 1.3, 2.1, 4.1 from PERFORMANCE_IMPROVEMENT_PLAN.md
+- **Progress bars and debug logging**: Added progress indicators for pattern generalization and comprehensive debug logging for pattern extraction, QMK filtering, and ranking phases
 
 ## [0.5.3] - 2025-12-01
 
@@ -632,92 +467,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Better testability - helper functions can be tested independently
     - No functional changes - all behavior preserved
 
-## [Unreleased]
-
-### Performance
-
-- **Word frequency lookup caching**
-  - Implemented `@functools.lru_cache` wrapper for `word_frequency()` calls to eliminate redundant lookups
-  - Created `cached_word_frequency()` function in `entroppy/utils/helpers.py` with unlimited cache size
-  - Updated all word frequency lookups to use cached wrapper:
-    - `entroppy/resolution/collision.py`: Collision resolution and skipped collision analysis
-    - `entroppy/resolution/word_processing.py`: Typo frequency filtering
-    - `entroppy/platforms/qmk/ranking.py`: Pattern and direct correction scoring
-  - Cache persists across entire pipeline execution, providing significant performance improvement
-  - **Impact**: 30-50% reduction in collision resolution time for large datasets with many repeated word lookups
-  - **Implementation**: Task 1 from PERFORMANCE_OPTIMIZATION_REPORT.md
-
-- **Boundary detection indexing optimization**
-  - Created `BoundaryIndex` class in `entroppy/core/boundaries.py` that pre-builds indexes for efficient boundary detection
-  - Prefix index: Dictionary mapping all prefixes to sets of words starting with that prefix
-  - Suffix index: Dictionary mapping all suffixes to sets of words ending with that suffix
-  - Substring set: Set of all substrings (excluding exact matches) from all words
-  - Updated all boundary detection functions to require `BoundaryIndex` parameters:
-    - `is_substring_of_any()`, `would_trigger_at_start()`, `would_trigger_at_end()`, `determine_boundaries()`
-  - Indexes are built once per stage and reused for all boundary checks:
-    - Typo generation stage: Indexes built once and reused for all words
-    - Collision resolution stage: Indexes built once and reused for all collision checks
-    - Pattern generalization stage: Indexes built once for pattern validation
-  - Multiprocessing support: Indexes are built per-worker eagerly during initialization to prevent progress bar freezing
-  - Removed all linear search fallback code for maximum performance (no backward compatibility)
-  - **Impact**: 
-    - **37x speedup observed**: From ~5 words/sec to ~188 words/sec in real-world testing
-    - Eliminates O(n) linear searches through word sets, replacing with O(1) dictionary lookups
-    - 80-95% reduction in boundary detection time as estimated in performance report
-  - **Implementation**: Task 2 from PERFORMANCE_OPTIMIZATION_REPORT.md
-
-- **Pattern extraction optimization**
-  - Optimized `_find_patterns()` in `entroppy/core/pattern_extraction.py` to reduce nested loop complexity
-  - Early filtering: Corrections are filtered by boundary type before processing to reduce work
-  - Grouping optimization: Corrections are grouped by their "other part" (the part that doesn't change) at each pattern length
-  - Two-pass approach: First pass groups corrections by other_part, second pass extracts patterns from groups
-  - This allows processing corrections with the same base pattern together, reducing redundant work
-  - Preserves original behavior: Still extracts all valid patterns from each correction
-  - **Impact**: 40-60% reduction in pattern extraction time for large correction sets
-  - **Implementation**: Task 3 from PERFORMANCE_OPTIMIZATION_REPORT.md
-
-- **Substring index optimization for collision resolution**
-  - Created `_build_typo_substring_index()` function in `entroppy/resolution/collision.py` that pre-computes substring relationships
-  - Index structure: Dictionary mapping each typo to position flags (appears_as_prefix, appears_as_suffix, appears_in_middle)
-  - Index is built once in `resolve_collisions()` before processing any typos, eliminating O(n²) repeated substring checks
-  - Updated `_choose_boundary_for_typo()` to accept and use the pre-computed index instead of iterating through all typos
-  - Updated `_process_single_word_correction()` and `_process_collision_case()` to pass index instead of `all_typos` set
-  - Reduces complexity from O(n² × m) per typo to O(n² × m) for index building + O(1) lookups per typo
-  - **Impact**: 60-80% reduction in boundary selection time for large typo maps (10K+ typos)
-  - **Implementation**: Task 4 from PERFORMANCE_OPTIMIZATION_REPORT.md
-
-- **Blocking map optimization for conflict removal**
-  - Modified conflict detection functions to track blocking relationships during removal process
-  - `_check_if_typo_is_blocked()` now returns the blocking correction instead of just True/False
-  - `_build_typo_index()` builds a `blocking_map: dict[Correction, Correction]` during conflict detection
-  - `remove_substring_conflicts()` returns blocking map alongside final corrections
-  - `remove_typo_conflicts()` uses pre-computed blocking map instead of linear search through all corrections
-  - Blocking map is built once during conflict removal, eliminating O(n × m) repeated searches where n = removed conflicts, m = final corrections
-  - Only builds detailed `removed_corrections` list when `collect_details=True`, but blocking map always built for pattern updates
-  - **Impact**: 70-90% reduction in conflict analysis time when details are collected
-  - **Implementation**: Task 5 from PERFORMANCE_OPTIMIZATION_REPORT.md
-
-### Changed
-
-- **Enhanced QMK ranking report with comprehensive visibility**
-  - **New sections added**:
-    - **Summary by Type**: Statistics breakdown showing counts, percentages, and score ranges for user words, patterns, and direct corrections
-    - **Complete Ranked List**: Full list of all corrections that made the final list, showing rank, type, score, correction, and boundary for every entry
-    - **Enhanced Pattern Details**: Complete information for all patterns in the final list, including rank, score, and **all** typos each pattern replaces (not just examples)
-    - **Enhanced Direct Corrections Details**: Complete list of all direct corrections in the final list with their ranks and scores, sorted by score
-  - **Improvements**:
-    - All corrections now show their ranking scores (or "(USER)" for user words)
-    - Patterns show complete replacement lists instead of limited examples
-    - Direct corrections show complete list instead of top 20 only
-    - Report organized in logical flow: Overview → Summary → Filtering → Complete List → Details → Cutoff
-  - **Code cleanup**:
-    - Removed unused functions: `_write_patterns_section()`, `_write_direct_corrections_section()`, `_correction_in_final()`, `_is_pattern()`
-    - Broke up long strings into multiple lines for better readability and linter compliance
-  - **Benefits**:
-    - Full transparency into what made the final list and why
-    - Easy debugging to understand ranking decisions
-    - Complete visibility into pattern effectiveness (all replaced typos visible)
-    - All scores visible for validation and analysis
 
 ## [0.4.3] - 2025-12-01
 
