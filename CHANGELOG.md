@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Refactored debug logging into separate modules**: Moved debug logging code from processing modules into dedicated logging modules for better separation of concerns
+  - **Word processing**: Created `entroppy/resolution/word_processing_logging.py` for Stage 2 debug logging
+  - **Pattern generalization**: Created `entroppy/core/pattern_logging.py` for Stage 4 debug logging
+  - **Conflict resolution**: Created `entroppy/resolution/conflict_logging.py` for Stage 5 debug logging
+  - **QMK platform**: Created `entroppy/platforms/qmk/qmk_logging.py` for Stage 6 debug logging
+  - **Impact**: Processing code is now cleaner and easier to maintain, with debug logging isolated in separate modules
+
 ### Added
 
 - **Debug logging for QMK filtering and ranking phase**: Added `debug_words` and `debug_typos` support for Stage 6 (platform-specific filtering and ranking)

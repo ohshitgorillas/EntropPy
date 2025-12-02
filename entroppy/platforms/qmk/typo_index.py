@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 from tqdm import tqdm
 
 from entroppy.core import Correction
-from entroppy.utils.debug import is_debug_correction, log_debug_correction
+
+from .qmk_logging import log_garbage_correction_removal
 
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher
@@ -198,31 +199,13 @@ class TypoIndex:
                             if debug_words or debug_typo_matcher:
                                 typo2_correction = (typo2, word2, bound1)
                                 typo1_correction = (typo1, word1, bound1)
-
-                                if is_debug_correction(
-                                    typo2_correction, debug_words or set(), debug_typo_matcher
-                                ):
-                                    log_debug_correction(
-                                        typo2_correction,
-                                        f"Filtered - substring conflict (would produce garbage "
-                                        f"'{result}' for '{typo1}' -> '{word1}', "
-                                        f"kept longer typo instead)",
-                                        debug_words or set(),
-                                        debug_typo_matcher,
-                                        "Stage 6",
-                                    )
-                                if is_debug_correction(
-                                    typo1_correction, debug_words or set(), debug_typo_matcher
-                                ):
-                                    log_debug_correction(
-                                        typo1_correction,
-                                        f"Kept - substring conflict (removed shorter typo "
-                                        f"'{typo2}' -> '{word2}' that would produce garbage "
-                                        f"'{result}')",
-                                        debug_words or set(),
-                                        debug_typo_matcher,
-                                        "Stage 6",
-                                    )
+                                log_garbage_correction_removal(
+                                    typo2_correction,
+                                    typo1_correction,
+                                    result,
+                                    debug_words or set(),
+                                    debug_typo_matcher,
+                                )
 
                             removed_typos.add(typo2)
                             # Remove typo2 from shorter_typos if it was already added

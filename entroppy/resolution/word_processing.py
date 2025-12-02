@@ -7,47 +7,16 @@ from entroppy.matching import PatternMatcher
 from entroppy.utils.debug import is_debug_word, is_debug_typo
 from entroppy.utils.helpers import cached_word_frequency
 
+from .word_processing_logging import (
+    add_debug_message,
+    log_typo_accepted,
+    log_typo_generated,
+    log_typo_pattern_match,
+    log_word_processing_start,
+)
+
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher
-
-
-def _add_debug_message(
-    debug_messages: list[str],
-    is_debug: bool,
-    typo_debug_check: bool,
-    word: str,
-    typo: str,
-    message_word: str,
-    message_typo: str,
-    debug_typo_matcher: "DebugTypoMatcher | None" = None,
-) -> None:
-    """Add debug messages for both word and typo debugging.
-
-    Args:
-        debug_messages: List to append messages to
-        is_debug: Whether the word is being debugged
-        typo_debug_check: Whether the typo is being debugged
-        word: The word being processed
-        typo: The typo being processed
-        message_word: Message to add for word debugging
-        message_typo: Message to add for typo debugging
-        debug_typo_matcher: Optional matcher to get matched patterns for typo
-    """
-    if is_debug:
-        debug_messages.append(f"[DEBUG WORD: '{word}'] [Stage 2] {message_word}")
-    if typo_debug_check:
-        # Get matched patterns if matcher is available
-        if debug_typo_matcher:
-            matched_patterns = debug_typo_matcher.get_matching_patterns(typo, BoundaryType.NONE)
-            if matched_patterns:
-                patterns_str = ", ".join(matched_patterns)
-                debug_messages.append(
-                    f"[DEBUG TYPO: '{typo}' (matched: {patterns_str})] [Stage 2] {message_typo}"
-                )
-            else:
-                debug_messages.append(f"[DEBUG TYPO: '{typo}'] [Stage 2] {message_typo}")
-        else:
-            debug_messages.append(f"[DEBUG TYPO: '{typo}'] [Stage 2] {message_typo}")
 
 
 def process_word(
@@ -80,8 +49,7 @@ def process_word(
     debug_messages = []
     is_debug = is_debug_word(word, debug_words)
 
-    if is_debug:
-        debug_messages.append(f"[DEBUG WORD: '{word}'] [Stage 2] Generating typos for debug word")
+    log_word_processing_start(debug_messages, word, debug_words)
 
     typos = generate_all_typos(word, adj_letters_map)
 
@@ -97,12 +65,11 @@ def process_word(
         # For now, check with NONE boundary as a placeholder
         typo_debug_check = is_debug_typo(typo, BoundaryType.NONE, debug_typo_matcher)
 
-        if is_debug:
-            debug_messages.append(f"[DEBUG WORD: '{word}'] [Stage 2] Generated typo: {typo}")
+        log_typo_generated(debug_messages, word, typo, debug_words)
 
         # Skip if typo is a source word (from includes file)
         if typo in source_words:
-            _add_debug_message(
+            add_debug_message(
                 debug_messages,
                 is_debug,
                 typo_debug_check,
@@ -116,7 +83,7 @@ def process_word(
 
         # Use full validation set to check if typo is a real word
         if typo in validation_set:
-            _add_debug_message(
+            add_debug_message(
                 debug_messages,
                 is_debug,
                 typo_debug_check,
@@ -136,7 +103,7 @@ def process_word(
             typo_freq = cached_word_frequency(typo, "en")
             if typo_freq >= typo_freq_threshold:
                 freq_msg = f"frequency {typo_freq:.2e} >= threshold {typo_freq_threshold:.2e}"
-                _add_debug_message(
+                add_debug_message(
                     debug_messages,
                     is_debug,
                     typo_debug_check,
@@ -151,22 +118,9 @@ def process_word(
         # Note: Boundaries are determined in Stage 3 (collision resolution) where
         # they can be properly evaluated in context of all competing words and typos.
         # For debug logging, we use NONE as a placeholder since boundary isn't determined yet.
-        placeholder_boundary = BoundaryType.NONE
+        log_typo_pattern_match(debug_messages, typo, word, debug_typo_matcher)
 
-        # Check if this typo matches any debug patterns
-        if debug_typo_matcher:
-            matched_patterns = debug_typo_matcher.get_matching_patterns(typo, placeholder_boundary)
-            if matched_patterns:
-                patterns_str = ", ".join(matched_patterns)
-                debug_messages.append(
-                    f"[DEBUG TYPO: '{typo}' (matched: {patterns_str})] "
-                    f"[Stage 2] Generated from word: {word}"
-                )
-
-        if is_debug:
-            debug_messages.append(
-                f"[DEBUG WORD: '{word}'] [Stage 2] Generated typo: {typo} → {word}"
-            )
+        log_typo_accepted(debug_messages, word, typo, debug_words)
 
         # Store only (typo, word) - boundary will be determined in Stage 3
         corrections.append((typo, word))

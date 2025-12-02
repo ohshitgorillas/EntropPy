@@ -8,7 +8,13 @@ from tqdm import tqdm
 
 from entroppy.core import BoundaryType, Correction
 from entroppy.platforms.qmk.typo_index import TypoIndex
-from entroppy.utils.debug import is_debug_correction, log_debug_correction
+
+from .qmk_logging import (
+    log_character_filtering,
+    log_same_typo_conflict,
+    log_substring_conflict,
+    log_suffix_conflict,
+)
 
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher
@@ -66,30 +72,25 @@ def filter_character_set_and_resolve_same_typo(
 
     for typo, word, boundary in corrections_iter:
         correction = (typo, word, boundary)
-        is_debug = is_debug_correction(correction, debug_words or set(), debug_typo_matcher)
 
         # Character validation
         if not all(c.isalpha() or c == "'" for c in typo.lower()):
             char_filtered.append((typo, word, "typo contains invalid chars"))
-            if is_debug:
-                log_debug_correction(
-                    correction,
-                    "Filtered - typo contains invalid characters",
-                    debug_words or set(),
-                    debug_typo_matcher,
-                    "Stage 6",
-                )
+            log_character_filtering(
+                correction,
+                "typo contains invalid characters",
+                debug_words or set(),
+                debug_typo_matcher,
+            )
             continue
         if not all(c.isalpha() or c == "'" for c in word.lower()):
             char_filtered.append((typo, word, "word contains invalid chars"))
-            if is_debug:
-                log_debug_correction(
-                    correction,
-                    "Filtered - word contains invalid characters",
-                    debug_words or set(),
-                    debug_typo_matcher,
-                    "Stage 6",
-                )
+            log_character_filtering(
+                correction,
+                "word contains invalid characters",
+                debug_words or set(),
+                debug_typo_matcher,
+            )
             continue
 
         # Convert to lowercase and group by typo
@@ -120,27 +121,13 @@ def filter_character_set_and_resolve_same_typo(
                 same_typo_conflicts.append((removed[0], removed[1], kept[0], kept[1], removed[2]))
                 # Debug logging for same-typo conflicts
                 removed_correction = (removed[0], removed[1], removed[2])
-                if is_debug_correction(
-                    removed_correction, debug_words or set(), debug_typo_matcher
-                ):
-                    log_debug_correction(
-                        removed_correction,
-                        f"Filtered - same-typo conflict (kept: {kept[0]} -> {kept[1]} "
-                        f"with boundary {kept[2].name})",
-                        debug_words or set(),
-                        debug_typo_matcher,
-                        "Stage 6",
-                    )
                 kept_correction = (kept[0], kept[1], kept[2])
-                if is_debug_correction(kept_correction, debug_words or set(), debug_typo_matcher):
-                    log_debug_correction(
-                        kept_correction,
-                        f"Kept - same-typo conflict (removed: {removed[0]} -> {removed[1]} "
-                        f"with boundary {removed[2].name})",
-                        debug_words or set(),
-                        debug_typo_matcher,
-                        "Stage 6",
-                    )
+                log_same_typo_conflict(
+                    removed_correction,
+                    kept_correction,
+                    debug_words or set(),
+                    debug_typo_matcher,
+                )
 
     return deduped, char_filtered, same_typo_conflicts
 
@@ -219,24 +206,13 @@ def detect_suffix_conflicts(
     if debug_words or debug_typo_matcher:
         for long_typo, long_word, short_typo, short_word, boundary in conflicts:
             long_correction = (long_typo, long_word, boundary)
-            if is_debug_correction(long_correction, debug_words or set(), debug_typo_matcher):
-                log_debug_correction(
-                    long_correction,
-                    f"Filtered - suffix conflict (shorter typo '{short_typo}' -> "
-                    f"'{short_word}' blocks it)",
-                    debug_words or set(),
-                    debug_typo_matcher,
-                    "Stage 6",
-                )
             short_correction = (short_typo, short_word, boundary)
-            if is_debug_correction(short_correction, debug_words or set(), debug_typo_matcher):
-                log_debug_correction(
-                    short_correction,
-                    f"Kept - suffix conflict (blocks longer typo '{long_typo}' -> '{long_word}')",
-                    debug_words or set(),
-                    debug_typo_matcher,
-                    "Stage 6",
-                )
+            log_suffix_conflict(
+                long_correction,
+                short_correction,
+                debug_words or set(),
+                debug_typo_matcher,
+            )
 
     return filtered, conflicts
 
@@ -289,25 +265,12 @@ def detect_substring_conflicts(
         for removed_typo, removed_word, kept_typo, kept_word, boundary in conflicts:
             removed_correction = (removed_typo, removed_word, boundary)
             kept_correction = (kept_typo, kept_word, boundary)
-
-            if is_debug_correction(removed_correction, debug_words or set(), debug_typo_matcher):
-                log_debug_correction(
-                    removed_correction,
-                    f"Filtered - substring conflict (shorter typo '{kept_typo}' -> "
-                    f"'{kept_word}' blocks it)",
-                    debug_words or set(),
-                    debug_typo_matcher,
-                    "Stage 6",
-                )
-            if is_debug_correction(kept_correction, debug_words or set(), debug_typo_matcher):
-                log_debug_correction(
-                    kept_correction,
-                    f"Kept - substring conflict (blocks longer typo '{removed_typo}' -> "
-                    f"'{removed_word}')",
-                    debug_words or set(),
-                    debug_typo_matcher,
-                    "Stage 6",
-                )
+            log_substring_conflict(
+                removed_correction,
+                kept_correction,
+                debug_words or set(),
+                debug_typo_matcher,
+            )
 
     return filtered, conflicts
 
