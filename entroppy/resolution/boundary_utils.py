@@ -1,6 +1,7 @@
 """Boundary type utilities for collision resolution."""
 
 from entroppy.core import BoundaryType
+from entroppy.core.boundaries import BoundaryIndex
 from entroppy.utils.debug import DebugTypoMatcher, log_if_debug_correction
 
 
@@ -68,3 +69,148 @@ def apply_user_word_boundary_override(
             "Stage 3",
         )
     return boundary
+
+
+def _check_typo_in_target_word(
+    typo: str,
+    target_word: str | None,
+) -> tuple[bool, bool, bool]:
+    """Check if typo appears as prefix, suffix, or substring in target word.
+
+    Args:
+        typo: The typo string to check
+        target_word: The target word to check against (None if not available)
+
+    Returns:
+        Tuple of (is_prefix, is_suffix, is_substring)
+    """
+    if target_word is None:
+        return False, False, False
+
+    # Check if typo is a prefix (excluding exact match)
+    is_prefix = target_word.startswith(typo) and typo != target_word
+
+    # Check if typo is a suffix (excluding exact match)
+    is_suffix = target_word.endswith(typo) and typo != target_word
+
+    # Check if typo is a substring (excluding exact match and prefix/suffix cases)
+    is_substring = typo in target_word and typo != target_word and not is_prefix and not is_suffix
+
+    return is_prefix, is_suffix, is_substring
+
+
+def _get_example_words_with_prefix(
+    typo: str, validation_index: BoundaryIndex, source_index: BoundaryIndex
+) -> list[str]:
+    """Get example words that have typo as a prefix.
+
+    Args:
+        typo: The typo string
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+
+    Returns:
+        List of example words (up to 3 total, prioritizing validation words)
+    """
+    examples = []
+    # Check validation index first
+    if typo in validation_index.prefix_index:
+        for word in validation_index.prefix_index[typo]:
+            if word != typo and len(examples) < 3:
+                examples.append(word)
+    # Then check source index if we need more examples
+    if len(examples) < 3 and typo in source_index.prefix_index:
+        for word in source_index.prefix_index[typo]:
+            if word != typo and word not in examples and len(examples) < 3:
+                examples.append(word)
+    return examples
+
+
+def _get_example_words_with_suffix(
+    typo: str, validation_index: BoundaryIndex, source_index: BoundaryIndex
+) -> list[str]:
+    """Get example words that have typo as a suffix.
+
+    Args:
+        typo: The typo string
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+
+    Returns:
+        List of example words (up to 3 total, prioritizing validation words)
+    """
+    examples = []
+    # Check validation index first
+    if typo in validation_index.suffix_index:
+        for word in validation_index.suffix_index[typo]:
+            if word != typo and len(examples) < 3:
+                examples.append(word)
+    # Then check source index if we need more examples
+    if len(examples) < 3 and typo in source_index.suffix_index:
+        for word in source_index.suffix_index[typo]:
+            if word != typo and word not in examples and len(examples) < 3:
+                examples.append(word)
+    return examples
+
+
+def _get_example_words_with_substring(
+    typo: str, validation_index: BoundaryIndex, source_index: BoundaryIndex
+) -> list[str]:
+    """Get example words that contain typo as a substring (not prefix/suffix).
+
+    Args:
+        typo: The typo string
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+
+    Returns:
+        List of example words (up to 3 total, prioritizing validation words)
+    """
+    examples = []
+    # Check validation index first
+    for word in validation_index.word_set:
+        if (
+            typo in word
+            and word != typo
+            and not word.startswith(typo)
+            and not word.endswith(typo)
+            and len(examples) < 3
+        ):
+            examples.append(word)
+    # Then check source index if we need more examples
+    if len(examples) < 3:
+        for word in source_index.word_set:
+            if (
+                typo in word
+                and word != typo
+                and not word.startswith(typo)
+                and not word.endswith(typo)
+                and word not in examples
+                and len(examples) < 3
+            ):
+                examples.append(word)
+    return examples
+
+
+def _format_incorrect_transformation(conflict_word: str, typo_str: str, word_str: str) -> str:
+    """Format how the correction would incorrectly apply.
+
+    Args:
+        conflict_word: The word that would be incorrectly transformed
+        typo_str: The typo string
+        word_str: The target word string
+
+    Returns:
+        Formatted string showing the incorrect transformation
+    """
+    if conflict_word.startswith(typo_str):
+        # Prefix case
+        replacement = conflict_word.replace(typo_str, word_str, 1)
+        return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> ' f"{replacement}  xx INCORRECT"
+    if conflict_word.endswith(typo_str):
+        # Suffix case
+        replacement = conflict_word.rsplit(typo_str, 1)[0] + word_str
+        return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> ' f"{replacement}  xx INCORRECT"
+    # Middle substring case
+    replacement = conflict_word.replace(typo_str, word_str, 1)
+    return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> ' f"{replacement}  xx INCORRECT"

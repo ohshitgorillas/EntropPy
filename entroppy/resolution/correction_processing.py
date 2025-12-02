@@ -14,10 +14,8 @@ from entroppy.utils.debug import (
 from entroppy.utils.helpers import cached_word_frequency
 
 
-from .boundary_selection import (
-    _check_false_trigger_with_details,
-    choose_boundary_for_typo,
-)
+from .boundary_selection import choose_boundary_for_typo
+from .false_trigger_check import _check_false_trigger_with_details
 from .boundary_utils import _should_skip_short_typo, apply_user_word_boundary_override
 from .exclusion import handle_exclusion
 

@@ -30,6 +30,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - **Impact**: Improved code readability and maintainability without changing functionality
   - **Files modified**: `entroppy/resolution/boundary_selection.py`
 
+- **Split `boundary_selection.py` into multiple focused modules**: Broke up the 717-line file into smaller, more manageable modules
+  - **New structure**: 
+    - `boundary_selection.py` (141 lines) - Main public API with `choose_boundary_for_typo()` and `log_boundary_selection_details()`
+    - `false_trigger_check.py` (160 lines) - False trigger detection logic
+    - `boundary_logging.py` (283 lines) - Debug and logging functions
+    - `boundary_utils.py` (227 lines) - Utility functions for relationship checking and example retrieval
+  - **Impact**: Improved code organization, easier maintenance, and better separation of concerns
+  - **Files modified**: `entroppy/resolution/boundary_selection.py`, `entroppy/resolution/false_trigger_check.py` (new), `entroppy/resolution/boundary_logging.py` (new), `entroppy/resolution/boundary_utils.py`, `entroppy/resolution/correction_processing.py`
+
 - **Pattern generalization performance optimization**: Optimized pattern extraction and validation for faster processing
   - **Pattern extraction**: Removed unnecessary grouping by word length, simplified loop structure
   - **Pattern validation**: Added `CorrectionIndex` class to pre-build suffix/prefix indexes for O(1) lookups instead of O(n) linear scans
