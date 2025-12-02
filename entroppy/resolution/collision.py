@@ -66,6 +66,10 @@ def _process_typo_worker(item: tuple[str, list[str]]) -> tuple[
         # Single word case: no collision
         word = unique_words[0]
 
+        # pylint: disable=duplicate-code
+        # False positive: Similar parameter lists are expected when calling the same function
+        # from different contexts (single-threaded vs parallel worker). This is not duplicate
+        # code that should be refactored - it's the same function call with the same parameters.
         correction, was_skipped_short, excluded_info, boundary_details = (
             process_single_word_correction(
                 typo,
@@ -263,6 +267,11 @@ def resolve_collisions(
                 # Single word case: no collision
                 word = unique_words[0]
 
+                # pylint: disable=duplicate-code
+                # False positive: Similar parameter lists are expected when calling the same
+                # function from different contexts (single-threaded vs parallel worker).
+                # This is not duplicate code that should be refactored - it's the same function
+                # call with the same parameters.
                 correction, was_skipped_short, excluded_info, _ = process_single_word_correction(
                     typo,
                     word,
@@ -284,6 +293,11 @@ def resolve_collisions(
                     final_corrections.append(correction)
             else:
                 # Collision case: multiple words compete for same typo
+                # pylint: disable=duplicate-code
+                # False positive: Similar parameter lists are expected when calling the same
+                # function from different contexts (single-threaded vs parallel worker).
+                # This is not duplicate code that should be refactored - it's the same function
+                # call with the same parameters.
                 corrections_list, excluded_list, skipped_collisions_list, boundary_details_list = (
                     process_collision_case(
                         typo,

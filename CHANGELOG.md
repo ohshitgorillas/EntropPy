@@ -8,6 +8,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Refactored large files into smaller modules**: Split files >500 lines into focused, maintainable modules
+  - **Pattern generalization** (`entroppy/core/patterns.py`, 618 → 90 lines):
+    - Created `pattern_validation_worker.py` (147 lines) for parallel validation worker functions
+    - Created `pattern_validation_runner.py` (415 lines) for single-threaded and parallel validation runners
+    - Main `patterns.py` now focuses on orchestration only
+  - **Pattern validation** (`entroppy/core/pattern_validation.py`, 522 → 346 lines):
+    - Created `pattern_indexes.py` (129 lines) for `SourceWordIndex`, `CorrectionIndex`, and `ValidationIndexes` classes
+    - Created `pattern_conflicts.py` (121 lines) for pattern conflict checking functions
+    - Main `pattern_validation.py` now focuses on core validation logic
+  - **Collision processing** (`entroppy/resolution/correction_processing.py`):
+    - Split `process_collision_case` (225 lines) into smaller helper functions:
+      - `_process_single_word_boundary_group()` for single-word boundary groups
+      - `_process_collision_boundary_group()` for collision resolution within boundary groups
+    - Improved code readability and maintainability
+  - **Impact**: All files are now <500 lines, with better separation of concerns and easier maintenance
+
 - **Refactored debug logging into separate modules**: Moved debug logging code from processing modules into dedicated logging modules for better separation of concerns
   - **Word processing**: Created `entroppy/resolution/word_processing_logging.py` for Stage 2 debug logging
   - **Pattern generalization**: Created `entroppy/core/pattern_logging.py` for Stage 4 debug logging

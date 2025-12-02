@@ -152,6 +152,209 @@ def process_single_word_correction(
     return correction, False, None, boundary_details
 
 
+def _process_single_word_boundary_group(
+    typo: str,
+    word: str,
+    boundary: BoundaryType,
+    min_typo_length: int,
+    min_word_length: int,
+    user_words: set[str],
+    exclusion_matcher: ExclusionMatcher,
+    debug_words: set[str],
+    debug_typo_matcher: "DebugTypoMatcher | None",
+    validation_index: BoundaryIndex,
+    source_index: BoundaryIndex,
+) -> tuple[
+    Correction | None,
+    tuple[str, str, str | None] | None,
+    dict | None,
+]:
+    """Process a single word in a boundary group (no collision within group).
+
+    Args:
+        typo: The typo string
+        word: The word to process
+        boundary: The boundary type for this group
+        min_typo_length: Minimum typo length
+        min_word_length: Minimum word length
+        user_words: Set of user-provided words
+        exclusion_matcher: Matcher for exclusion rules
+        debug_words: Set of words to debug
+        debug_typo_matcher: Matcher for debug typos
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+
+    Returns:
+        Tuple of (correction, excluded_info, boundary_details).
+        correction is None if skipped or excluded.
+        excluded_info is (typo, word, matching_rule) if excluded, None otherwise.
+        boundary_details is dict with boundary selection info for later logging, or None.
+    """
+    # Collect boundary details for later logging
+    # (only if debug_typo_matcher is None, i.e., in worker)
+    boundary_details = None
+    if not debug_typo_matcher:
+        boundary_details = _collect_boundary_details(
+            typo,
+            word,
+            boundary,
+            validation_index,
+            source_index,
+        )
+
+    # Apply user word boundary override
+    boundary = apply_user_word_boundary_override(
+        word, boundary, user_words, debug_words, debug_typo_matcher, typo
+    )
+
+    # Apply checks
+    if _should_skip_short_typo(typo, word, min_typo_length, min_word_length):
+        return None, None, boundary_details
+
+    correction = (typo, word, boundary)
+    should_exclude, matching_rule = handle_exclusion(
+        correction, exclusion_matcher, debug_words, debug_typo_matcher
+    )
+
+    if should_exclude:
+        return None, (typo, word, matching_rule), boundary_details
+
+    log_if_debug_correction(
+        correction,
+        f"Selected (no collision for boundary {boundary.value})",
+        debug_words,
+        debug_typo_matcher,
+        "Stage 3",
+    )
+    return correction, None, boundary_details
+
+
+def _process_collision_boundary_group(
+    typo: str,
+    words_in_group: list[str],
+    boundary: BoundaryType,
+    freq_ratio: float,
+    min_typo_length: int,
+    min_word_length: int,
+    user_words: set[str],
+    exclusion_matcher: ExclusionMatcher,
+    debug_words: set[str],
+    debug_typo_matcher: "DebugTypoMatcher | None",
+    validation_index: BoundaryIndex,
+    source_index: BoundaryIndex,
+    is_debug_collision: bool,
+) -> tuple[
+    Correction | None,
+    tuple[str, str, str | None] | None,
+    tuple[str, list[str], float, BoundaryType] | None,
+    dict | None,
+]:
+    """Process a boundary group with multiple words (collision within group).
+
+    Args:
+        typo: The typo string
+        words_in_group: List of words in this boundary group
+        boundary: The boundary type for this group
+        freq_ratio: Minimum frequency ratio for collision resolution
+        min_typo_length: Minimum typo length
+        min_word_length: Minimum word length
+        user_words: Set of user-provided words
+        exclusion_matcher: Matcher for exclusion rules
+        debug_words: Set of words to debug
+        debug_typo_matcher: Matcher for debug typos
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+        is_debug_collision: Whether this collision is being debugged
+
+    Returns:
+        Tuple of (correction, excluded_info, skipped_collision, boundary_details).
+        correction is None if skipped, excluded, or ambiguous.
+        excluded_info is (typo, word, matching_rule) if excluded, None otherwise.
+        skipped_collision is (typo, words_in_group, ratio, boundary) if ambiguous, None otherwise.
+        boundary_details is dict with boundary selection info for later logging, or None.
+    """
+    # Collision within this boundary group - resolve by frequency
+    word_freqs = [(w, cached_word_frequency(w, "en")) for w in words_in_group]
+    word_freqs.sort(key=lambda x: x[1], reverse=True)
+
+    most_common = word_freqs[0]
+    second_most = word_freqs[1] if len(word_freqs) > 1 else (None, 0)
+    ratio = most_common[1] / second_most[1] if second_most[1] > 0 else float("inf")
+
+    if is_debug_collision:
+        words_with_freqs = ", ".join([f"{w} (freq: {f:.2e})" for w, f in word_freqs])
+        matched_patterns = (
+            debug_typo_matcher.get_matching_patterns(typo, boundary) if debug_typo_matcher else None
+        )
+        log_debug_typo(
+            typo,
+            f"Collision for boundary {boundary.value}: {typo} → [{words_with_freqs}] "
+            f"(ratio: {ratio:.2f})",
+            matched_patterns,
+            "Stage 3",
+        )
+
+    if ratio > freq_ratio:
+        # Can resolve collision for this boundary
+        word = most_common[0]
+
+        # Collect boundary details for later logging
+        # (only if debug_typo_matcher is None, i.e., in worker)
+        boundary_details = None
+        if not debug_typo_matcher:
+            boundary_details = _collect_boundary_details(
+                typo,
+                word,
+                boundary,
+                validation_index,
+                source_index,
+            )
+
+        # Apply user word boundary override
+        boundary = apply_user_word_boundary_override(
+            word, boundary, user_words, debug_words, debug_typo_matcher, typo
+        )
+
+        if _should_skip_short_typo(typo, word, min_typo_length, min_word_length):
+            return None, None, None, boundary_details
+
+        correction = (typo, word, boundary)
+        should_exclude, matching_rule = handle_exclusion(
+            correction, exclusion_matcher, debug_words, debug_typo_matcher
+        )
+
+        if should_exclude:
+            return None, (typo, word, matching_rule), None, boundary_details
+
+        log_if_debug_correction(
+            correction,
+            f"Selected '{word}' over {words_in_group[1:]} "
+            f"(boundary {boundary.value}, ratio: {ratio:.2f})",
+            debug_words,
+            debug_typo_matcher,
+            "Stage 3",
+        )
+        return correction, None, None, boundary_details
+
+    # Ambiguous collision for this boundary only
+    is_debug = any(
+        is_debug_correction((typo, w, boundary), debug_words, debug_typo_matcher)
+        for w in words_in_group
+    )
+    if is_debug:
+        matched_patterns = (
+            debug_typo_matcher.get_matching_patterns(typo, boundary) if debug_typo_matcher else None
+        )
+        log_debug_typo(
+            typo,
+            f"SKIPPED - ambiguous collision for boundary {boundary.value}: "
+            f"{words_in_group}, ratio {ratio:.2f} <= threshold {freq_ratio}",
+            matched_patterns,
+            "Stage 3",
+        )
+    return None, None, (typo, words_in_group, ratio, boundary), None
+
+
 def process_collision_case(
     typo: str,
     unique_words: list[str],
@@ -247,133 +450,59 @@ def process_collision_case(
         if len(words_in_group) == 1:
             # No collision for this boundary - single word
             word = words_in_group[0]
-
-            # Collect boundary details for later logging
-            # (only if debug_typo_matcher is None, i.e., in worker)
-            boundary_details = None
-            if not debug_typo_matcher:
-                boundary_details = _collect_boundary_details(
-                    typo,
-                    word,
-                    boundary,
-                    validation_index,
-                    source_index,
-                )
-                if boundary_details:
-                    all_boundary_details.append(boundary_details)
-
-            # Apply user word boundary override
-            boundary = apply_user_word_boundary_override(
-                word, boundary, user_words, debug_words, debug_typo_matcher, typo
+            # pylint: disable=duplicate-code
+            # False positive: Similar parameter lists are expected when calling helper functions
+            # with the same context parameters. This is not duplicate code that should be refactored
+            # - it's the same function call with the same parameters from different call sites.
+            correction, excluded_info, boundary_details = _process_single_word_boundary_group(
+                typo,
+                word,
+                boundary,
+                min_typo_length,
+                min_word_length,
+                user_words,
+                exclusion_matcher,
+                debug_words,
+                debug_typo_matcher,
+                validation_index,
+                source_index,
             )
-
-            # Apply checks
-            if _should_skip_short_typo(typo, word, min_typo_length, min_word_length):
-                continue
-
-            correction = (typo, word, boundary)
-            should_exclude, matching_rule = handle_exclusion(
-                correction, exclusion_matcher, debug_words, debug_typo_matcher
-            )
-
-            if should_exclude:
-                all_excluded.append((typo, word, matching_rule))
-            else:
+            if boundary_details:
+                all_boundary_details.append(boundary_details)
+            if excluded_info:
+                all_excluded.append(excluded_info)
+            elif correction:
                 all_corrections.append(correction)
-                log_if_debug_correction(
-                    correction,
-                    f"Selected (no collision for boundary {boundary.value})",
+        else:
+            # Collision within this boundary group
+            # pylint: disable=duplicate-code
+            # False positive: Similar parameter lists are expected when calling helper functions
+            # with the same context parameters. This is not duplicate code that should be refactored
+            # - it's the same function call with the same parameters from different call sites.
+            correction, excluded_info, skipped_collision, boundary_details = (
+                _process_collision_boundary_group(
+                    typo,
+                    words_in_group,
+                    boundary,
+                    freq_ratio,
+                    min_typo_length,
+                    min_word_length,
+                    user_words,
+                    exclusion_matcher,
                     debug_words,
                     debug_typo_matcher,
-                    "Stage 3",
+                    validation_index,
+                    source_index,
+                    is_debug_collision,
                 )
-        else:
-            # Collision within this boundary group - resolve by frequency
-            word_freqs = [(w, cached_word_frequency(w, "en")) for w in words_in_group]
-            word_freqs.sort(key=lambda x: x[1], reverse=True)
-
-            most_common = word_freqs[0]
-            second_most = word_freqs[1] if len(word_freqs) > 1 else (None, 0)
-            ratio = most_common[1] / second_most[1] if second_most[1] > 0 else float("inf")
-
-            if is_debug_collision:
-                words_with_freqs = ", ".join([f"{w} (freq: {f:.2e})" for w, f in word_freqs])
-                matched_patterns = (
-                    debug_typo_matcher.get_matching_patterns(typo, boundary)
-                    if debug_typo_matcher
-                    else None
-                )
-                log_debug_typo(
-                    typo,
-                    f"Collision for boundary {boundary.value}: {typo} → [{words_with_freqs}] "
-                    f"(ratio: {ratio:.2f})",
-                    matched_patterns,
-                    "Stage 3",
-                )
-
-            if ratio > freq_ratio:
-                # Can resolve collision for this boundary
-                word = most_common[0]
-
-                # Collect boundary details for later logging
-                # (only if debug_typo_matcher is None, i.e., in worker)
-                boundary_details = None
-                if not debug_typo_matcher:
-                    boundary_details = _collect_boundary_details(
-                        typo,
-                        word,
-                        boundary,
-                        validation_index,
-                        source_index,
-                    )
-                    if boundary_details:
-                        all_boundary_details.append(boundary_details)
-
-                # Apply user word boundary override
-                boundary = apply_user_word_boundary_override(
-                    word, boundary, user_words, debug_words, debug_typo_matcher, typo
-                )
-
-                if _should_skip_short_typo(typo, word, min_typo_length, min_word_length):
-                    continue
-
-                correction = (typo, word, boundary)
-                should_exclude, matching_rule = handle_exclusion(
-                    correction, exclusion_matcher, debug_words, debug_typo_matcher
-                )
-
-                if should_exclude:
-                    all_excluded.append((typo, word, matching_rule))
-                else:
-                    all_corrections.append(correction)
-                    log_if_debug_correction(
-                        correction,
-                        f"Selected '{word}' over {words_in_group[1:]} "
-                        f"(boundary {boundary.value}, ratio: {ratio:.2f})",
-                        debug_words,
-                        debug_typo_matcher,
-                        "Stage 3",
-                    )
-            else:
-                # Ambiguous collision for this boundary only
-                all_skipped.append((typo, words_in_group, ratio, boundary))
-
-                is_debug = any(
-                    is_debug_correction((typo, w, boundary), debug_words, debug_typo_matcher)
-                    for w in words_in_group
-                )
-                if is_debug:
-                    matched_patterns = (
-                        debug_typo_matcher.get_matching_patterns(typo, boundary)
-                        if debug_typo_matcher
-                        else None
-                    )
-                    log_debug_typo(
-                        typo,
-                        f"SKIPPED - ambiguous collision for boundary {boundary.value}: "
-                        f"{words_in_group}, ratio {ratio:.2f} <= threshold {freq_ratio}",
-                        matched_patterns,
-                        "Stage 3",
-                    )
+            )
+            if boundary_details:
+                all_boundary_details.append(boundary_details)
+            if excluded_info:
+                all_excluded.append(excluded_info)
+            elif skipped_collision:
+                all_skipped.append(skipped_collision)
+            elif correction:
+                all_corrections.append(correction)
 
     return all_corrections, all_excluded, all_skipped, all_boundary_details
