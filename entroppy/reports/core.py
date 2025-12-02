@@ -15,28 +15,45 @@ from entroppy.reports.statistics import generate_statistics_csv
 from entroppy.reports.summary import generate_summary_report
 
 
+def create_report_directory(reports_path: str, platform_name: str) -> Path:
+    """Create a timestamped report directory.
+
+    Args:
+        reports_path: Base path for reports directory
+        platform_name: Platform name to include in folder name
+
+    Returns:
+        Path to the created report directory
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    folder_name = f"{timestamp}_{platform_name}"
+    report_dir = Path(reports_path) / folder_name
+    report_dir.mkdir(parents=True, exist_ok=True)
+    return report_dir
+
+
 def generate_reports(
     data: ReportData,
-    reports_path: str,
+    reports_path: str | Path,
     platform_name: str,
     verbose: bool = False,
+    report_dir: Path | None = None,
 ) -> Path:
     """Generate all reports in a timestamped directory.
 
     Args:
         data: Report data collected during pipeline execution
-        reports_path: Base path for reports directory
-        platform_name: Platform name to include in folder name
+        reports_path: Base path for reports directory (used if report_dir is None)
+        platform_name: Platform name to include in folder name (used if report_dir is None)
         verbose: Whether to print progress messages
+        report_dir: Optional pre-created report directory. If None, creates a new one.
 
     Returns:
         Path to the created report directory
     """
-    # Create timestamped directory with platform name
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    folder_name = f"{timestamp}_{platform_name}"
-    report_dir = Path(reports_path) / folder_name
-    report_dir.mkdir(parents=True, exist_ok=True)
+    # Use provided directory or create a new one
+    if report_dir is None:
+        report_dir = create_report_directory(reports_path, platform_name)
 
     if verbose:
         logger.info(f"  Generating reports in: {report_dir}/")

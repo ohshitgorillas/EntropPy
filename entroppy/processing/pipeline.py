@@ -6,7 +6,8 @@ from loguru import logger
 
 from entroppy.core import Config
 from entroppy.platforms import PlatformBackend, get_platform_backend
-from entroppy.reports import ReportData, format_time, generate_reports
+from entroppy.reports import ReportData, format_time, generate_reports, create_report_directory
+from entroppy.utils.logging import add_log_file_handler
 from entroppy.processing.stages import (
     load_dictionaries,
     generate_typos,
@@ -56,10 +57,25 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
             logger.info(f"Max corrections limit: {constraints.max_corrections}")
         logger.info("")
 
-    # Initialize report data if reports are enabled
+    # Initialize report data and create report directory if reports are enabled
     report_data = None
+    report_dir = None
     if config.reports:
         report_data = ReportData(start_time=start_time)
+        # Create report directory early so we can save logs to it
+        platform_name = platform.get_name()
+        report_dir = create_report_directory(config.reports, platform_name)
+        
+        # Set up log file in report directory
+        # Extract timestamp from directory name (format: YYYY-MM-DD_HH-MM-SS_platform)
+        # Timestamp is always the first 19 characters: YYYY-MM-DD_HH-MM-SS
+        timestamp = report_dir.name[:19]
+        log_file = report_dir / f"entroppy-{timestamp}.log"
+        add_log_file_handler(log_file, verbose=config.verbose, debug=config.debug)
+        
+        if verbose:
+            logger.info(f"Logs will be saved to: {log_file}")
+            logger.info("")
 
     # Stage 1: Load dictionaries and mappings
     if verbose:
@@ -198,9 +214,9 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
         if verbose:
             logger.info("Stage 9: Generating reports...")
 
-        # Generate standard reports
+        # Generate standard reports (report_dir already created earlier)
         platform_name = platform.get_name()
-        report_dir = generate_reports(report_data, config.reports, platform_name, verbose)
+        generate_reports(report_data, config.reports, platform_name, verbose, report_dir=report_dir)
 
         if verbose:
             logger.info(f"✓ Reports written to: {report_dir}/")

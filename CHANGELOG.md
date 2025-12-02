@@ -21,6 +21,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - New function `run_iterative_solver_pipeline()` in `entroppy/processing/pipeline.py`
   - Detailed documentation in `docs/ALGORITHMS.md`
 
+- **Log file saving**: When `--reports` is enabled, all logs are now automatically saved to `entroppy-(timestamp).log` in the report directory
+  - Logs continue to be displayed on stderr as before
+  - File handler is added without disrupting existing console output
+  - Log file uses the same timestamp format as the report directory for easy correlation
+  - File format matches console output (no color codes, timestamps in debug mode)
+
 ### Changed
 
 - **Code refactoring and modularization**: Split large files (>500 lines) into focused modules, extracted debug logging into separate modules, and refactored large functions into smaller helpers
