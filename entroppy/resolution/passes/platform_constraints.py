@@ -65,9 +65,7 @@ class PlatformConstraintsPass(Pass):
 
             # Check boundary support
             if not constraints.supports_boundaries and boundary.value != "none":
-                corrections_to_remove.append(
-                    (correction, "Platform doesn't support boundaries")
-                )
+                corrections_to_remove.append((correction, "Platform doesn't support boundaries"))
                 continue
 
         # Remove invalid corrections
@@ -108,9 +106,7 @@ class PlatformConstraintsPass(Pass):
 
             # Check boundary support
             if not constraints.supports_boundaries and boundary.value != "none":
-                patterns_to_remove.append(
-                    (pattern, "Platform doesn't support boundaries")
-                )
+                patterns_to_remove.append((pattern, "Platform doesn't support boundaries"))
                 continue
 
         # Remove invalid patterns
