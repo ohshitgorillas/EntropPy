@@ -14,6 +14,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - **Files modified**: `entroppy/platforms/qmk/backend.py`, `entroppy/platforms/qmk/filtering.py`, `entroppy/platforms/qmk/ranking.py`
   - **Impact**: Enables tracing specific words and typos through QMK's filtering and ranking process
 
+### Changed
+
+- **Enhanced debug logging for QMK substring conflicts**: Added detailed logging when shorter typos are removed due to garbage corrections
+  - **New logging**: Shows the garbage result that would be produced, which longer typo is being protected, and which shorter typo is being removed
+  - **Files modified**: `entroppy/platforms/qmk/typo_index.py`, `entroppy/platforms/qmk/filtering.py`
+  - **Impact**: Better visibility into why certain corrections are removed during substring conflict detection
+
+- **Enhanced debug logging for QMK ranking**: Added comprehensive ranking position information
+  - **New information**: Shows overall position, tier (user words/patterns/direct), position within tier, score, nearby corrections, and whether correction made the final cut
+  - **Files modified**: `entroppy/platforms/qmk/ranking.py`
+  - **Impact**: Complete visibility into where debug typos end up in the ranked list and why
+
+### Fixed
+
+- **QMK substring conflict detection now prevents garbage corrections**: Fixed issue where shorter patterns were kept even when they would produce garbage corrections for longer typos
+  - **Previous behavior**: When a shorter typo was a substring of a longer typo, the shorter one was always kept, even if it would produce incorrect results (e.g., 'lal' -> 'all' kept, causing 'lale' -> 'alle' instead of 'lake')
+  - **New behavior**: Checks if keeping the shorter typo would produce garbage (incorrect result) for the longer typo, and removes the shorter one instead if it would
+  - **Example**: 'lal' -> 'all' is now removed when it would produce 'alle' for 'lale' -> 'lake', allowing the longer correction to be kept
+  - **Files modified**: `entroppy/platforms/qmk/typo_index.py`
+  - **Impact**: Prevents garbage corrections like 'lale' -> 'alle', 'dolalrs' -> 'doallrs', 'particulalry' -> 'particuallry'
+
 ### Fixed
 
 - **QMK substring conflict detection now catches all substring relationships**: Fixed QMK compilation errors by ensuring all substring conflicts (prefix, suffix, and middle) are detected and removed

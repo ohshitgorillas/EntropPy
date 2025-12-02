@@ -1,10 +1,15 @@
 """Typo index for efficient conflict detection in QMK filtering."""
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from tqdm import tqdm
 
 from entroppy.core import Correction
+from entroppy.utils.debug import is_debug_correction, log_debug_correction
+
+if TYPE_CHECKING:
+    from entroppy.utils.debug import DebugTypoMatcher
 
 
 class TypoIndex:
@@ -105,7 +110,11 @@ class TypoIndex:
         return kept, conflicts
 
     def find_substring_conflicts(
-        self, corrections: list[Correction], verbose: bool = False
+        self,
+        corrections: list[Correction],
+        verbose: bool = False,
+        debug_words: set[str] | None = None,
+        debug_typo_matcher: "DebugTypoMatcher | None" = None,
     ) -> tuple[list[Correction], list]:
         """Find substring conflicts - QMK's hard constraint.
 
@@ -119,11 +128,15 @@ class TypoIndex:
         find_suffix_conflicts (which only removes conflicts where the pattern
         would produce the correct result). QMK rejects ALL substring relationships.
 
-        We keep the shorter typo and remove the longer one.
+        However, we check if keeping the shorter typo would produce garbage corrections.
+        If the shorter typo would produce garbage when matching the longer typo, we
+        remove the shorter typo instead of the longer one.
 
         Args:
             corrections: List of corrections to check
             verbose: Whether to show progress bar
+            debug_words: Set of words to debug (exact matches)
+            debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
 
         Returns:
             Tuple of (kept_corrections, conflicts)
@@ -155,13 +168,73 @@ class TypoIndex:
 
             # Check if typo1 contains any shorter typo as a substring (prefix, suffix, or middle)
             # Check all shorter typos we've seen so far
-            for typo2, word2, _ in shorter_typos.values():
+            for typo2, word2, _ in list(
+                shorter_typos.values()
+            ):  # Use list() to avoid modification during iteration
                 if typo2 in removed_typos:
                     continue
 
                 # Check if typo2 is a substring of typo1 (anywhere: prefix, suffix, or middle)
                 if typo2 in typo1 and typo2 != typo1:
-                    # Found a substring conflict - QMK rejects this regardless of position
+                    # Check if keeping typo2 would produce garbage for typo1
+                    # For QMK RTL matching, find the rightmost occurrence
+                    # (where it would match first)
+                    last_pos = typo1.rfind(typo2)
+                    if last_pos != -1:
+                        # Calculate what would happen if typo2 triggers on typo1 at this position
+                        # Replace typo2 with word2 in typo1
+                        before = typo1[:last_pos]
+                        after = typo1[last_pos + len(typo2) :]
+                        result = before + word2 + after
+
+                        # If this would produce garbage (not the intended correction),
+                        # remove typo2 instead
+                        if result != word1:
+                            # Remove the shorter typo (typo2) because it would produce garbage
+                            # Don't add to conflicts - this isn't a blocking relationship,
+                            # we're just removing a problematic correction
+
+                            # Debug logging for garbage corrections
+                            if debug_words or debug_typo_matcher:
+                                typo2_correction = (typo2, word2, bound1)
+                                typo1_correction = (typo1, word1, bound1)
+
+                                if is_debug_correction(
+                                    typo2_correction, debug_words or set(), debug_typo_matcher
+                                ):
+                                    log_debug_correction(
+                                        typo2_correction,
+                                        f"Filtered - substring conflict (would produce garbage "
+                                        f"'{result}' for '{typo1}' -> '{word1}', "
+                                        f"kept longer typo instead)",
+                                        debug_words or set(),
+                                        debug_typo_matcher,
+                                        "Stage 6",
+                                    )
+                                if is_debug_correction(
+                                    typo1_correction, debug_words or set(), debug_typo_matcher
+                                ):
+                                    log_debug_correction(
+                                        typo1_correction,
+                                        f"Kept - substring conflict (removed shorter typo "
+                                        f"'{typo2}' -> '{word2}' that would produce garbage "
+                                        f"'{result}')",
+                                        debug_words or set(),
+                                        debug_typo_matcher,
+                                        "Stage 6",
+                                    )
+
+                            removed_typos.add(typo2)
+                            # Remove typo2 from shorter_typos if it was already added
+                            if typo2 in shorter_typos:
+                                del shorter_typos[typo2]
+                            # Remove typo2 from kept if it was already added
+                            kept = [c for c in kept if c[0] != typo2]
+                            # Continue checking other shorter typos
+                            # (typo1 might still be blocked by others)
+                            continue
+
+                    # If it would produce the correct result, keep typo2 and remove typo1
                     is_blocked = True
                     conflicts.append((typo1, word1, typo2, word2, bound1))
                     removed_typos.add(typo1)

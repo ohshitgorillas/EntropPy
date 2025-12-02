@@ -66,7 +66,8 @@ def separate_by_type(
             if is_debug:
                 log_debug_correction(
                     correction,
-                    "Separated as user word (infinite priority)",
+                    f"Separated as user word (infinite priority, tier 0, "
+                    f"total user words: {len(user_corrections)})",
                     debug_words or set(),
                     debug_typo_matcher,
                     "Stage 6",
@@ -76,7 +77,8 @@ def separate_by_type(
             if is_debug:
                 log_debug_correction(
                     correction,
-                    "Separated as pattern (scored by sum of replacement frequencies)",
+                    f"Separated as pattern (tier 1, scored by sum of replacement "
+                    f"frequencies, total patterns: {len(pattern_corrections)})",
                     debug_words or set(),
                     debug_typo_matcher,
                     "Stage 6",
@@ -86,11 +88,21 @@ def separate_by_type(
             if is_debug:
                 log_debug_correction(
                     correction,
-                    "Separated as direct correction (scored by word frequency)",
+                    f"Separated as direct correction (tier 2, scored by word frequency, "
+                    f"total direct: {len(direct_corrections)})",
                     debug_words or set(),
                     debug_typo_matcher,
                     "Stage 6",
                 )
+        elif is_debug:
+            # Correction was replaced by a pattern
+            log_debug_correction(
+                correction,
+                "Separated - replaced by pattern (not included in ranking)",
+                debug_words or set(),
+                debug_typo_matcher,
+                "Stage 6",
+            )
 
     return user_corrections, pattern_corrections, direct_corrections
 
@@ -147,9 +159,13 @@ def score_patterns(
             scores.append((total_freq, typo, word, boundary))
             if is_debug:
                 replacement_words = [w for _, w, _ in replacements]
+                replacement_list = ', '.join(replacement_words[:5])
+                if len(replacement_words) > 5:
+                    replacement_list += '...'
                 log_debug_correction(
                     correction,
-                    f"Scored pattern: {total_freq:.2e} (sum of frequencies for {len(replacements)} replacements: {', '.join(replacement_words[:5])}{'...' if len(replacement_words) > 5 else ''})",
+                    f"Scored pattern: {total_freq:.2e} (sum of frequencies for "
+                    f"{len(replacements)} replacements: {replacement_list})",
                     debug_words or set(),
                     debug_typo_matcher,
                     "Stage 6",
@@ -281,13 +297,69 @@ def rank_corrections(
     # Build ranked list: user words first, then sorted patterns and direct corrections
     ranked = user_corrections + [(t, w, b) for _, t, w, b in all_scored]
 
-    # Debug logging for final ranking position
+    # Debug logging for final ranking position with context
     if debug_words or debug_typo_matcher:
+        # Build tier boundaries for context
+        user_count = len(user_corrections)
+        pattern_count = len(pattern_scores)
+        direct_count = len(direct_scores)
+
         for i, correction in enumerate(ranked):
             if is_debug_correction(correction, debug_words or set(), debug_typo_matcher):
+                typo, word, boundary = correction
+
+                # Determine tier and position within tier
+                if i < user_count:
+                    tier = 0
+                    tier_pos = i + 1
+                    tier_name = "user words"
+                    tier_total = user_count
+                    score_info = "infinite priority"
+                elif i < user_count + pattern_count:
+                    tier = 1
+                    tier_pos = i - user_count + 1
+                    tier_name = "patterns"
+                    tier_total = pattern_count
+                    # Find score for this pattern
+                    pattern_score = next(
+                        (s for s, t, w, b in pattern_scores if (t, w, b) == correction), None
+                    )
+                    score_info = (
+                        f"score: {pattern_score:.2e}"
+                        if pattern_score is not None
+                        else "score: unknown"
+                    )
+                else:
+                    tier = 2
+                    tier_pos = i - user_count - pattern_count + 1
+                    tier_name = "direct corrections"
+                    tier_total = direct_count
+                    # Find score for this direct correction
+                    direct_score = next(
+                        (s for s, t, w, b in direct_scores if (t, w, b) == correction), None
+                    )
+                    score_info = (
+                        f"score: {direct_score:.2e}"
+                        if direct_score is not None
+                        else "score: unknown"
+                    )
+
+                # Find nearby corrections for context
+                nearby = []
+                for j in range(max(0, i - 2), min(len(ranked), i + 3)):
+                    if j != i:
+                        nearby_typo, nearby_word, _ = ranked[j]
+                        nearby.append(f"{nearby_typo}->{nearby_word}")
+
+                nearby_str = ", ".join(nearby[:3])
+                if len(nearby) > 3:
+                    nearby_str += "..."
+
+                nearby_info = f" [nearby: {nearby_str}]" if nearby_str else ""
                 log_debug_correction(
                     correction,
-                    f"Ranked at position {i + 1}",
+                    f"Ranked at position {i + 1}/{len(ranked)} (tier {tier}: {tier_name}, "
+                    f"position {tier_pos}/{tier_total}, {score_info}){nearby_info}",
                     debug_words or set(),
                     debug_typo_matcher,
                     "Stage 6",
@@ -297,15 +369,25 @@ def rank_corrections(
     if max_corrections:
         if debug_words or debug_typo_matcher:
             # Log if any debug corrections are cut off by the limit
-            for correction in ranked[max_corrections:]:
+            for i, correction in enumerate(ranked):
                 if is_debug_correction(correction, debug_words or set(), debug_typo_matcher):
-                    log_debug_correction(
-                        correction,
-                        f"Removed by max_corrections limit ({max_corrections})",
-                        debug_words or set(),
-                        debug_typo_matcher,
-                        "Stage 6",
-                    )
+                    if i < max_corrections:
+                        log_debug_correction(
+                            correction,
+                            f"Made the cut: position {i + 1} (within limit of {max_corrections})",
+                            debug_words or set(),
+                            debug_typo_matcher,
+                            "Stage 6",
+                        )
+                    else:
+                        log_debug_correction(
+                            correction,
+                            f"Cut off by max_corrections limit: position {i + 1} "
+                            f"(limit: {max_corrections}, total ranked: {len(ranked)})",
+                            debug_words or set(),
+                            debug_typo_matcher,
+                            "Stage 6",
+                        )
         ranked = ranked[:max_corrections]
 
     return ranked, user_corrections, pattern_scores, direct_scores, all_scored
