@@ -5,13 +5,14 @@ from multiprocessing import Pool
 from typing import TYPE_CHECKING
 
 from entroppy.core import BoundaryType
-from entroppy.resolution.conflicts import build_typo_index, get_detector_for_boundary
-from entroppy.resolution.state import RejectionReason
+from entroppy.resolution.conflicts import (build_typo_index,
+                                           get_detector_for_boundary)
 from entroppy.resolution.solver import Pass
+from entroppy.resolution.state import RejectionReason
 
 if TYPE_CHECKING:
-    from entroppy.resolution.state import DictionaryState
     from entroppy.resolution.solver import PassContext
+    from entroppy.resolution.state import DictionaryState
 
 
 def _process_conflict_batch_worker(

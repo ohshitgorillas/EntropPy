@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 from entroppy.core import Correction
 from entroppy.core.boundaries import BoundaryType
+
 from .conflicts import resolve_conflicts_for_group
 
 if TYPE_CHECKING:

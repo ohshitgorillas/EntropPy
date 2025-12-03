@@ -6,18 +6,15 @@ from typing import TYPE_CHECKING
 from entroppy.core import BoundaryType, Correction
 from entroppy.core.boundaries import BoundaryIndex
 from entroppy.matching import ExclusionMatcher
-from entroppy.utils.debug import (
-    is_debug_correction,
-    log_debug_typo,
-    log_if_debug_correction,
-)
+from entroppy.utils.debug import (is_debug_correction, log_debug_typo,
+                                  log_if_debug_correction)
 from entroppy.utils.helpers import cached_word_frequency
 
-
 from .boundary_selection import choose_boundary_for_typo
-from .false_trigger_check import _check_false_trigger_with_details
-from .boundary_utils import _should_skip_short_typo, apply_user_word_boundary_override
+from .boundary_utils import (_should_skip_short_typo,
+                             apply_user_word_boundary_override)
 from .exclusion import handle_exclusion
+from .false_trigger_check import _check_false_trigger_with_details
 
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher

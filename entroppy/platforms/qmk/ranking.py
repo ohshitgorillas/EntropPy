@@ -8,13 +8,9 @@ from entroppy.core import BoundaryType, Correction
 from entroppy.utils.debug import is_debug_correction
 from entroppy.utils.helpers import cached_word_frequency
 
-from .qmk_logging import (
-    log_direct_scoring,
-    log_max_corrections_limit,
-    log_pattern_scoring,
-    log_ranking_position,
-    log_separation_by_type,
-)
+from .qmk_logging import (log_direct_scoring, log_max_corrections_limit,
+                          log_pattern_scoring, log_ranking_position,
+                          log_separation_by_type)
 
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher

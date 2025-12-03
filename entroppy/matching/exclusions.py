@@ -5,8 +5,8 @@ from __future__ import annotations
 from re import Pattern
 
 from entroppy.core import BoundaryType, Correction, parse_boundary_markers
-from entroppy.utils import compile_wildcard_regex
 from entroppy.matching.pattern_matcher import PatternMatcher
+from entroppy.utils import compile_wildcard_regex
 
 
 class ExclusionMatcher:

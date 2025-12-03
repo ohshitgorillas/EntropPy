@@ -1,17 +1,15 @@
 """Core domain logic for EntropPy."""
 
-from entroppy.core.boundaries import (
-    BoundaryIndex,
-    BoundaryType,
-    determine_boundaries,
-    format_boundary_display,
-    format_boundary_name,
-    would_trigger_at_end,
-    parse_boundary_markers,
-)
+from entroppy.core.boundaries import (BoundaryIndex, BoundaryType,
+                                      determine_boundaries,
+                                      format_boundary_display,
+                                      format_boundary_name,
+                                      parse_boundary_markers,
+                                      would_trigger_at_end)
+
 from .config import Config, load_config
-from .types import Correction
 from .patterns import generalize_patterns
+from .types import Correction
 from .typos import generate_all_typos
 
 __all__ = [

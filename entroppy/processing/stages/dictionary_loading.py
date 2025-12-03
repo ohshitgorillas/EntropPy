@@ -5,19 +5,13 @@ import time
 from loguru import logger
 
 from entroppy.core import Config
-from entroppy.data import (
-    load_adjacent_letters_map,
-    load_exclusions,
-    load_source_words,
-    load_validation_dictionary,
-    load_word_list,
-)
+from entroppy.data import (load_adjacent_letters_map, load_exclusions,
+                           load_source_words, load_validation_dictionary,
+                           load_word_list)
 from entroppy.matching import ExclusionMatcher
 from entroppy.processing.stages.data_models import DictionaryData
 from entroppy.processing.stages.dictionary_loading_logging import (
-    log_typo_validation_check,
-    log_word_loading,
-)
+    log_typo_validation_check, log_word_loading)
 
 
 def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:

@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from entroppy.core.boundaries import BoundaryType
-from entroppy.core.pattern_validation import _log_pattern_acceptance, _log_pattern_rejection
+from entroppy.core.pattern_validation import (_log_pattern_acceptance,
+                                              _log_pattern_rejection)
 from entroppy.core.types import Correction
 from entroppy.utils.debug import log_if_debug_correction
 

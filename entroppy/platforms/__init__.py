@@ -4,7 +4,6 @@ from .base import MatchDirection, PlatformBackend, PlatformConstraints
 from .espanso import EspansoBackend
 from .qmk import QMKBackend
 
-
 # Platform registry
 _PLATFORMS = {
     "espanso": EspansoBackend,

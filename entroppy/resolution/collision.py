@@ -12,13 +12,11 @@ from entroppy.matching import ExclusionMatcher
 from entroppy.utils.debug import DebugTypoMatcher
 
 from .boundary_selection import log_boundary_selection_details
-from .correction_processing import process_collision_case, process_single_word_correction
-from .worker_context import (
-    CollisionResolutionContext,
-    get_collision_worker_context,
-    get_worker_indexes,
-    init_collision_worker,
-)
+from .correction_processing import (process_collision_case,
+                                    process_single_word_correction)
+from .worker_context import (CollisionResolutionContext,
+                             get_collision_worker_context, get_worker_indexes,
+                             init_collision_worker)
 
 
 def _process_typo_worker(item: tuple[str, list[str]]) -> tuple[

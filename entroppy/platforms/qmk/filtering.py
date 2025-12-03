@@ -9,12 +9,8 @@ from tqdm import tqdm
 from entroppy.core import BoundaryType, Correction
 from entroppy.platforms.qmk.typo_index import TypoIndex
 
-from .qmk_logging import (
-    log_character_filtering,
-    log_same_typo_conflict,
-    log_substring_conflict,
-    log_suffix_conflict,
-)
+from .qmk_logging import (log_character_filtering, log_same_typo_conflict,
+                          log_substring_conflict, log_suffix_conflict)
 
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher

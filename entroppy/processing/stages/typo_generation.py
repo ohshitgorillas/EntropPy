@@ -9,9 +9,12 @@ from loguru import logger
 from tqdm import tqdm
 
 from entroppy.core import Config
+from entroppy.processing.stages.data_models import (DictionaryData,
+                                                    TypoGenerationResult)
+from entroppy.processing.stages.worker_context import (WorkerContext,
+                                                       get_worker_context,
+                                                       init_worker)
 from entroppy.resolution import process_word
-from entroppy.processing.stages.data_models import DictionaryData, TypoGenerationResult
-from entroppy.processing.stages.worker_context import WorkerContext, init_worker, get_worker_context
 
 
 def process_word_worker(word: str) -> tuple[str, list[tuple[str, str]], list[str]]:

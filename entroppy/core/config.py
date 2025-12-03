@@ -8,7 +8,8 @@ from multiprocessing import cpu_count
 from typing import Literal
 
 from loguru import logger
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic import (BaseModel, Field, ValidationError, field_validator,
+                      model_validator)
 
 from entroppy.utils import expand_file_path
 from entroppy.utils.debug import DebugTypoMatcher

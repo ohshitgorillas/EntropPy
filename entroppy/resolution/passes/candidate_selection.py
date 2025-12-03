@@ -11,19 +11,16 @@ from entroppy.core import BoundaryType
 from entroppy.core.boundaries import determine_boundaries
 from entroppy.core.types import Correction
 from entroppy.matching import ExclusionMatcher
-from entroppy.resolution.state import RejectionReason
 from entroppy.resolution.solver import Pass
+from entroppy.resolution.state import RejectionReason
 from entroppy.resolution.worker_context import (
-    CandidateSelectionContext,
-    get_candidate_selection_worker_context,
-    get_candidate_worker_indexes,
-    init_candidate_selection_worker,
-)
+    CandidateSelectionContext, get_candidate_selection_worker_context,
+    get_candidate_worker_indexes, init_candidate_selection_worker)
 from entroppy.utils.helpers import cached_word_frequency
 
 if TYPE_CHECKING:
-    from entroppy.resolution.state import DictionaryState
     from entroppy.resolution.solver import PassContext
+    from entroppy.resolution.state import DictionaryState
 
 
 def _process_typo_batch_worker(

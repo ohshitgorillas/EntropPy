@@ -8,28 +8,24 @@ from loguru import logger
 from tqdm import tqdm
 
 from entroppy.core.boundaries import BoundaryIndex, BoundaryType
-from entroppy.core.pattern_extraction import find_prefix_patterns, find_suffix_patterns
-from entroppy.core.pattern_conflicts import check_pattern_would_incorrectly_match_other_corrections
-from entroppy.core.pattern_indexes import CorrectionIndex, SourceWordIndex, ValidationIndexes
+from entroppy.core.pattern_conflicts import \
+    check_pattern_would_incorrectly_match_other_corrections
+from entroppy.core.pattern_extraction import (find_prefix_patterns,
+                                              find_suffix_patterns)
+from entroppy.core.pattern_indexes import (CorrectionIndex, SourceWordIndex,
+                                           ValidationIndexes)
 from entroppy.core.pattern_validation import (
-    check_pattern_conflicts,
-    validate_pattern_for_all_occurrences,
-)
+    check_pattern_conflicts, validate_pattern_for_all_occurrences)
 from entroppy.core.pattern_validation_worker import (
-    PatternValidationContext,
-    _validate_single_pattern_worker,
-    init_pattern_validation_worker,
-)
+    PatternValidationContext, _validate_single_pattern_worker,
+    init_pattern_validation_worker)
 from entroppy.core.types import Correction
 from entroppy.platforms.base import MatchDirection
 from entroppy.utils.debug import is_debug_correction
 
-from .pattern_logging import (
-    is_debug_pattern,
-    log_pattern_candidate,
-    process_accepted_pattern,
-    process_rejected_pattern,
-)
+from .pattern_logging import (is_debug_pattern, log_pattern_candidate,
+                              process_accepted_pattern,
+                              process_rejected_pattern)
 
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher

@@ -3,18 +3,15 @@
 import functools
 from typing import TYPE_CHECKING
 
-from entroppy.core.boundaries import (
-    BoundaryIndex,
-    BoundaryType,
-    would_trigger_at_end,
-    would_trigger_at_start,
-)
+from entroppy.core.boundaries import (BoundaryIndex, BoundaryType,
+                                      would_trigger_at_end,
+                                      would_trigger_at_start)
 from entroppy.platforms.base import MatchDirection
 from entroppy.utils.debug import log_debug_correction
 
 if TYPE_CHECKING:
-    from entroppy.utils.debug import DebugTypoMatcher
     from entroppy.core.pattern_indexes import SourceWordIndex
+    from entroppy.utils.debug import DebugTypoMatcher
 
 
 # Cache for pattern validation results

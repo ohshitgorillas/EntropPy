@@ -4,16 +4,13 @@ from typing import TYPE_CHECKING
 
 from entroppy.core import BoundaryType, generate_all_typos
 from entroppy.matching import PatternMatcher
-from entroppy.utils.debug import is_debug_word, is_debug_typo
+from entroppy.utils.debug import is_debug_typo, is_debug_word
 from entroppy.utils.helpers import cached_word_frequency
 
-from .word_processing_logging import (
-    add_debug_message,
-    log_typo_accepted,
-    log_typo_generated,
-    log_typo_pattern_match,
-    log_word_processing_start,
-)
+from .word_processing_logging import (add_debug_message, log_typo_accepted,
+                                      log_typo_generated,
+                                      log_typo_pattern_match,
+                                      log_word_processing_start)
 
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher

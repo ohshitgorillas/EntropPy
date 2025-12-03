@@ -3,7 +3,8 @@
 from typing import TYPE_CHECKING
 
 from entroppy.core import BoundaryType, Correction
-from entroppy.utils.debug import is_debug_correction, log_debug_correction, log_if_debug_correction
+from entroppy.utils.debug import (is_debug_correction, log_debug_correction,
+                                  log_if_debug_correction)
 
 if TYPE_CHECKING:
     from entroppy.resolution.conflicts import ConflictDetector
