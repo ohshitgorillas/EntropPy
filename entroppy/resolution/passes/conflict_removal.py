@@ -43,9 +43,12 @@ class ConflictRemovalPass(Pass):
         Args:
             state: The dictionary state to modify
         """
-        # Group active corrections by boundary type
+        # Combine active corrections and patterns - both can conflict with each other
+        all_corrections = list(state.active_corrections) + list(state.active_patterns)
+
+        # Group by boundary type
         by_boundary = defaultdict(list)
-        for correction in state.active_corrections:
+        for correction in all_corrections:
             _, _, boundary = correction
             by_boundary[boundary].append(correction)
 
@@ -113,19 +116,28 @@ class ConflictRemovalPass(Pass):
             if typo not in typos_to_remove:
                 candidates_by_char[index_key].append(typo)
 
-        # Remove all blocked corrections
+        # Remove all blocked corrections/patterns
         for typo in typos_to_remove:
             correction = typo_to_correction[typo]
             typo_str, word, boundary_type = correction
 
-            # Remove from active set
-            state.remove_correction(
-                typo_str,
-                word,
-                boundary_type,
-                self.name,
-                "Blocked by substring conflict",
-            )
+            # Remove from active set (check both corrections and patterns)
+            if correction in state.active_corrections:
+                state.remove_correction(
+                    typo_str,
+                    word,
+                    boundary_type,
+                    self.name,
+                    "Blocked by substring conflict",
+                )
+            elif correction in state.active_patterns:
+                state.remove_pattern(
+                    typo_str,
+                    word,
+                    boundary_type,
+                    self.name,
+                    "Blocked by substring conflict",
+                )
 
     def _check_if_blocked(
         self,

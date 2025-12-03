@@ -93,13 +93,24 @@ class SuffixConflictDetector(ConflictDetector):
     """
 
     def contains_substring(self, long_typo: str, short_typo: str) -> bool:
-        """Check if long_typo ends with short_typo."""
-        return long_typo.endswith(short_typo)
+        """Check if long_typo contains short_typo as a substring (anywhere)."""
+        return short_typo in long_typo
 
     def calculate_result(self, long_typo: str, short_typo: str, short_word: str) -> str:
-        """Calculate what Espanso produces: remaining_prefix + short_word."""
-        remaining_prefix = long_typo[: -len(short_typo)]
-        return remaining_prefix + short_word
+        """Calculate what Espanso produces when matching short_typo in long_typo.
+
+        For RIGHT boundaries, Espanso matches right-to-left, so it finds the
+        last occurrence of short_typo in long_typo.
+        """
+        # Find the last occurrence (right-to-left matching)
+        pos = long_typo.rfind(short_typo)
+        if pos == -1:
+            # Should not happen if contains_substring returned True
+            return long_typo
+
+        remaining_prefix = long_typo[:pos]
+        remaining_suffix = long_typo[pos + len(short_typo) :]
+        return remaining_prefix + short_word + remaining_suffix
 
     def get_index_key(self, typo: str) -> str:
         """Get last character for suffix indexing."""
@@ -124,13 +135,24 @@ class PrefixConflictDetector(ConflictDetector):
     """
 
     def contains_substring(self, long_typo: str, short_typo: str) -> bool:
-        """Check if long_typo starts with short_typo."""
-        return long_typo.startswith(short_typo)
+        """Check if long_typo contains short_typo as a substring (anywhere)."""
+        return short_typo in long_typo
 
     def calculate_result(self, long_typo: str, short_typo: str, short_word: str) -> str:
-        """Calculate what Espanso produces: short_word + remaining_suffix."""
-        remaining_suffix = long_typo[len(short_typo) :]
-        return short_word + remaining_suffix
+        """Calculate what Espanso produces when matching short_typo in long_typo.
+
+        For LEFT/NONE/BOTH boundaries, Espanso matches left-to-right, so it finds
+        the first occurrence of short_typo in long_typo.
+        """
+        # Find the first occurrence (left-to-right matching)
+        pos = long_typo.find(short_typo)
+        if pos == -1:
+            # Should not happen if contains_substring returned True
+            return long_typo
+
+        remaining_prefix = long_typo[:pos]
+        remaining_suffix = long_typo[pos + len(short_typo) :]
+        return remaining_prefix + short_word + remaining_suffix
 
     def get_index_key(self, typo: str) -> str:
         """Get first character for prefix indexing."""
