@@ -51,6 +51,9 @@ def _find_patterns(
     debug_typos: set[str] | None = None,
     verbose: bool = False,
     is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
+    pattern_cache: (
+        dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
+    ) = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common patterns (prefix or suffix) in corrections.
 
@@ -141,57 +144,98 @@ def _find_patterns(
                 f"(boundary={boundary.value}, max_pattern_length={max_pattern_length})"
             )
 
-        # Extract all valid patterns at once by iterating through possible pattern lengths
-        # Start from longest patterns (more specific) and work backwards
-        for length in range(max_pattern_length, 1, -1):  # Start from longest, go down to 2
-            typo_pattern, word_pattern, other_part_typo, other_part_word = _extract_pattern_parts(
-                typo, word, length, is_suffix
-            )
+        # Check cache first
+        cache_key = (typo, word, boundary, is_suffix)
+        cached_patterns = None
+        if pattern_cache is not None and cache_key in pattern_cache:
+            cached_patterns = pattern_cache[cache_key]
+            if is_debug:
+                logger.debug(f"  Using cached patterns: {len(cached_patterns)} patterns found")
+
+        # Extract patterns if not cached
+        if cached_patterns is None:
+            cached_patterns = []
+            # Extract all valid patterns at once by iterating through possible pattern lengths
+            # Start from longest patterns (more specific) and work backwards
+            for length in range(max_pattern_length, 1, -1):  # Start from longest, go down to 2
+                typo_pattern, word_pattern, other_part_typo, other_part_word = (
+                    _extract_pattern_parts(typo, word, length, is_suffix)
+                )
+
+                if is_debug:
+                    logger.debug(
+                        f"  Length {length}: pattern='{typo_pattern}'→'{word_pattern}', "
+                        f"other_part='{other_part_typo}'→'{other_part_word}'"
+                    )
+
+                # Skip if patterns are identical (useless pattern)
+                if typo_pattern == word_pattern:
+                    if is_debug:
+                        logger.debug("    SKIPPED - pattern identical (no change)")
+                    continue
+
+                # Ensure the other parts match before considering a pattern valid
+                if other_part_typo != other_part_word:
+                    if is_debug:
+                        logger.debug(
+                            f"    SKIPPED - other_part mismatch: "
+                            f"'{other_part_typo}' != '{other_part_word}'"
+                        )
+                    continue
+
+                # Store pattern in cache (without graveyard filtering)
+                cached_patterns.append((typo_pattern, word_pattern, boundary, length))
+
+                if is_debug:
+                    debug_corrections[(typo, word, boundary)].append(
+                        (length, typo_pattern, word_pattern, other_part_typo)
+                    )
+                    logger.debug(
+                        f"    ✓ EXTRACTED - pattern '{typo_pattern}'→'{word_pattern}' "
+                        f"(other_part='{other_part_typo}')"
+                    )
+
+            # Store in cache for future iterations
+            if pattern_cache is not None:
+                pattern_cache[cache_key] = cached_patterns
+
+        # Process cached patterns, filtering by graveyard
+        for typo_pattern, word_pattern, pattern_boundary, length in cached_patterns:
+            # Reconstruct other_part for debug logging
+            if is_suffix:
+                other_part_typo = typo[:-length] if length <= len(typo) else ""
+            else:
+                other_part_typo = typo[length:] if length <= len(typo) else ""
 
             if is_debug:
                 logger.debug(
                     f"  Length {length}: pattern='{typo_pattern}'→'{word_pattern}', "
-                    f"other_part='{other_part_typo}'→'{other_part_word}'"
+                    f"other_part='{other_part_typo}' (from cache)"
                 )
-
-            # Skip if patterns are identical (useless pattern)
-            if typo_pattern == word_pattern:
-                if is_debug:
-                    logger.debug("    SKIPPED - pattern identical (no change)")
-                continue
-
-            # Ensure the other parts match before considering a pattern valid
-            if other_part_typo != other_part_word:
-                if is_debug:
-                    logger.debug(
-                        f"    SKIPPED - other_part mismatch: "
-                        f"'{other_part_typo}' != '{other_part_word}'"
-                    )
-                continue
-
-            # Group directly by pattern, regardless of other_part
-            pattern_key = (typo_pattern, word_pattern, boundary)
 
             # Skip if pattern is already in graveyard
             if is_in_graveyard is not None and is_in_graveyard(
-                typo_pattern, word_pattern, boundary
+                typo_pattern, word_pattern, pattern_boundary
             ):
                 if is_debug:
                     logger.debug(
                         f"    SKIPPED - pattern already in graveyard: "
-                        f"'{typo_pattern}'→'{word_pattern}' ({boundary.value})"
+                        f"'{typo_pattern}'→'{word_pattern}' ({pattern_boundary.value})"
                     )
                 continue
 
+            # Group directly by pattern, regardless of other_part
+            pattern_key = (typo_pattern, word_pattern, pattern_boundary)
             pattern_candidates[pattern_key].append((typo, word, boundary))
 
+            # Populate debug_corrections for summary logging
             if is_debug:
                 debug_corrections[(typo, word, boundary)].append(
                     (length, typo_pattern, word_pattern, other_part_typo)
                 )
                 logger.debug(
                     f"    ✓ VALID CANDIDATE - pattern '{typo_pattern}'→'{word_pattern}' "
-                    f"(other_part='{other_part_typo}')"
+                    f"(from cache, filtered by graveyard)"
                 )
 
     if debug_enabled:
@@ -245,6 +289,9 @@ def find_suffix_patterns(
     debug_typos: set[str] | None = None,
     verbose: bool = False,
     is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
+    pattern_cache: (
+        dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
+    ) = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common suffix patterns (for RIGHT boundaries).
 
@@ -256,6 +303,7 @@ def find_suffix_patterns(
         debug_typos: Optional set of typo strings to debug (for logging)
         verbose: Whether to show progress bar
         is_in_graveyard: Optional function to check if pattern is in graveyard
+        pattern_cache: Optional cache for pattern extraction results
     """
     return _find_patterns(
         corrections,
@@ -264,6 +312,7 @@ def find_suffix_patterns(
         debug_typos=debug_typos,
         verbose=verbose,
         is_in_graveyard=is_in_graveyard,
+        pattern_cache=pattern_cache,
     )
 
 
@@ -272,6 +321,9 @@ def find_prefix_patterns(
     debug_typos: set[str] | None = None,
     verbose: bool = False,
     is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
+    pattern_cache: (
+        dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
+    ) = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common prefix patterns (for LEFT boundaries).
 
@@ -283,6 +335,7 @@ def find_prefix_patterns(
         debug_typos: Optional set of typo strings to debug (for logging)
         verbose: Whether to show progress bar
         is_in_graveyard: Optional function to check if pattern is in graveyard
+        pattern_cache: Optional cache for pattern extraction results
     """
     return _find_patterns(
         corrections,
@@ -291,4 +344,5 @@ def find_prefix_patterns(
         debug_typos=debug_typos,
         verbose=verbose,
         is_in_graveyard=is_in_graveyard,
+        pattern_cache=pattern_cache,
     )

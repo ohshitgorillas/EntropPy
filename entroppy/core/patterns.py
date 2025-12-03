@@ -30,6 +30,9 @@ def generalize_patterns(
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
     jobs: int = 1,
     is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
+    pattern_cache: (
+        dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
+    ) = None,
 ) -> tuple[
     list[Correction],
     set[Correction],
@@ -66,7 +69,7 @@ def generalize_patterns(
 
     # Extract and merge prefix/suffix patterns
     found_patterns = _extract_and_merge_patterns(
-        corrections, debug_typos_set, verbose, is_in_graveyard
+        corrections, debug_typos_set, verbose, is_in_graveyard, pattern_cache
     )
 
     # Filter out patterns with only one occurrence before validation

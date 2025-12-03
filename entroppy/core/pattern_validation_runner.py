@@ -79,6 +79,9 @@ def _extract_and_merge_patterns(
     debug_typos_set: set[str] | None,
     verbose: bool,
     is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
+    pattern_cache: (
+        dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
+    ) = None,
 ) -> dict[tuple[str, str, BoundaryType], list[Correction]]:
     """Extract prefix and suffix patterns and merge them.
 
@@ -95,10 +98,18 @@ def _extract_and_merge_patterns(
     # - Prefix patterns: match at start of words (e.g., "teh" → "the")
     # - Suffix patterns: match at end of words (e.g., "toin" → "tion")
     prefix_patterns = find_prefix_patterns(
-        corrections, debug_typos=debug_typos_set, verbose=verbose, is_in_graveyard=is_in_graveyard
+        corrections,
+        debug_typos=debug_typos_set,
+        verbose=verbose,
+        is_in_graveyard=is_in_graveyard,
+        pattern_cache=pattern_cache,
     )
     suffix_patterns = find_suffix_patterns(
-        corrections, debug_typos=debug_typos_set, verbose=verbose, is_in_graveyard=is_in_graveyard
+        corrections,
+        debug_typos=debug_typos_set,
+        verbose=verbose,
+        is_in_graveyard=is_in_graveyard,
+        pattern_cache=pattern_cache,
     )
 
     # Combine both pattern types into single dict

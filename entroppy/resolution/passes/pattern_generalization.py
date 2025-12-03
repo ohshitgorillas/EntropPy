@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from entroppy.core.boundaries import BoundaryType
 from entroppy.core.patterns import generalize_patterns
 from entroppy.core.types import MatchDirection
 from entroppy.resolution.solver import Pass
@@ -28,6 +29,20 @@ class PatternGeneralizationPass(Pass):
         - Creates pattern "*er" -> "*re"
         - Removes the specific corrections
     """
+
+    def __init__(self, context: "PassContext") -> None:
+        """Initialize the pass with context and pattern extraction cache.
+
+        Args:
+            context: Shared context with resources
+        """
+        super().__init__(context)
+        # Cache for pattern extraction results
+        # Key: (typo, word, boundary, is_suffix) - correction + pattern type
+        # Value: List of (typo_pattern, word_pattern, boundary, length) - extracted patterns
+        self._pattern_cache: dict[
+            tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]
+        ] = {}
 
     @property
     def name(self) -> str:
@@ -65,6 +80,7 @@ class PatternGeneralizationPass(Pass):
                     debug_typo_matcher=state.debug_typo_matcher,
                     jobs=self.context.jobs,
                     is_in_graveyard=state.is_in_graveyard,
+                    pattern_cache=self._pattern_cache,
                 )
             )
 

@@ -22,6 +22,11 @@
   - Workers return blocked corrections and graveyard entries, which are aggregated and applied in the main thread
   - Falls back to sequential mode when `jobs=1` or for small datasets (<100 corrections)
   - **Estimated Gain**: Linear speedup proportional to CPU cores, especially beneficial for large NONE boundary groups which often contain the majority of corrections
+- **Pattern Extraction Caching**: Added caching for pattern extraction results across solver iterations
+  - Pattern extraction results are now cached per correction in `PatternGeneralizationPass`
+  - Patterns are extracted once per correction and reused across iterations, with graveyard filtering applied per iteration
+  - **Estimated Gain**: Significant reduction in pattern extraction time for iterative solver runs, especially when many corrections persist across multiple iterations
+  - **Impact**: Eliminates redundant pattern extraction work, reducing overall solver runtime
 
 ### Fixed
 - Fixed all mypy type errors across 88 source files, including missing imports, type annotations, tqdm iterator assignments, and None type handling
