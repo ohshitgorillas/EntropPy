@@ -42,7 +42,17 @@ def generate_output(corrections: list[Correction], output_path: str | None, conf
 
     Sorted alphabetically by correction word.
     """
-    lines = [format_correction_line(typo, word, boundary) for typo, word, boundary in corrections]
+    # Deduplicate corrections (same typo, word, boundary)
+    seen = set()
+    unique_corrections = []
+    for correction in corrections:
+        if correction not in seen:
+            seen.add(correction)
+            unique_corrections.append(correction)
+
+    lines = [
+        format_correction_line(typo, word, boundary) for typo, word, boundary in unique_corrections
+    ]
 
     lines = sort_corrections(lines)
 
