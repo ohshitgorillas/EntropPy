@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- **Missing false trigger checks in CandidateSelectionPass**: Added false trigger validation to all boundary selection paths in `CandidateSelectionPass`. Previously, corrections could be added with `NONE` boundary even when the typo appeared as a substring in valid words (e.g., `wmo -> wom` matching inside "snowmobile"), causing QMK compiler warnings. Now all boundaries are checked for false triggers before being added, ensuring corrections only use safe boundaries or are rejected if no safe boundary exists.
+- **Cross-boundary substring conflicts**: Added `PlatformSubstringConflictPass` to detect and remove substring conflicts that occur when the same typo text appears with different boundaries. For QMK (RTL), formatted strings like `"aemr"` and `":aemr"` are substrings of each other, causing compiler errors. The pass removes duplicates based on platform matching direction and boundary restrictiveness. Fixes QMK compilation errors like "Typos may not be substrings of one another".
 - **Pattern redundancy detection**: Longer patterns are now rejected when a shorter pattern already handles the same cases (e.g., `otehr -> other` rejected if `tehr -> ther` exists). Prevents duplicate patterns and ensures QMK compilation succeeds.
 - **Debug typos exact vs wildcard matching**: Exact patterns (e.g., `"teh"`) now use exact matching only, while wildcard patterns (e.g., `"*teh*"`) use substring matching. Previously, exact patterns would match all typos containing the substring.
 - **Pattern validation boundary checks**: Patterns with safe boundaries (RIGHT, LEFT, BOTH) now skip position checks where they cannot match, fixing incorrect rejections like "teh -> the" with RIGHT boundary.
@@ -17,6 +19,7 @@
 
 ### Added
 
+- **Platform substring conflict detection**: New `PlatformSubstringConflictPass` in the iterative solver that runs after `ConflictRemovalPass` to catch cross-boundary substring conflicts. Includes debug logging support via `platform_substring_conflict_logging.py`.
 - **Progress bars for iterative solver**: Real-time progress tracking for iterations and passes when `--verbose` is enabled.
 
 ### Changed

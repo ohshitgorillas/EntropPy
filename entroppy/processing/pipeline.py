@@ -14,6 +14,7 @@ from entroppy.resolution.passes import (
     ConflictRemovalPass,
     PatternGeneralizationPass,
     PlatformConstraintsPass,
+    PlatformSubstringConflictPass,
 )
 from entroppy.resolution.solver import IterativeSolver, PassContext
 from entroppy.resolution.state import DictionaryState, RejectionReason
@@ -132,6 +133,7 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
         CandidateSelectionPass(pass_context),
         PatternGeneralizationPass(pass_context),
         ConflictRemovalPass(pass_context),
+        PlatformSubstringConflictPass(pass_context),
         PlatformConstraintsPass(pass_context),
     ]
 

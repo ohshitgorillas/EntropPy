@@ -140,17 +140,17 @@ For each typo, EntropPy selects the **least restrictive boundary** that doesn't 
 
 **Selection Algorithm:**
 
-1. **Determine boundary order based on target word relationship**:
-   - The order is dynamically adjusted to skip incompatible boundaries based on how the typo relates to the target word:
-     - **If typo is a suffix of target word** → Skip LEFT (try: NONE, RIGHT, BOTH)
-       - LEFT boundary means "match at word start", but typo appears at word end
-     - **If typo is a prefix of target word** → Skip RIGHT (try: NONE, LEFT, BOTH)
-       - RIGHT boundary means "match at word end", but typo appears at word start
-     - **If typo is a middle substring of target word** → Skip LEFT and RIGHT (try: NONE, BOTH)
-       - Neither LEFT nor RIGHT make sense for middle substrings
-     - **Otherwise** → Try all boundaries in default order: NONE, LEFT, RIGHT, BOTH
+1. **Determine natural boundary** using `determine_boundaries()`:
+   - Checks if typo appears as substring in validation or source words
+   - Returns `NONE` if typo doesn't appear anywhere, `BOTH` if appears only in middle, `LEFT`/`RIGHT` if appears at word boundaries
 
-2. **For each boundary in the determined order**, check if it would cause false triggers (in priority order):
+2. **Get boundary order to try** based on natural boundary:
+   - If natural is `NONE` → Try: NONE, LEFT, RIGHT, BOTH
+   - If natural is `LEFT` → Try: LEFT, BOTH
+   - If natural is `RIGHT` → Try: RIGHT, BOTH
+   - If natural is `BOTH` → Try: BOTH only
+
+3. **For each boundary in the determined order**, check if it would cause false triggers (in priority order):
    - **Target word check (highest priority)**: Check if typo appears as prefix/suffix/substring of the target word itself
      - This prevents "predictive corrections" where the correction would trigger when typing the correct word
      - Example: `alway -> always` with NONE/LEFT boundary would trigger when typing "always", producing "alwayss"
@@ -161,9 +161,9 @@ For each typo, EntropPy selects the **least restrictive boundary** that doesn't 
    - **RIGHT**: Would cause false trigger if typo appears as suffix of any word (target, validation, or source)
    - **BOTH**: Never causes false triggers (always safe)
 
-3. **Select the first boundary** that doesn't cause false triggers
+4. **Select the first boundary** that doesn't cause false triggers and passes all other checks (length, exclusions)
 
-4. **Fallback**: If all boundaries would cause false triggers, use **BOTH** (most restrictive, safest option)
+5. **Fallback**: If all boundaries would cause false triggers or fail other checks, the correction is **not added** (will be retried in next iteration with different state if graveyard allows)
 
 **Key Principle**: Select the least restrictive boundary that safely prevents the typo from incorrectly matching the target word, validation words, or source words in unintended contexts. The boundary order is optimized based on the typo's relationship to the target word to avoid testing incompatible boundaries. Target word check takes highest priority to prevent predictive corrections.
 
@@ -279,6 +279,50 @@ The algorithm uses character-based indexing for efficiency, checking only typos 
 ### Pattern Updates from Conflicts
 
 When a shorter correction blocks a longer one during conflict removal (Stage 5), the shorter correction becomes a **pattern** (if it wasn't already), and the blocked correction is added to its replacements. This also happens during platform filtering (Stage 6) when QMK-specific conflicts are detected (suffix conflicts and substring conflicts). Corrections with BOTH boundaries are skipped from pattern updates since they can't block other corrections (they only match standalone words).
+
+---
+
+## Stage 5.5: Platform Substring Conflict Detection
+
+### What Happens
+
+After within-boundary conflicts are removed (Stage 5), this pass detects **cross-boundary substring conflicts** that occur when the same typo text appears with different boundaries. This is critical for platforms like QMK where boundary markers are part of the formatted string.
+
+### Why This Matters
+
+**QMK (RTL)**: QMK formats boundaries using colon notation:
+- `aemr` (NONE boundary) → `"aemr"`
+- `aemr` (LEFT boundary) → `":aemr"`
+
+When QMK's compiler sees both `"aemr"` and `":aemr"`, it detects that `"aemr"` is a substring of `":aemr"` and rejects the dictionary with: "Typos may not be substrings of one another, otherwise the longer typo would never trigger".
+
+**Espanso (LTR)**: While boundaries are handled separately in YAML (not part of the trigger string), the same core typo with different boundaries can still cause runtime conflicts depending on matching order.
+
+### Conflict Detection Algorithm
+
+1. **Format typos with platform-specific boundary markers**:
+   - **QMK**: Uses colon notation (`:typo`, `typo:`, `:typo:`, or `typo`)
+   - **Espanso**: Uses core typo text (boundaries are separate YAML fields)
+
+2. **Build formatted typo index** - Map each formatted typo to its corrections
+
+3. **Check for substring relationships** - For each pair of formatted typos:
+   - If one is a substring of the other, mark as conflict
+
+4. **Determine which to remove** based on:
+   - **Same word**: Prefer more restrictive boundary (BOTH > LEFT/RIGHT > NONE)
+   - **Different words + RTL (QMK)**: Remove shorter formatted string (longer matches first in RTL)
+   - **Different words + LTR (Espanso)**: Remove longer formatted string (shorter matches first in LTR)
+
+5. **Remove conflicting correction** and add to graveyard with reason
+
+### Example
+
+For QMK with typos `aemr` (NONE) and `aemr` (LEFT):
+- Formatted: `"aemr"` and `":aemr"`
+- Conflict detected: `"aemr"` is substring of `":aemr"`
+- Decision: Remove `"aemr"` (NONE), keep `":aemr"` (LEFT - more restrictive)
+- Result: QMK compiler accepts the dictionary
 
 ---
 

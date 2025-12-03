@@ -11,6 +11,7 @@ from entroppy.core import BoundaryType
 from entroppy.core.boundaries import determine_boundaries
 from entroppy.core.types import Correction
 from entroppy.matching import ExclusionMatcher
+from entroppy.resolution.false_trigger_check import _check_false_trigger_with_details
 from entroppy.resolution.solver import Pass
 from entroppy.resolution.state import RejectionReason
 from entroppy.resolution.worker_context import (
@@ -133,6 +134,22 @@ def _process_single_word_worker(
             )
             continue
 
+        # Check for false triggers
+        # pylint: disable=duplicate-code
+        # Intentional duplication: Same false trigger check pattern used in multiple places
+        # (worker functions, sequential functions, and boundary_selection.py) to ensure
+        # consistent validation logic across all code paths where corrections are added.
+        would_cause, _ = _check_false_trigger_with_details(
+            typo,
+            boundary,
+            validation_index,
+            source_index,
+            target_word=word,
+        )
+        if would_cause:
+            # This boundary would cause false triggers - try next boundary
+            continue
+
         # Add the correction
         corrections.append((typo, word, boundary))
         return  # Successfully added, no need to try other boundaries
@@ -181,6 +198,8 @@ def _process_collision_worker(
                 word,
                 boundary,
                 context,
+                validation_index,
+                source_index,
                 exclusion_matcher,
                 corrections,
                 graveyard_entries,
@@ -192,6 +211,8 @@ def _process_collision_worker(
                 words_in_group,
                 boundary,
                 context,
+                validation_index,
+                source_index,
                 exclusion_matcher,
                 corrections,
                 graveyard_entries,
@@ -203,6 +224,8 @@ def _process_single_word_with_boundary_worker(
     word: str,
     boundary: BoundaryType,
     context: CandidateSelectionContext,
+    validation_index,
+    source_index,
     exclusion_matcher: ExclusionMatcher | None,
     corrections: list[tuple[str, str, BoundaryType]],
     graveyard_entries: list[tuple[str, str, BoundaryType, RejectionReason, str | None]],
@@ -214,6 +237,8 @@ def _process_single_word_with_boundary_worker(
         word: The correct word
         boundary: The boundary type
         context: Worker context
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
         exclusion_matcher: Exclusion matcher (or None)
         corrections: List to append corrections to
         graveyard_entries: List to append graveyard entries to
@@ -236,6 +261,22 @@ def _process_single_word_with_boundary_worker(
             graveyard_entries.append((typo, word, bound, RejectionReason.EXCLUDED_BY_PATTERN, None))
             continue
 
+        # Check for false triggers
+        # pylint: disable=duplicate-code
+        # Intentional duplication: Same false trigger check pattern used in multiple places
+        # (worker functions, sequential functions, and boundary_selection.py) to ensure
+        # consistent validation logic across all code paths where corrections are added.
+        would_cause, _ = _check_false_trigger_with_details(
+            typo,
+            bound,
+            validation_index,
+            source_index,
+            target_word=word,
+        )
+        if would_cause:
+            # This boundary would cause false triggers - try next boundary
+            continue
+
         # Add the correction
         corrections.append((typo, word, bound))
         return  # Successfully added
@@ -246,6 +287,8 @@ def _resolve_collision_by_frequency_worker(
     words: list[str],
     boundary: BoundaryType,
     context: CandidateSelectionContext,
+    validation_index,
+    source_index,
     exclusion_matcher: ExclusionMatcher | None,
     corrections: list[tuple[str, str, BoundaryType]],
     graveyard_entries: list[tuple[str, str, BoundaryType, RejectionReason, str | None]],
@@ -257,6 +300,8 @@ def _resolve_collision_by_frequency_worker(
         words: List of competing words
         boundary: The boundary type for this group
         context: Worker context
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
         exclusion_matcher: Exclusion matcher (or None)
         corrections: List to append corrections to
         graveyard_entries: List to append graveyard entries to
@@ -296,6 +341,22 @@ def _resolve_collision_by_frequency_worker(
         # Check exclusions
         if exclusion_matcher and exclusion_matcher.should_exclude((typo, word, bound)):
             graveyard_entries.append((typo, word, bound, RejectionReason.EXCLUDED_BY_PATTERN, None))
+            continue
+
+        # Check for false triggers
+        # pylint: disable=duplicate-code
+        # Intentional duplication: Same false trigger check pattern used in multiple places
+        # (worker functions, sequential functions, and boundary_selection.py) to ensure
+        # consistent validation logic across all code paths where corrections are added.
+        would_cause, _ = _check_false_trigger_with_details(
+            typo,
+            bound,
+            validation_index,
+            source_index,
+            target_word=word,
+        )
+        if would_cause:
+            # This boundary would cause false triggers - try next boundary
             continue
 
         # Add the correction
@@ -523,6 +584,22 @@ class CandidateSelectionPass(Pass):
                 )
                 continue
 
+            # Check for false triggers
+            # pylint: disable=duplicate-code
+            # Intentional duplication: Same false trigger check pattern used in multiple places
+            # (worker functions, sequential functions, and boundary_selection.py) to ensure
+            # consistent validation logic across all code paths where corrections are added.
+            would_cause, _ = _check_false_trigger_with_details(
+                typo,
+                boundary,
+                self.context.validation_index,
+                self.context.source_index,
+                target_word=word,
+            )
+            if would_cause:
+                # This boundary would cause false triggers - try next boundary
+                continue
+
             # Add the correction
             state.add_correction(typo, word, boundary, self.name)
             return  # Successfully added, no need to try other boundaries
@@ -608,6 +685,22 @@ class CandidateSelectionPass(Pass):
                 )
                 continue
 
+            # Check for false triggers
+            # pylint: disable=duplicate-code
+            # Intentional duplication: Same false trigger check pattern used in multiple places
+            # (worker functions, sequential functions, and boundary_selection.py) to ensure
+            # consistent validation logic across all code paths where corrections are added.
+            would_cause, _ = _check_false_trigger_with_details(
+                typo,
+                bound,
+                self.context.validation_index,
+                self.context.source_index,
+                target_word=word,
+            )
+            if would_cause:
+                # This boundary would cause false triggers - try next boundary
+                continue
+
             # Add the correction
             state.add_correction(typo, word, bound, self.name)
             return  # Successfully added
@@ -676,6 +769,22 @@ class CandidateSelectionPass(Pass):
                     bound,
                     RejectionReason.EXCLUDED_BY_PATTERN,
                 )
+                continue
+
+            # Check for false triggers
+            # pylint: disable=duplicate-code
+            # Intentional duplication: Same false trigger check pattern used in multiple places
+            # (worker functions, sequential functions, and boundary_selection.py) to ensure
+            # consistent validation logic across all code paths where corrections are added.
+            would_cause, _ = _check_false_trigger_with_details(
+                typo,
+                bound,
+                self.context.validation_index,
+                self.context.source_index,
+                target_word=word,
+            )
+            if would_cause:
+                # This boundary would cause false triggers - try next boundary
                 continue
 
             # Add the correction
