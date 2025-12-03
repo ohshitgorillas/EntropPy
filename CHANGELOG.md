@@ -28,6 +28,20 @@
   - **Estimated Gain**: Significant reduction in pattern extraction time for iterative solver runs, especially when many corrections persist across multiple iterations
   - **Impact**: Eliminates redundant pattern extraction work, reducing overall solver runtime
 
+### Added
+
+- **Progress bars for iterative solver**: Added real-time progress tracking for solver iterations and passes when `--verbose` is enabled
+  - Iteration progress bar shows current iteration, corrections, patterns, and graveyard counts
+  - Nested pass progress bar shows which pass is currently running
+  - Provides better visibility into solver progress during long-running operations
+
+### Changed
+
+- **Refactored pattern extraction for maintainability**: Split `_find_patterns()` function (260 lines) into smaller, focused helper functions
+  - Extracted boundary filtering, debug tracking setup, pattern extraction from single correction, cached pattern processing, common pattern finding, and debug logging into separate functions
+  - Main function reduced from ~260 to ~70 lines with clearer flow and single-responsibility helpers
+  - Improved code maintainability and testability without changing functionality
+
 ### Fixed
 - Fixed all mypy type errors across 88 source files, including missing imports, type annotations, tqdm iterator assignments, and None type handling
 - Report generation now properly extracts data from solver state and generates all reports including collisions, conflicts, exclusions, and platform-specific reports (e.g., `qmk_ranking.txt`)

@@ -2,9 +2,10 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
+from tqdm import tqdm
 
 from entroppy.core import BoundaryIndex
 from entroppy.core.boundaries import BoundaryType
@@ -142,11 +143,12 @@ class IterativeSolver:
         self.passes = passes
         self.max_iterations = max_iterations or self.MAX_ITERATIONS
 
-    def solve(self, state: "DictionaryState") -> "SolverResult":
+    def solve(self, state: "DictionaryState", verbose: bool = False) -> "SolverResult":
         """Run the iterative solver until convergence.
 
         Args:
             state: The dictionary state to optimize
+            verbose: Whether to show progress bars
 
         Returns:
             SolverResult with final corrections and metadata
@@ -158,65 +160,109 @@ class IterativeSolver:
 
         logger.info(f"Starting iterative solver (max {self.max_iterations} iterations)")
 
-        while state.is_dirty and iteration < self.max_iterations:
-            state.start_iteration()
-            iteration += 1
-
-            logger.info(f"\n--- Iteration {iteration} ---")
-            logger.info(
-                f"  Active corrections: {len(state.active_corrections)}, "
-                f"Active patterns: {len(state.active_patterns)}, "
-                f"Graveyard: {len(state.graveyard)}"
+        # Create progress bar for iterations
+        # We don't know the exact number of iterations, so we'll use a manual update approach
+        if verbose:
+            iteration_pbar = tqdm(
+                total=self.max_iterations,
+                desc="Iterations",
+                unit="iteration",
+                initial=0,
             )
+        else:
+            iteration_pbar = None
 
-            # Run all passes in sequence
-            for pass_instance in self.passes:
-                corrections_before = len(state.active_corrections)
-                patterns_before = len(state.active_patterns)
-                graveyard_before = len(state.graveyard)
+        try:
+            while state.is_dirty and iteration < self.max_iterations:
+                state.start_iteration()
+                iteration += 1
 
-                pass_instance.run(state)
+                if iteration_pbar:
+                    iteration_pbar.update(1)
+                    iteration_pbar.set_postfix(
+                        corrections=len(state.active_corrections),
+                        patterns=len(state.active_patterns),
+                        graveyard=len(state.graveyard),
+                    )
 
-                corrections_after = len(state.active_corrections)
-                patterns_after = len(state.active_patterns)
-                graveyard_after = len(state.graveyard)
-
-                corrections_delta = corrections_after - corrections_before
-                patterns_delta = patterns_after - patterns_before
-                graveyard_delta = graveyard_after - graveyard_before
-
-                if corrections_delta != 0 or patterns_delta != 0 or graveyard_delta != 0:
-                    changes = []
-                    if corrections_delta != 0:
-                        changes.append(f"corrections: {corrections_delta:+d}")
-                    if patterns_delta != 0:
-                        changes.append(f"patterns: {patterns_delta:+d}")
-                    if graveyard_delta != 0:
-                        changes.append(f"graveyard: {graveyard_delta:+d}")
-                    logger.info(f"  [{pass_instance.name}] {', '.join(changes)}")
-
-            # Check convergence progress
-            corrections_change = len(state.active_corrections) - previous_corrections
-            patterns_change = len(state.active_patterns) - previous_patterns
-            graveyard_change = len(state.graveyard) - previous_graveyard
-
-            # Check if we've converged (no net changes)
-            converged_this_iteration = (
-                corrections_change == 0 and patterns_change == 0 and graveyard_change == 0
-            )
-
-            if converged_this_iteration:
-                logger.info(f"  ✓ Converged (no net changes in iteration {iteration})")
-                state.clear_dirty_flag()  # Mark as clean to exit loop
-            else:
+                logger.info(f"\n--- Iteration {iteration} ---")
                 logger.info(
-                    f"  State changed: corrections {corrections_change:+d}, "
-                    f"patterns {patterns_change:+d}, graveyard {graveyard_change:+d}"
+                    f"  Active corrections: {len(state.active_corrections)}, "
+                    f"Active patterns: {len(state.active_patterns)}, "
+                    f"Graveyard: {len(state.graveyard)}"
                 )
 
-            previous_corrections = len(state.active_corrections)
-            previous_patterns = len(state.active_patterns)
-            previous_graveyard = len(state.graveyard)
+                # Run all passes in sequence with progress bar
+                if verbose:
+                    passes_iter: Any = tqdm(
+                        self.passes,
+                        desc="  Running passes",
+                        unit="pass",
+                        leave=False,
+                    )
+                else:
+                    passes_iter = self.passes
+
+                for pass_instance in passes_iter:
+                    if verbose:
+                        passes_iter.set_description(f"  {pass_instance.name}")
+
+                    corrections_before = len(state.active_corrections)
+                    patterns_before = len(state.active_patterns)
+                    graveyard_before = len(state.graveyard)
+
+                    pass_instance.run(state)
+
+                    corrections_after = len(state.active_corrections)
+                    patterns_after = len(state.active_patterns)
+                    graveyard_after = len(state.graveyard)
+
+                    corrections_delta = corrections_after - corrections_before
+                    patterns_delta = patterns_after - patterns_before
+                    graveyard_delta = graveyard_after - graveyard_before
+
+                    if corrections_delta != 0 or patterns_delta != 0 or graveyard_delta != 0:
+                        changes = []
+                        if corrections_delta != 0:
+                            changes.append(f"corrections: {corrections_delta:+d}")
+                        if patterns_delta != 0:
+                            changes.append(f"patterns: {patterns_delta:+d}")
+                        if graveyard_delta != 0:
+                            changes.append(f"graveyard: {graveyard_delta:+d}")
+                        logger.info(f"  [{pass_instance.name}] {', '.join(changes)}")
+
+                # Check convergence progress
+                corrections_change = len(state.active_corrections) - previous_corrections
+                patterns_change = len(state.active_patterns) - previous_patterns
+                graveyard_change = len(state.graveyard) - previous_graveyard
+
+                # Check if we've converged (no net changes)
+                converged_this_iteration = (
+                    corrections_change == 0 and patterns_change == 0 and graveyard_change == 0
+                )
+
+                if converged_this_iteration:
+                    logger.info(f"  ✓ Converged (no net changes in iteration {iteration})")
+                    state.clear_dirty_flag()  # Mark as clean to exit loop
+                    if iteration_pbar:
+                        iteration_pbar.set_postfix(
+                            corrections=len(state.active_corrections),
+                            patterns=len(state.active_patterns),
+                            graveyard=len(state.graveyard),
+                            converged=True,
+                        )
+                else:
+                    logger.info(
+                        f"  State changed: corrections {corrections_change:+d}, "
+                        f"patterns {patterns_change:+d}, graveyard {graveyard_change:+d}"
+                    )
+
+                previous_corrections = len(state.active_corrections)
+                previous_patterns = len(state.active_patterns)
+                previous_graveyard = len(state.graveyard)
+        finally:
+            if iteration_pbar:
+                iteration_pbar.close()
 
         # Check if we converged or hit the limit
         converged = not state.is_dirty
