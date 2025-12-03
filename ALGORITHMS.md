@@ -230,7 +230,7 @@ After pattern validation, if a pattern's (typo, word) pair already exists as a d
 
 ### What Happens
 
-EntropPy removes corrections where one typo is a substring of another **with the same boundary**. This prevents shorter corrections from blocking longer ones.
+EntropPy removes corrections and patterns where one typo is a substring of another **with the same boundary**. This prevents shorter corrections from blocking longer ones. Both direct corrections and patterns are checked for conflicts, and patterns can conflict with each other or with direct corrections.
 
 ### Why Conflicts Matter
 
@@ -238,14 +238,15 @@ When a text expansion tool sees a typo, it triggers on the **first match** (shor
 
 ### Conflict Detection Algorithm
 
-1. **Group by boundary type** - Process each boundary separately (conflicts only occur within the same boundary type)
-2. **Sort by typo length** (shortest first) - Process shorter typos first to identify which longer typos they block
-3. **For each shorter typo**, check if it appears as a substring of any longer typo in the relevant position:
-   - **For RIGHT boundary**: Check if shorter typo appears as suffix of longer typo
-   - **For LEFT/NONE/BOTH boundaries**: Check if shorter typo appears as prefix of longer typo
-4. **Validate the result** - If substring match found, verify that triggering the shorter correction would produce the correct result for the longer typo
-5. **If conflict found**, remove the longer typo (the shorter one blocks it)
-6. **Keep the shorter typo** (it blocks the longer one and produces the correct result)
+1. **Combine corrections and patterns** - Both `active_corrections` and `active_patterns` are included in conflict detection, as patterns can conflict with each other and with direct corrections
+2. **Group by boundary type** - Process each boundary separately (conflicts only occur within the same boundary type)
+3. **Sort by typo length** (shortest first) - Process shorter typos first to identify which longer typos they block
+4. **For each shorter typo**, check if it appears as a substring of any longer typo **anywhere** (prefix, suffix, or middle):
+   - **For RIGHT boundary**: Finds the last occurrence (right-to-left matching)
+   - **For LEFT/NONE/BOTH boundaries**: Finds the first occurrence (left-to-right matching)
+5. **Validate the result** - If substring match found, verify that triggering the shorter correction would produce the correct result for the longer typo
+6. **If conflict found**, remove the longer typo/pattern (the shorter one blocks it) and add it to the graveyard
+7. **Keep the shorter typo** (it blocks the longer one and produces the correct result)
 
 The algorithm uses character-based indexing for efficiency, checking only typos that share the same starting/ending character rather than comparing all pairs.
 
