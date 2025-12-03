@@ -24,6 +24,7 @@
   - **Estimated Gain**: Linear speedup proportional to CPU cores, especially beneficial for large NONE boundary groups which often contain the majority of corrections
 
 ### Fixed
+- Fixed all mypy type errors across 88 source files, including missing imports, type annotations, tqdm iterator assignments, and None type handling
 - Report generation now properly extracts data from solver state and generates all reports including collisions, conflicts, exclusions, and platform-specific reports (e.g., `qmk_ranking.txt`)
 - **Substring conflict detection now includes patterns**: `ConflictRemovalPass` was only checking `active_corrections` and ignoring `active_patterns`, causing conflicts between patterns (e.g., "atoin" vs "toin") to be missed. Patterns are now included in conflict detection and can conflict with each other and with direct corrections.
 - **Substring detection checks all positions**: Conflict detectors were only checking prefix for LEFT/NONE/BOTH boundaries and suffix for RIGHT boundaries, missing conflicts where a shorter typo appears in the middle or at a different position (e.g., "atoin" contains "toin" as a suffix, not a prefix). Now checks for substring relationships anywhere in the typo.

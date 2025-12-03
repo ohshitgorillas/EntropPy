@@ -112,6 +112,9 @@ class PatternGeneralizationPass(Pass):
             # If pattern generalization fails, continue without patterns
             # This ensures the solver can continue even if pattern logic has issues
             # Catch specific exceptions that might occur during pattern processing
-            if state.debug_words or (state.debug_typo_matcher and state.debug_typo_matcher.matches):
+            if state.debug_words or (
+                state.debug_typo_matcher is not None
+                and hasattr(state.debug_typo_matcher, "matches")
+            ):
                 # Only log if debugging is enabled to avoid noise
                 logger.debug(f"Pattern generalization failed: {e}")

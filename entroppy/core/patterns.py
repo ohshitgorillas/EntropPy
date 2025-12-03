@@ -1,6 +1,6 @@
 """Pattern generalization for typo corrections."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from loguru import logger
 
@@ -30,7 +30,7 @@ def generalize_patterns(
     debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
     jobs: int = 1,
-    is_in_graveyard: callable | None = None,
+    is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
 ) -> tuple[
     list[Correction],
     set[Correction],
@@ -74,7 +74,7 @@ def generalize_patterns(
     patterns_to_validate = {k: v for k, v in found_patterns.items() if len(v) >= 2}
 
     # Filter out patterns already in graveyard to prevent infinite loops
-    if is_in_graveyard:
+    if is_in_graveyard is not None:
         filtered_patterns = {}
         skipped_count = 0
         for (typo, word, boundary), occurrences in patterns_to_validate.items():

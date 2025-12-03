@@ -2,7 +2,7 @@
 
 import itertools
 
-from english_words import get_english_words_set
+from english_words import get_english_words_set  # type: ignore[import-untyped]
 from loguru import logger
 from wordfreq import top_n_list
 
@@ -74,6 +74,9 @@ def load_word_list(filepath: str | None, verbose: bool = False) -> list[str]:
         return []
 
     filepath = expand_file_path(filepath)
+    if not filepath:
+        return []
+
     words = []
     invalid_count = 0
 
@@ -115,6 +118,9 @@ def load_exclusions(filepath: str | None, verbose: bool = False) -> set[str]:
         return set()
 
     filepath = expand_file_path(filepath)
+    if not filepath:
+        return set()
+
     exclusions = set()
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -150,6 +156,9 @@ def load_adjacent_letters_map(filepath: str | None, verbose: bool = False) -> di
         return None
 
     filepath = expand_file_path(filepath)
+    if not filepath:
+        return None
+
     adjacent_map = {}
     try:
         with open(filepath, "r", encoding="utf-8") as f:

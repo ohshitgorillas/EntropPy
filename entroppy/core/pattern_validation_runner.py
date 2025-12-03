@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from multiprocessing import Pool
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
 from loguru import logger
 from tqdm import tqdm
@@ -79,7 +79,7 @@ def _extract_and_merge_patterns(
     corrections: list[Correction],
     debug_typos_set: set[str] | None,
     verbose: bool,
-    is_in_graveyard: callable | None = None,
+    is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[Correction]]:
     """Extract prefix and suffix patterns and merge them.
 
@@ -248,19 +248,22 @@ def _run_single_threaded_validation(
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)
     """
-    patterns = []
-    corrections_to_remove = set()
-    pattern_replacements = {}
-    rejected_patterns = []
+    patterns: list[Correction] = []
+    corrections_to_remove: set[Correction] = set()
+    pattern_replacements: dict[Correction, list[Correction]] = {}
+    rejected_patterns: list[tuple[str, str, BoundaryType, str]] = []
 
-    patterns_iter = patterns_to_validate.items()
     if verbose:
-        patterns_iter = tqdm(
-            patterns_to_validate.items(),
-            desc="    Validating patterns",
-            unit="pattern",
-            leave=False,
+        patterns_iter: list[tuple[tuple[str, str, BoundaryType], list[Correction]]] = list(
+            tqdm(
+                patterns_to_validate.items(),
+                desc="    Validating patterns",
+                unit="pattern",
+                leave=False,
+            )
         )
+    else:
+        patterns_iter = list(patterns_to_validate.items())
 
     for (typo_pattern, word_pattern, boundary), occurrences in patterns_iter:
         # Check if any of the occurrences involve debug items (for logging)
@@ -393,19 +396,26 @@ def _run_parallel_validation(
         initargs=(context,),
     ) as pool:
         pattern_items = list(patterns_to_validate.items())
-        results = pool.imap_unordered(_validate_single_pattern_worker, pattern_items)
+        results_iter = pool.imap_unordered(_validate_single_pattern_worker, pattern_items)
 
         # Wrap with progress bar if verbose
         if verbose:
-            results = tqdm(
-                results,
+            results_wrapped: Any = tqdm(
+                results_iter,
                 total=len(pattern_items),
                 desc="    Validating patterns",
                 unit="pattern",
                 leave=False,
             )
+        else:
+            results_wrapped = results_iter
 
-        for is_accepted, pattern, pattern_corrections_to_remove, rejected_pattern in results:
+        for (
+            is_accepted,
+            pattern,
+            pattern_corrections_to_remove,
+            rejected_pattern,
+        ) in results_wrapped:
             if is_accepted and pattern:
                 patterns.append(pattern)
                 pattern_key = pattern

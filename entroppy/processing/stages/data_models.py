@@ -1,7 +1,5 @@
 """Data models for passing information between pipeline stages."""
 
-from collections import defaultdict
-
 from pydantic import BaseModel, Field
 
 from entroppy.core import BoundaryType, Correction
@@ -34,7 +32,7 @@ class DictionaryData(StageResult):
 class TypoGenerationResult(StageResult):
     """Output from typo generation stage."""
 
-    typo_map: dict[str, list[str]] = Field(default_factory=lambda: defaultdict(list))
+    typo_map: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class CollisionResolutionResult(StageResult):

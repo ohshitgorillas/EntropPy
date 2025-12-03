@@ -137,7 +137,7 @@ def _log_boundary_rejection(
     typo: str,
     word: str | None,
     boundary: BoundaryType,
-    details: dict[str, bool],
+    details: dict[str, bool | str | None],
     validation_index: BoundaryIndex,
     source_index: BoundaryIndex,
     debug_typo_matcher: DebugTypoMatcher | None,

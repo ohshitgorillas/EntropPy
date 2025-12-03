@@ -46,7 +46,7 @@ def process_word(
         Note: Boundaries are determined later in Stage 3 (collision resolution)
     """
     corrections = []
-    debug_messages = []
+    debug_messages: list[str] = []
     is_debug = is_debug_word(word, debug_words)
 
     log_word_processing_start(debug_messages, word, debug_words)

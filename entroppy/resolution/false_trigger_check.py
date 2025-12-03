@@ -18,7 +18,7 @@ def _would_cause_false_trigger(
     source_index: BoundaryIndex,
     target_word: str | None = None,
     return_details: bool = False,
-) -> bool | tuple[bool, dict[str, bool]]:
+) -> bool | tuple[bool, dict[str, bool | str | None]]:
     """Check if a boundary would cause false triggers (garbage corrections).
 
     A false trigger occurs when the typo would match validation/source words incorrectly
@@ -123,7 +123,7 @@ def _check_false_trigger_with_details(
     validation_index: BoundaryIndex,
     source_index: BoundaryIndex,
     target_word: str | None = None,
-) -> tuple[bool, dict[str, bool]]:
+) -> tuple[bool, dict[str, bool | str | None]]:
     """Check if boundary would cause false triggers and return details.
 
     This helper function eliminates duplication between boundary_selection.py
@@ -139,7 +139,7 @@ def _check_false_trigger_with_details(
     Returns:
         Tuple of (would_cause_false_trigger, details_dict)
     """
-    return _would_cause_false_trigger(
+    result = _would_cause_false_trigger(
         typo,
         boundary,
         validation_index,
@@ -147,3 +147,6 @@ def _check_false_trigger_with_details(
         target_word=target_word,
         return_details=True,
     )
+    # _would_cause_false_trigger with return_details=True always returns tuple
+    assert isinstance(result, tuple)
+    return result

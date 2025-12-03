@@ -6,7 +6,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from entroppy.core.config import Config
+    from entroppy.core.types import Correction
 
 
 class MatchDirection(Enum):

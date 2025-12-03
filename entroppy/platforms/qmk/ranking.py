@@ -144,11 +144,12 @@ def score_patterns(
 ) -> list[tuple[float, str, str, BoundaryType]]:
     """Score patterns by sum of replaced word frequencies."""
     scores = []
-    pattern_iter = pattern_corrections
     if verbose:
-        pattern_iter = tqdm(
-            pattern_corrections, desc="  Scoring patterns", unit="pattern", leave=False
+        pattern_iter: list[Correction] = list(
+            tqdm(pattern_corrections, desc="  Scoring patterns", unit="pattern", leave=False)
         )
+    else:
+        pattern_iter = pattern_corrections
 
     for typo, word, boundary in pattern_iter:
         pattern_key = (typo, word, boundary)
@@ -183,14 +184,17 @@ def score_direct_corrections(
 ) -> list[tuple[float, str, str, BoundaryType]]:
     """Score direct corrections by word frequency."""
     scores = []
-    direct_iter = direct_corrections
     if verbose:
-        direct_iter = tqdm(
-            direct_corrections,
-            desc="  Scoring direct corrections",
-            unit="correction",
-            leave=False,
+        direct_iter: list[Correction] = list(
+            tqdm(
+                direct_corrections,
+                desc="  Scoring direct corrections",
+                unit="correction",
+                leave=False,
+            )
         )
+    else:
+        direct_iter = direct_corrections
 
     for typo, word, boundary in direct_iter:
         correction = (typo, word, boundary)

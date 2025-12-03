@@ -309,7 +309,7 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
         report_data.stage_times["Generating output"] = output_elapsed
 
     # Generate reports if enabled
-    if config.reports:
+    if config.reports and report_data is not None and report_dir is not None:
         if verbose:
             logger.info("Stage 9: Generating reports...")
 

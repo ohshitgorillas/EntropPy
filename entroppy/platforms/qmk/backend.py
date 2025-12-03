@@ -31,12 +31,12 @@ class QMKBackend(PlatformBackend):
     # QMK character constraints
     ALLOWED_CHARS = set("abcdefghijklmnopqrstuvwxyz'")
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize QMK backend with storage for scoring metadata."""
         # Store scoring information for report generation
-        self._user_corrections = []
-        self._pattern_scores = []
-        self._direct_scores = []
+        self._user_corrections: list[Any] = []
+        self._pattern_scores: list[Any] = []
+        self._direct_scores: list[Any] = []
         # Cache for pattern sets to avoid rebuilding on every ranking call
         self._cached_pattern_typos: set[tuple[str, str]] | None = None
         self._cached_replaced_by_patterns: set[tuple[str, str]] | None = None

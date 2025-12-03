@@ -240,7 +240,7 @@ class ConflictRemovalPass(Pass):
         # pylint: disable=duplicate-code
         # Similar initialization pattern to conflicts.py, but logic diverges significantly
         # after this point (uses state and different conflict checking)
-        candidates_by_char = defaultdict(list)
+        candidates_by_char: dict[str, list[str]] = defaultdict(list)
 
         for typo in sorted_typos:
             if not typo:

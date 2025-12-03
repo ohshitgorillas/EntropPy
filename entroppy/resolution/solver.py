@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from entroppy.core import BoundaryIndex
+from entroppy.core.boundaries import BoundaryType
 from entroppy.matching import ExclusionMatcher
 from entroppy.platforms.base import PlatformBackend
 from entroppy.processing.stages.data_models import DictionaryData

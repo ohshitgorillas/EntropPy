@@ -2,13 +2,14 @@
 
 from collections import defaultdict
 from multiprocessing import Pool
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from tqdm import tqdm
 
 from entroppy.core import BoundaryType
 from entroppy.core.boundaries import determine_boundaries
+from entroppy.core.types import Correction
 from entroppy.matching import ExclusionMatcher
 from entroppy.resolution.state import RejectionReason
 from entroppy.resolution.solver import Pass
@@ -49,8 +50,8 @@ def _process_typo_batch_worker(
         ExclusionMatcher(set(context.exclusion_set)) if context.exclusion_set else None
     )
 
-    corrections = []
-    graveyard_entries = []
+    corrections: list[Correction] = []
+    graveyard_entries: list[tuple[str, str, BoundaryType, RejectionReason, str | None]] = []
 
     for typo, word_list in batch:
         # Skip if already covered
@@ -452,16 +453,19 @@ class CandidateSelectionPass(Pass):
             results = pool.imap_unordered(_process_typo_batch_worker, chunks)
 
             # Wrap with progress bar
-            results = tqdm(
-                results,
-                total=len(chunks),
-                desc="    Processing typos",
-                unit="chunk",
-                leave=False,
-            )
+            if self.context.jobs > 1:  # Show progress for parallel processing
+                results_wrapped_iter: Any = tqdm(
+                    results,
+                    total=len(chunks),
+                    desc="    Processing typos",
+                    unit="chunk",
+                    leave=False,
+                )
+            else:
+                results_wrapped_iter = results
 
             # Collect results and apply to state
-            for corrections, graveyard_entries in results:
+            for corrections, graveyard_entries in results_wrapped_iter:
                 # Add corrections
                 for typo, word, boundary in corrections:
                     state.add_correction(typo, word, boundary, self.name)

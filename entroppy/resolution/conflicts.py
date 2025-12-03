@@ -304,15 +304,15 @@ def build_typo_index(
     # Sort typos by length for efficient checking (shorter first)
     sorted_typos = sorted(typo_to_correction.keys(), key=len)
 
-    # Track which typos are blocked
-    typos_to_remove = set()
+    # Track which typos are blocked (by typo string, not full correction)
+    typos_to_remove: set[str] = set()
 
     # Map from blocked correction to blocking correction
     blocking_map: dict[Correction, Correction] = {}
 
     # Build character-based index for efficient lookup
     # Maps character → list of typos with that character at the relevant position
-    candidates_by_char = defaultdict(list)
+    candidates_by_char: defaultdict[str, list[str]] = defaultdict(list)
 
     for typo in sorted_typos:
         if not typo:

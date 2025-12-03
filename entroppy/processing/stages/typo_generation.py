@@ -3,6 +3,7 @@
 import time
 from collections import defaultdict
 from multiprocessing import Pool
+from typing import Any
 
 from loguru import logger
 from tqdm import tqdm
@@ -24,14 +25,19 @@ def process_word_worker(word: str) -> tuple[str, list[tuple[str, str]], list[str
         Note: Boundaries are determined later in Stage 3 (collision resolution)
     """
     context = get_worker_context()
+    # Convert dict[str, list[str]] to dict[str, str] for process_word
+    # Take first adjacent letter from each list
+    adj_map: dict[str, str] | None = None
+    if context.adjacent_letters_map:
+        adj_map = {k: v[0] if v else k for k, v in context.adjacent_letters_map.items() if v}
     corrections, debug_messages = process_word(
         word,
-        context.validation_set,
-        context.source_words_set,
+        set(context.validation_set),
+        set(context.source_words_set),
         context.typo_freq_threshold,
-        context.adjacent_letters_map,
-        context.exclusions_set,
-        context.debug_words,
+        adj_map,
+        set(context.exclusions_set),
+        frozenset(context.debug_words),
         context.debug_typo_matcher,
     )
     return (word, corrections, debug_messages)
@@ -78,14 +84,16 @@ def generate_typos(
 
             # Wrap with progress bar
             if verbose:
-                results = tqdm(
+                results_wrapped_iter: Any = tqdm(
                     results,
                     total=len(dict_data.source_words),
                     desc="Processing words",
                     unit="word",
                 )
+            else:
+                results_wrapped_iter = results
 
-            for word, corrections, debug_messages in results:
+            for word, corrections, debug_messages in results_wrapped_iter:
                 for typo, correction_word in corrections:
                     typo_map[typo].append(correction_word)
                 # Collect debug messages from workers
@@ -96,17 +104,22 @@ def generate_typos(
             logger.debug(message)
     else:
         # Single-threaded mode
-        words_iter = dict_data.source_words
         if verbose:
-            words_iter = tqdm(dict_data.source_words, desc="Processing words", unit="word")
+            words_iter: list[str] = list(
+                tqdm(dict_data.source_words, desc="Processing words", unit="word")
+            )
+        else:
+            words_iter = dict_data.source_words
 
         for word in words_iter:
+            # Convert dict[str, str] to dict[str, str] | None (already correct type)
+            adj_map = dict_data.adjacent_letters_map if dict_data.adjacent_letters_map else None
             corrections, debug_messages = process_word(
                 word,
                 dict_data.validation_set,
                 dict_data.source_words_set,
                 config.typo_freq_threshold,
-                dict_data.adjacent_letters_map,
+                adj_map,
                 dict_data.exclusions,
                 frozenset(config.debug_words),
                 config.debug_typo_matcher,

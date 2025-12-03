@@ -42,7 +42,7 @@ def call_resolve_collisions(
         config.min_typo_length,
         config.min_word_length,
         dict_data.user_words_set,
-        dict_data.exclusion_matcher,
+        dict_data.exclusion_matcher if dict_data.exclusion_matcher is not None else None,
         config.debug_words,
         config.debug_typo_matcher,
         exclusion_set if exclusion_set is not None else dict_data.exclusions,

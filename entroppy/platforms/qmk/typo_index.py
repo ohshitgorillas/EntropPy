@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from tqdm import tqdm
 
-from entroppy.core import Correction
+from entroppy.core.types import Correction
 
 from .qmk_logging import log_garbage_correction_removal
 
@@ -70,14 +70,17 @@ class TypoIndex:
         # Track shorter typos we've seen: typo -> (typo, word, boundary)
         shorter_typos: dict[str, Correction] = {}
 
-        corrections_iter = sorted_corrections
         if verbose:
-            corrections_iter = tqdm(
-                sorted_corrections,
-                desc="    Checking suffix conflicts",
-                unit="correction",
-                leave=False,
+            corrections_iter: list[Correction] = list(
+                tqdm(
+                    sorted_corrections,
+                    desc="    Checking suffix conflicts",
+                    unit="correction",
+                    leave=False,
+                )
             )
+        else:
+            corrections_iter = sorted_corrections
 
         for typo1, word1, bound1 in corrections_iter:
             if typo1 in removed_typos:
@@ -145,21 +148,24 @@ class TypoIndex:
         # Sort by length (shortest first) for processing order
         sorted_corrections = sorted(corrections, key=lambda c: len(c[0]))
 
-        kept = []
+        kept: list[Correction] = []
         conflicts = []
         removed_typos = set()
 
         # Track shorter typos we've seen: typo -> (typo, word, boundary)
         shorter_typos: dict[str, Correction] = {}
 
-        corrections_iter = sorted_corrections
         if verbose:
-            corrections_iter = tqdm(
-                sorted_corrections,
-                desc="    Checking substring conflicts",
-                unit="correction",
-                leave=False,
+            corrections_iter: list[Correction] = list(
+                tqdm(
+                    sorted_corrections,
+                    desc="    Checking substring conflicts",
+                    unit="correction",
+                    leave=False,
+                )
             )
+        else:
+            corrections_iter = sorted_corrections
 
         for typo1, word1, bound1 in corrections_iter:
             if typo1 in removed_typos:

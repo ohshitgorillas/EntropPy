@@ -1,6 +1,7 @@
 """Pattern extraction from typo corrections."""
 
 from collections import defaultdict
+from typing import Callable
 
 from loguru import logger
 from tqdm import tqdm
@@ -49,7 +50,7 @@ def _find_patterns(
     is_suffix: bool,
     debug_typos: set[str] | None = None,
     verbose: bool = False,
-    is_in_graveyard: callable | None = None,
+    is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common patterns (prefix or suffix) in corrections.
 
@@ -67,7 +68,9 @@ def _find_patterns(
         Dict mapping (typo_pattern, word_pattern, boundary) to list of
         (full_typo, full_word, original_boundary) tuples that match this pattern.
     """
-    patterns = defaultdict(list)
+    patterns: dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]] = (
+        defaultdict(list)
+    )
     debug_enabled = debug_typos is not None and len(debug_typos) > 0
 
     # Filter corrections by boundary type
@@ -105,22 +108,25 @@ def _find_patterns(
     )
 
     # Track debug info for specific typos
-    debug_corrections = {}
-    if debug_enabled:
+    debug_corrections: dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]] = {}
+    if debug_enabled and debug_typos is not None:
         for typo, word, boundary in filtered_corrections:
             if any(debug_typo.lower() in typo.lower() for debug_typo in debug_typos):
                 debug_corrections[(typo, word, boundary)] = []
 
     # Optimized: Extract all valid patterns from each correction in a single pass
-    corrections_iter = filtered_corrections
     if verbose:
         pattern_type = "suffix" if is_suffix else "prefix"
-        corrections_iter = tqdm(
-            filtered_corrections,
-            desc=f"    Extracting {pattern_type} patterns",
-            unit="correction",
-            leave=False,
+        corrections_iter: list[tuple[str, str, BoundaryType]] = list(
+            tqdm(
+                filtered_corrections,
+                desc=f"    Extracting {pattern_type} patterns",
+                unit="correction",
+                leave=False,
+            )
         )
+    else:
+        corrections_iter = filtered_corrections
 
     for typo, word, boundary in corrections_iter:
         is_debug = (typo, word, boundary) in debug_corrections
@@ -167,7 +173,9 @@ def _find_patterns(
             pattern_key = (typo_pattern, word_pattern, boundary)
 
             # Skip if pattern is already in graveyard
-            if is_in_graveyard and is_in_graveyard(typo_pattern, word_pattern, boundary):
+            if is_in_graveyard is not None and is_in_graveyard(
+                typo_pattern, word_pattern, boundary
+            ):
                 if is_debug:
                     logger.debug(
                         f"    SKIPPED - pattern already in graveyard: "
@@ -200,7 +208,7 @@ def _find_patterns(
             if len(unique_matches) >= 2:
                 patterns[pattern_key].extend(unique_matches)
                 typo_pattern, word_pattern, boundary = pattern_key
-                if debug_enabled:
+                if debug_enabled and debug_typos is not None:
                     # Check if any debug typos are in this pattern
                     if any(
                         debug_typo.lower() in typo_pattern.lower()
@@ -236,7 +244,7 @@ def find_suffix_patterns(
     corrections: list[Correction],
     debug_typos: set[str] | None = None,
     verbose: bool = False,
-    is_in_graveyard: callable | None = None,
+    is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common suffix patterns (for RIGHT boundaries).
 
@@ -263,7 +271,7 @@ def find_prefix_patterns(
     corrections: list[Correction],
     debug_typos: set[str] | None = None,
     verbose: bool = False,
-    is_in_graveyard: callable | None = None,
+    is_in_graveyard: Callable[[str, str, BoundaryType], bool] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common prefix patterns (for LEFT boundaries).
 

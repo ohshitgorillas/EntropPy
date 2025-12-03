@@ -64,11 +64,12 @@ def filter_character_set_and_resolve_same_typo(
     typo_groups = defaultdict(list)
 
     # Single pass: filter characters and group by typo
-    corrections_iter = corrections
     if verbose:
-        corrections_iter = tqdm(
-            corrections, desc="  Filtering characters", unit="correction", leave=False
+        corrections_iter: list[Correction] = list(
+            tqdm(corrections, desc="  Filtering characters", unit="correction", leave=False)
         )
+    else:
+        corrections_iter = corrections
 
     for typo, word, boundary in corrections_iter:
         correction = (typo, word, boundary)

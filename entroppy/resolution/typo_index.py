@@ -123,11 +123,12 @@ def build_typo_substring_index(
                     index.update(chunk_index)
     else:
         # Single-threaded mode
-        typos_iter = typos_list
         if verbose:
-            typos_iter = tqdm(
-                typos_list, desc="  Building substring index", unit="typo", leave=False
+            typos_iter: list[str] = list(
+                tqdm(typos_list, desc="  Building substring index", unit="typo", leave=False)
             )
+        else:
+            typos_iter = typos_list
 
         for typo in typos_iter:
             for other_typo in typos_list:
