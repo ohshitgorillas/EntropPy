@@ -1,2 +1,5 @@
 pylint
 black
+mypy
+types-tqdm
+types-pyyaml
