@@ -2,10 +2,33 @@
 
 ## [Unreleased]
 
+### Performance
+
+- **Parallelized Candidate Selection (Phase 1)**: Refactored `CandidateSelectionPass` to use multiprocessing for processing raw typos
+  - Added `jobs` parameter to `PassContext` to enable parallel execution
+  - Implemented Map-Reduce approach: workers process batches of typos in parallel, returning proposed corrections and graveyard entries
+  - Main thread aggregates results and applies them to `DictionaryState`
+  - Uses chunk-based processing (4 chunks per worker) for load balancing
+  - Falls back to sequential mode when `jobs=1` or for small datasets (<100 typos)
+  - **Estimated Gain**: Linear speedup proportional to CPU cores (e.g., 8-10x faster on 12-core machine)
+  - **Impact**: Dramatically reduces processing time for large datasets (250k+ typos) from "unmanageable" to "minutes"
+- **Enabled Pattern Generalization Parallelism (Phase 2)**: Updated `PatternGeneralizationPass` to use parallel pattern validation
+  - Changed from hardcoded `jobs=1` to `self.context.jobs` to leverage existing parallel validation infrastructure
+  - Pattern validation now uses multiple CPU cores when `config.jobs > 1`
+  - **Estimated Gain**: Significant reduction in "Pattern Generalization" phase time (often the longest running phase), with linear speedup proportional to CPU cores
+- **Parallelized Conflict Detection (Phase 3)**: Refactored `ConflictRemovalPass` to process boundary groups in parallel
+  - Boundary groups (LEFT, RIGHT, BOTH, NONE) are now processed concurrently using multiprocessing
+  - Large boundary groups (>1000 corrections) are automatically sharded by first character for better load balancing
+  - Workers return blocked corrections and graveyard entries, which are aggregated and applied in the main thread
+  - Falls back to sequential mode when `jobs=1` or for small datasets (<100 corrections)
+  - **Estimated Gain**: Linear speedup proportional to CPU cores, especially beneficial for large NONE boundary groups which often contain the majority of corrections
+
 ### Fixed
 - Report generation now properly extracts data from solver state and generates all reports including collisions, conflicts, exclusions, and platform-specific reports (e.g., `qmk_ranking.txt`)
 - **Substring conflict detection now includes patterns**: `ConflictRemovalPass` was only checking `active_corrections` and ignoring `active_patterns`, causing conflicts between patterns (e.g., "atoin" vs "toin") to be missed. Patterns are now included in conflict detection and can conflict with each other and with direct corrections.
 - **Substring detection checks all positions**: Conflict detectors were only checking prefix for LEFT/NONE/BOTH boundaries and suffix for RIGHT boundaries, missing conflicts where a shorter typo appears in the middle or at a different position (e.g., "atoin" contains "toin" as a suffix, not a prefix). Now checks for substring relationships anywhere in the typo.
+- **Simplified QMK filtering to prevent restoring invalid corrections**: Removed suffix/substring conflict detection and same-typo conflict resolution from QMK filtering phase. The previous logic was removing good corrections (like "teh" -> "the") and restoring bad ones (like "geou" -> "grou"). QMK supports boundaries, so all boundary variants are now kept, and conflict resolution is handled by the iterative solver.
+- **Improved pattern rejection logging**: Pattern rejection messages now include example validation words (e.g., "Would trigger at start of validation words (e.g., 'tehran')") and show full correction results including suffixes (e.g., "gorgrous" instead of "gorgrou").
 
 All notable changes to this project will be documented in this file.
 

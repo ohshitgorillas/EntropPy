@@ -215,6 +215,50 @@ def validate_pattern_for_all_occurrences(
     return True, None
 
 
+def _find_example_prefix_match(
+    typo_pattern: str, validation_index: BoundaryIndex, validation_set: set[str]
+) -> str | None:
+    """Find an example validation word that starts with the typo pattern.
+
+    Args:
+        typo_pattern: The typo pattern to check
+        validation_index: Pre-built index for validation_set
+        validation_set: Set of validation words
+
+    Returns:
+        An example word that starts with the pattern, or None if not found
+    """
+    if typo_pattern in validation_index.prefix_index:
+        matching_words = validation_index.prefix_index[typo_pattern]
+        # Exclude exact match and return first example
+        for word in matching_words:
+            if word != typo_pattern and word in validation_set:
+                return word
+    return None
+
+
+def _find_example_suffix_match(
+    typo_pattern: str, validation_index: BoundaryIndex, validation_set: set[str]
+) -> str | None:
+    """Find an example validation word that ends with the typo pattern.
+
+    Args:
+        typo_pattern: The typo pattern to check
+        validation_index: Pre-built index for validation_set
+        validation_set: Set of validation words
+
+    Returns:
+        An example word that ends with the pattern, or None if not found
+    """
+    if typo_pattern in validation_index.suffix_index:
+        matching_words = validation_index.suffix_index[typo_pattern]
+        # Exclude exact match and return first example
+        for word in matching_words:
+            if word != typo_pattern and word in validation_set:
+                return word
+    return None
+
+
 def check_pattern_conflicts(
     typo_pattern: str,
     validation_set: set[str],
@@ -245,10 +289,18 @@ def check_pattern_conflicts(
 
     # Check if pattern would trigger at end of validation words
     if would_trigger_at_end(typo_pattern, validation_index):
+        # Find an example validation word that ends with the pattern
+        example_word = _find_example_suffix_match(typo_pattern, validation_index, validation_set)
+        if example_word:
+            return False, f"Would trigger at end of validation words (e.g., '{example_word}')"
         return False, "Would trigger at end of validation words"
 
     # Check if pattern would trigger at start of validation words
     if would_trigger_at_start(typo_pattern, validation_index):
+        # Find an example validation word that starts with the pattern
+        example_word = _find_example_prefix_match(typo_pattern, validation_index, validation_set)
+        if example_word:
+            return False, f"Would trigger at start of validation words (e.g., '{example_word}')"
         return False, "Would trigger at start of validation words"
 
     # FIRST: Check if pattern would corrupt target words

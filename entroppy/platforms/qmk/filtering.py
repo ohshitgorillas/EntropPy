@@ -277,49 +277,34 @@ def detect_substring_conflicts(
 
 def filter_corrections(
     corrections: list[Correction],
-    verbose: bool = False,
-    debug_words: set[str] | None = None,
-    debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], dict]:
     """
     Apply QMK-specific filtering.
 
-    - Character set validation (only a-z and ')
-    - Same-typo-text conflict detection (different boundaries)
-    - Suffix conflict detection (RTL matching optimization)
-    - Substring conflict detection (QMK's hard constraint)
+    Simplified to only perform essential filtering:
+    - Character set validation (only a-z and ') - Required by QMK
 
-    Optimized to combine character filtering and same-typo resolution in a single pass.
+    NOTE: Removed same-typo conflict resolution, suffix, and substring
+    conflict detection because:
+    1. QMK DOES support boundaries (via ':' notation), so we should keep
+       all boundary variants, not just the least restrictive one
+    2. The iterative solver (ConflictRemovalPass) already handles conflicts
+       within boundary groups
+    3. The previous logic was removing good corrections (like "teh" -> "the")
+       and keeping bad ones
+    4. QMK's compiler will reject any remaining substring conflicts anyway,
+       so pre-filtering is unnecessary
+    5. The "garbage correction removal" logic was flawed and could restore
+       invalid corrections
 
     Args:
         corrections: List of corrections to filter
-        verbose: Whether to show progress bars
-        debug_words: Set of words to debug (exact matches)
-        debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
 
     Returns:
         Tuple of (filtered_corrections, metadata)
     """
-    # Combined pass: character filtering + same-typo conflict resolution
-    deduped, char_filtered, same_typo_conflicts = filter_character_set_and_resolve_same_typo(
-        corrections, verbose, debug_words, debug_typo_matcher
-    )
-
-    # Conflict detection passes (require sorted/grouped data, so kept separate)
-    after_suffix, suffix_conflicts = detect_suffix_conflicts(
-        deduped, verbose, debug_words, debug_typo_matcher
-    )
-    final, substring_conflicts = detect_substring_conflicts(
-        after_suffix, verbose, debug_words, debug_typo_matcher
-    )
-
-    # Debug: Check for toin-related conflicts
-    toin_patterns = [c for c in final if "toin" in c[0].lower()]
-    if len(toin_patterns) > 1:
-        logger.debug(
-            f"[QMK FILTERING] Found {len(toin_patterns)} toin-related patterns "
-            f"after substring conflict detection: {[c[0] for c in toin_patterns]}"
-        )
+    # Only perform character set filtering - QMK supports boundaries, so keep all
+    final, char_filtered = filter_character_set(corrections)
 
     metadata = {
         "total_input": len(corrections),
@@ -327,14 +312,14 @@ def filter_corrections(
         "filtered_count": len(corrections) - len(final),
         "filter_reasons": {
             "char_set": len(char_filtered),
-            "same_typo_conflicts": len(same_typo_conflicts),
-            "suffix_conflicts": len(suffix_conflicts),
-            "substring_conflicts": len(substring_conflicts),
+            "same_typo_conflicts": 0,  # Removed - QMK supports boundaries
+            "suffix_conflicts": 0,  # Removed - no longer performed
+            "substring_conflicts": 0,  # Removed - no longer performed
         },
         "char_filtered": char_filtered,
-        "same_typo_conflicts": same_typo_conflicts,
-        "suffix_conflicts": suffix_conflicts,
-        "substring_conflicts": substring_conflicts,
+        "same_typo_conflicts": [],  # Removed - QMK supports boundaries
+        "suffix_conflicts": [],  # Removed - no longer performed
+        "substring_conflicts": [],  # Removed - no longer performed
     }
 
     return final, metadata

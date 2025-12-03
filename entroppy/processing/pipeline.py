@@ -127,6 +127,7 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
         platform=platform,
         min_typo_length=config.min_typo_length,
         collision_threshold=config.freq_ratio,
+        jobs=config.jobs,
     )
 
     # Create passes

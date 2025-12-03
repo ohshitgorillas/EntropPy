@@ -59,8 +59,20 @@ def check_pattern_would_incorrectly_match_other_corrections(
                 continue
 
             # Calculate what applying the pattern would produce
-            remaining = other_typo[: -len(typo_pattern)]
-            pattern_result = remaining + word_pattern
+            # For suffix matches, we need to preserve any suffix that comes after the pattern
+            # in the original word
+            remaining_typo = other_typo[: -len(typo_pattern)]
+            # Find what comes after the typo_pattern in the original word
+            # The typo_pattern appears at the end of other_typo, so find where it appears
+            # in other_word and get what comes after it
+            typo_pattern_pos_in_word = other_word.rfind(typo_pattern)
+            if typo_pattern_pos_in_word != -1:
+                # Pattern found in word, get what comes after it
+                word_suffix = other_word[typo_pattern_pos_in_word + len(typo_pattern) :]
+                pattern_result = remaining_typo + word_pattern + word_suffix
+            else:
+                # Pattern not found in word, just do simple replacement
+                pattern_result = remaining_typo + word_pattern
 
             # If pattern would produce different result, it's unsafe
             if pattern_result != other_word:
@@ -99,8 +111,20 @@ def check_pattern_would_incorrectly_match_other_corrections(
             # Check if pattern appears as SUFFIX of other correction's typo
             if other_typo.endswith(typo_pattern) and other_typo != typo_pattern:
                 # Calculate what applying the pattern would produce
-                remaining = other_typo[: -len(typo_pattern)]
-                pattern_result = remaining + word_pattern
+                # For suffix matches, we need to preserve any suffix that comes after the pattern
+                # in the original word
+                remaining_typo = other_typo[: -len(typo_pattern)]
+                # Find what comes after the typo_pattern in the original word
+                # The typo_pattern appears at the end of other_typo, so find where it appears
+                # in other_word and get what comes after it
+                typo_pattern_pos_in_word = other_word.rfind(typo_pattern)
+                if typo_pattern_pos_in_word != -1:
+                    # Pattern found in word, get what comes after it
+                    word_suffix = other_word[typo_pattern_pos_in_word + len(typo_pattern) :]
+                    pattern_result = remaining_typo + word_pattern + word_suffix
+                else:
+                    # Pattern not found in word, just do simple replacement
+                    pattern_result = remaining_typo + word_pattern
 
                 # If pattern would produce different result, it's unsafe
                 if pattern_result != other_word:
