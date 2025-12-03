@@ -53,18 +53,23 @@ class PatternGeneralizationPass(Pass):
         corrections_list = list(state.active_corrections)
 
         try:
-            patterns, corrections_to_remove, _, rejected_patterns = generalize_patterns(
-                corrections_list,
-                self.context.validation_set,
-                self.context.source_words_set,
-                self.context.min_typo_length,
-                match_direction,
-                verbose=False,
-                debug_words=state.debug_words,
-                debug_typo_matcher=state.debug_typo_matcher,
-                jobs=1,  # Single-threaded for now (can be parallelized later)
-                is_in_graveyard=state.is_in_graveyard,
+            patterns, corrections_to_remove, pattern_replacements, rejected_patterns = (
+                generalize_patterns(
+                    corrections_list,
+                    self.context.validation_set,
+                    self.context.source_words_set,
+                    self.context.min_typo_length,
+                    match_direction,
+                    verbose=False,
+                    debug_words=state.debug_words,
+                    debug_typo_matcher=state.debug_typo_matcher,
+                    jobs=1,  # Single-threaded for now (can be parallelized later)
+                    is_in_graveyard=state.is_in_graveyard,
+                )
             )
+
+            # Store pattern replacements in state for reporting
+            state.pattern_replacements.update(pattern_replacements)
 
             # Add rejected patterns to graveyard to prevent infinite loops
             for typo_pattern, word_pattern, boundary, reason in rejected_patterns:

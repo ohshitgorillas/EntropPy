@@ -196,9 +196,7 @@ class IterativeSolver:
 
             # Check if we've converged (no net changes)
             converged_this_iteration = (
-                corrections_change == 0
-                and patterns_change == 0
-                and graveyard_change == 0
+                corrections_change == 0 and patterns_change == 0 and graveyard_change == 0
             )
 
             if converged_this_iteration:

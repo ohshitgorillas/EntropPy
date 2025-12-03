@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Report generation now properly extracts data from solver state and generates all reports including collisions, conflicts, exclusions, and platform-specific reports (e.g., `qmk_ranking.txt`)
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).

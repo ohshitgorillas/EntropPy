@@ -92,6 +92,9 @@ class DictionaryState:
         # Track what corrections cover which raw typos
         self._coverage_map: dict[str, set[Correction]] = defaultdict(set)
 
+        # Track pattern replacements for reporting
+        self.pattern_replacements: dict[Correction, list[Correction]] = {}
+
     def is_in_graveyard(
         self,
         typo: str,
