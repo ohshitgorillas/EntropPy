@@ -128,8 +128,8 @@ Example config.json:
     parser.add_argument(
         "--max-iterations",
         type=int,
-        help="Maximum iterations for iterative solver (default: 10)",
-        default=10,
+        help="Maximum iterations for iterative solver (default: 20)",
+        default=20,
     )
 
     # Flags
