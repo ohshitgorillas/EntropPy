@@ -5,8 +5,7 @@ from multiprocessing import Pool
 from typing import TYPE_CHECKING
 
 from entroppy.core import BoundaryType
-from entroppy.resolution.conflicts import (build_typo_index,
-                                           get_detector_for_boundary)
+from entroppy.resolution.conflicts import build_typo_index, get_detector_for_boundary
 from entroppy.resolution.solver import Pass
 from entroppy.resolution.state import RejectionReason
 

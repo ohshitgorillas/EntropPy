@@ -723,7 +723,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Pattern generation incomplete for QMK**: Current implementation detects some patterns but misses common ones:
   - `teh` → `the` (and variants: `tehn` → `then`, `bateh` → `bathe`)
   - `toin` → `tion` (and variants: `-ation`, `-ntion`)
-  
+
 - **QMK dictionary not fully optimized**: Pattern generation needs further refinement to maximize effectiveness of QMK's limited storage space (~1,500 corrections)
 
 ## [0.3.0] - 2025-11-29
@@ -785,7 +785,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Direct correction: `teh → the` (no boundary, from Stage 3)
   - Prefix correction: `tehir → their`, `tehn → then` (left boundary from Stage 4)
   - Suffix correction: `bateh → bathe`, `seeteh → seethe` (right boundary from Stage 4)
-  
+
   Each correction reaches the final output, triggering Espanso's disambiguation behavior.
 
 - **Solution**: Added cross-boundary deduplication logic in [`entroppy/stages/pattern_generalization.py`](entroppy/stages/pattern_generalization.py) that:
@@ -1097,4 +1097,3 @@ This is the first beta release of the Autocorrect Dictionary Generator for Espan
 - **0.1.2** (2025-11-26): Fixed useless no-op pattern generation
 - **0.1.1** (2025-11-26): Critical bug fix for race conditions with fast typing
 - **0.1.0** (2025-11-26): Initial beta release
-

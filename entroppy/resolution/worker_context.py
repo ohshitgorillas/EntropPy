@@ -69,7 +69,7 @@ def get_collision_worker_context() -> CollisionResolutionContext:
         RuntimeError: If called before init_collision_worker
     """
     try:
-        return _worker_context.value
+        return _worker_context.value  # type: ignore[no-any-return]
     except AttributeError as e:
         raise RuntimeError(
             "Collision resolution worker context not initialized. Call init_collision_worker first."
@@ -148,7 +148,7 @@ def get_candidate_selection_worker_context() -> "CandidateSelectionContext":
         RuntimeError: If called before init_candidate_selection_worker
     """
     try:
-        return _candidate_worker_context.value
+        return _candidate_worker_context.value  # type: ignore[no-any-return]
     except AttributeError as e:
         raise RuntimeError(
             "Candidate selection worker context not initialized. "

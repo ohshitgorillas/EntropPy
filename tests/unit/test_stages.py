@@ -1,14 +1,14 @@
 """Unit tests for pipeline stages - focusing on behavior, not implementation."""
 
 from entroppy.core import Config
-from entroppy.processing.stages import (
-    load_dictionaries,
-    generate_typos,
-    resolve_typo_collisions,
-    generalize_typo_patterns,
-    remove_typo_conflicts,
-)
 from entroppy.platforms.espanso import EspansoBackend
+from entroppy.processing.stages import (
+    generalize_typo_patterns,
+    generate_typos,
+    load_dictionaries,
+    remove_typo_conflicts,
+    resolve_typo_collisions,
+)
 
 
 class TestDictionaryLoading:

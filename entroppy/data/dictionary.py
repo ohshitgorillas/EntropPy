@@ -25,7 +25,8 @@ def load_validation_dictionary(
         logger.info("  Loading English words dictionary...")
 
     try:
-        words = get_english_words_set(["web2", "gcide"], lower=True)
+        # type: ignore[no-any-return]
+        words: set[str] = get_english_words_set(["web2", "gcide"], lower=True)
     except Exception as e:
         logger.error(f"✗ Failed to load English words dictionary: {e}")
         logger.error("  This may indicate a problem with the 'english-words' package")

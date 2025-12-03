@@ -12,7 +12,8 @@ from entroppy.utils import compile_wildcard_regex
 class ExclusionMatcher:
     """Handle exclusion patterns with wildcards."""
 
-    def __init__(self, exclusion_set: set[str]):
+    def __init__(self, exclusion_set: set[str]) -> None:
+        """Initialize ExclusionMatcher with exclusion patterns."""
         self.exact = set()
         self.wildcards = []
         self.exact_typo_map: dict[str, tuple[str, BoundaryType | None]] = {}
@@ -104,8 +105,7 @@ class ExclusionMatcher:
         return "unknown rule"
 
     def should_ignore_in_validation(self, word: str) -> bool:
-        """
-        Check if a validation word should be ignored during boundary detection.
+        """Check if a validation word should be ignored during boundary detection.
 
         This allows excluded patterns to not block valid typos.
         For example, if "*toin" is excluded, "allantoin" won't block "toin" as a typo.
@@ -113,8 +113,7 @@ class ExclusionMatcher:
         return self.word_pattern_matcher.matches(word)
 
     def filter_validation_set(self, validation_set: set[str]) -> set[str]:
-        """
-        Create a filtered validation set for boundary detection.
+        """Create a filtered validation set for boundary detection.
 
         Removes words matching exclusion patterns so they don't block valid typos.
         """

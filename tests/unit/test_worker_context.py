@@ -2,15 +2,12 @@
 
 import pickle
 from multiprocessing import Pool
+
 import pytest
 
 from entroppy.core import Config
-from entroppy.processing.stages.worker_context import (
-    WorkerContext,
-    init_worker,
-    get_worker_context,
-)
 from entroppy.processing.stages.data_models import DictionaryData
+from entroppy.processing.stages.worker_context import WorkerContext, get_worker_context, init_worker
 
 
 # Module-level worker functions (needed for multiprocessing pickle)

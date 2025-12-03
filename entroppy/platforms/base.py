@@ -53,8 +53,7 @@ class PlatformBackend(ABC):
     def filter_corrections(
         self, corrections: list["Correction"], config: "Config"
     ) -> tuple[list["Correction"], dict[str, Any]]:
-        """
-        Apply platform-specific filtering.
+        """Apply platform-specific filtering.
 
         Args:
             corrections: List of corrections to filter
@@ -74,8 +73,7 @@ class PlatformBackend(ABC):
         user_words: set[str],
         config: "Config" | None = None,
     ) -> list["Correction"]:
-        """
-        Rank corrections by platform-specific usefulness.
+        """Rank corrections by platform-specific usefulness.
 
         Args:
             corrections: All corrections (direct + patterns)
@@ -92,8 +90,7 @@ class PlatformBackend(ABC):
     def generate_output(
         self, corrections: list["Correction"], output_path: str | None, config: "Config"
     ) -> None:
-        """
-        Generate platform-specific output format.
+        """Generate platform-specific output format.
 
         Args:
             corrections: Final list of corrections to output
@@ -114,8 +111,7 @@ class PlatformBackend(ABC):
         report_dir: Path,
         config: "Config",
     ) -> dict[str, Any]:
-        """
-        Generate platform-specific report.
+        """Generate platform-specific report.
 
         Args:
             final_corrections: Final corrections after limit applied

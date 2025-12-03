@@ -3,8 +3,7 @@
 from pathlib import Path
 from typing import Any, TextIO
 
-from entroppy.core import (BoundaryType, Correction, format_boundary_display,
-                           format_boundary_name)
+from entroppy.core import BoundaryType, Correction, format_boundary_display, format_boundary_name
 from entroppy.reports import write_report_header
 from entroppy.reports.helpers import write_section_header
 from entroppy.utils.helpers import write_file_safely

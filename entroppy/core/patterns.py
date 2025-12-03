@@ -7,9 +7,12 @@ from loguru import logger
 from entroppy.core.boundaries import BoundaryType
 from entroppy.core.pattern_logging import is_debug_pattern
 from entroppy.core.pattern_validation_runner import (
-    _build_validation_indexes, _extract_and_merge_patterns,
-    _extract_debug_typos, _run_parallel_validation,
-    _run_single_threaded_validation)
+    _build_validation_indexes,
+    _extract_and_merge_patterns,
+    _extract_debug_typos,
+    _run_parallel_validation,
+    _run_single_threaded_validation,
+)
 from entroppy.core.types import Correction
 from entroppy.platforms.base import MatchDirection
 

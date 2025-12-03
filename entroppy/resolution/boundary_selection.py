@@ -2,13 +2,15 @@
 
 from entroppy.core import BoundaryType
 from entroppy.core.boundaries import BoundaryIndex
-from entroppy.utils.debug import (DebugTypoMatcher, is_debug_typo,
-                                  log_debug_typo)
+from entroppy.utils.debug import DebugTypoMatcher, is_debug_typo, log_debug_typo
 
-from .boundary_logging import (_determine_boundary_order,
-                               _log_boundary_order_selection,
-                               _log_boundary_rejection, _log_fallback_boundary,
-                               _should_debug_boundary_selection)
+from .boundary_logging import (
+    _determine_boundary_order,
+    _log_boundary_order_selection,
+    _log_boundary_rejection,
+    _log_fallback_boundary,
+    _should_debug_boundary_selection,
+)
 from .false_trigger_check import _check_false_trigger_with_details
 
 

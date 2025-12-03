@@ -8,8 +8,7 @@ from multiprocessing import cpu_count
 from typing import Literal
 
 from loguru import logger
-from pydantic import (BaseModel, Field, ValidationError, field_validator,
-                      model_validator)
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from entroppy.utils import expand_file_path
 from entroppy.utils.debug import DebugTypoMatcher
@@ -143,7 +142,7 @@ def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Conf
 
     # Pydantic handles validation automatically
     try:
-        return Config.model_validate(config_dict)
+        return Config.model_validate(config_dict)  # type: ignore[no-any-return]
     except ValidationError as e:
         logger.error(f"✗ Configuration validation failed: {e}")
         logger.error("  Please check your configuration values")

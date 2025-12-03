@@ -30,7 +30,6 @@ def log_word_loading(
         config_max_word_length: Maximum word length
         config_min_word_length: Minimum word length
     """
-
     # Check if word is in user words
     if word in user_words_set:
         log_debug_word(word, "Found in user word list (include file)", "Stage 1")

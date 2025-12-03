@@ -12,7 +12,7 @@ It uses `english-words` and `wordfreq` to algorithmically "fuzz" lists of Englis
 It generates five types of typing errors:
 * **Transpositions**: Swapped characters (e.g., `the` → `teh`).
 * **Omissions**: Missing characters (e.g., `because` → `becuse`).
-* **Duplications**: Doubled characters (e.g., `entropy` → `entroppy`). 
+* **Duplications**: Doubled characters (e.g., `entropy` → `entroppy`).
 * **Replacements**: Wrong characters (e.g., `apple` → `applw`).
 * **Insertions**: Additional characters (e.g., `thewre` → `there`).
 
@@ -271,7 +271,7 @@ xy* -> yz                 # Wildcards
 *in: -> *ing              # With boundary: right boundary required
 :in* -> ni*               # Left boundary required
 :teh: -> the              # Both boundaries required
-``` 
+```
 
 ## Contributing
 

@@ -4,22 +4,17 @@ from pathlib import Path
 from typing import Any
 
 from entroppy.core import Config, Correction
-from entroppy.platforms.base import (MatchDirection, PlatformBackend,
-                                     PlatformConstraints)
-from entroppy.platforms.qmk.filtering import \
-    filter_corrections as qmk_filter_corrections
-from entroppy.platforms.qmk.output import \
-    generate_output as qmk_generate_output
+from entroppy.platforms.base import MatchDirection, PlatformBackend, PlatformConstraints
+from entroppy.platforms.qmk.filtering import filter_corrections as qmk_filter_corrections
+from entroppy.platforms.qmk.output import generate_output as qmk_generate_output
 from entroppy.platforms.qmk.ranking import _build_pattern_sets
-from entroppy.platforms.qmk.ranking import \
-    rank_corrections as qmk_rank_corrections
+from entroppy.platforms.qmk.ranking import rank_corrections as qmk_rank_corrections
 from entroppy.platforms.qmk.reports import generate_qmk_ranking_report
 from entroppy.utils import Constants
 
 
 class QMKBackend(PlatformBackend):
-    """
-    Backend for QMK firmware autocorrect.
+    """Backend for QMK firmware autocorrect.
 
     Characteristics:
     - Matches right-to-left
@@ -60,8 +55,7 @@ class QMKBackend(PlatformBackend):
     def filter_corrections(
         self, corrections: list[Correction], config: Config
     ) -> tuple[list[Correction], dict[str, Any]]:
-        """
-        Apply QMK-specific filtering.
+        """Apply QMK-specific filtering.
 
         - Character set validation (only a-z and ')
         - Same-typo-text conflict detection (different boundaries)
@@ -78,8 +72,7 @@ class QMKBackend(PlatformBackend):
         user_words: set[str],
         config: Config | None = None,
     ) -> list[Correction]:
-        """
-        Rank corrections by QMK-specific usefulness.
+        """Rank corrections by QMK-specific usefulness.
 
         Three-tier system:
         1. User words (infinite priority)
@@ -124,8 +117,7 @@ class QMKBackend(PlatformBackend):
     def generate_output(
         self, corrections: list[Correction], output_path: str | None, config: Config
     ) -> None:
-        """
-        Generate QMK text output.
+        """Generate QMK text output.
 
         Format:
         typo -> correction

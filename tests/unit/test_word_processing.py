@@ -6,7 +6,7 @@ filtering applied. Each test has a single assertion and focuses on behavior.
 
 from unittest.mock import patch
 
-from entroppy.resolution.word_processing import process_word, _add_debug_message
+from entroppy.resolution.word_processing import _add_debug_message, process_word
 from entroppy.utils.debug import DebugTypoMatcher
 
 

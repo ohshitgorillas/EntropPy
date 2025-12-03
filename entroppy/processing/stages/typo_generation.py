@@ -9,11 +9,8 @@ from loguru import logger
 from tqdm import tqdm
 
 from entroppy.core import Config
-from entroppy.processing.stages.data_models import (DictionaryData,
-                                                    TypoGenerationResult)
-from entroppy.processing.stages.worker_context import (WorkerContext,
-                                                       get_worker_context,
-                                                       init_worker)
+from entroppy.processing.stages.data_models import DictionaryData, TypoGenerationResult
+from entroppy.processing.stages.worker_context import WorkerContext, get_worker_context, init_worker
 from entroppy.resolution import process_word
 
 

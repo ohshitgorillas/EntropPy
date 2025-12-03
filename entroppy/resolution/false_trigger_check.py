@@ -1,9 +1,12 @@
 """False trigger checking logic for boundary selection."""
 
 from entroppy.core import BoundaryType
-from entroppy.core.boundaries import (BoundaryIndex, is_substring_of_any,
-                                      would_trigger_at_end,
-                                      would_trigger_at_start)
+from entroppy.core.boundaries import (
+    BoundaryIndex,
+    is_substring_of_any,
+    would_trigger_at_end,
+    would_trigger_at_start,
+)
 
 from .boundary_utils import _check_typo_in_target_word
 

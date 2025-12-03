@@ -2,14 +2,15 @@
 
 from entroppy.core import BoundaryType
 from entroppy.core.boundaries import BoundaryIndex
-from entroppy.utils.debug import (DebugTypoMatcher, is_debug_typo,
-                                  is_debug_word, log_debug_typo)
+from entroppy.utils.debug import DebugTypoMatcher, is_debug_typo, is_debug_word, log_debug_typo
 
-from .boundary_utils import (_check_typo_in_target_word,
-                             _format_incorrect_transformation,
-                             _get_example_words_with_prefix,
-                             _get_example_words_with_substring,
-                             _get_example_words_with_suffix)
+from .boundary_utils import (
+    _check_typo_in_target_word,
+    _format_incorrect_transformation,
+    _get_example_words_with_prefix,
+    _get_example_words_with_substring,
+    _get_example_words_with_suffix,
+)
 
 
 def _should_debug_boundary_selection(

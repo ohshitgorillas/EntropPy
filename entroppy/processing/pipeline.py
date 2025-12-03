@@ -8,12 +8,13 @@ from loguru import logger
 from entroppy.core import Config
 from entroppy.platforms import PlatformBackend, get_platform_backend
 from entroppy.processing.stages import generate_typos, load_dictionaries
-from entroppy.reports import (ReportData, create_report_directory, format_time,
-                              generate_reports)
-from entroppy.resolution.passes import (CandidateSelectionPass,
-                                        ConflictRemovalPass,
-                                        PatternGeneralizationPass,
-                                        PlatformConstraintsPass)
+from entroppy.reports import ReportData, create_report_directory, format_time, generate_reports
+from entroppy.resolution.passes import (
+    CandidateSelectionPass,
+    ConflictRemovalPass,
+    PatternGeneralizationPass,
+    PlatformConstraintsPass,
+)
 from entroppy.resolution.solver import IterativeSolver, PassContext
 from entroppy.resolution.state import DictionaryState, RejectionReason
 from entroppy.utils.helpers import cached_word_frequency

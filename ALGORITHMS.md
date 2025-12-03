@@ -384,4 +384,3 @@ EntropPy's pipeline transforms a list of words into an optimized autocorrect dic
 - **Stage 7** produces final output
 
 The result is a high-quality autocorrect dictionary tailored to your platform's capabilities and constraints.
-

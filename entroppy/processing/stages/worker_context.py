@@ -83,6 +83,6 @@ def get_worker_context() -> WorkerContext:
         RuntimeError: If called before init_worker
     """
     try:
-        return _worker_context.value
+        return _worker_context.value  # type: ignore[no-any-return]
     except AttributeError as e:
         raise RuntimeError("Worker context not initialized. Call init_worker first.") from e

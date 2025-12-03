@@ -6,10 +6,7 @@ in typo corrections. Each test has a single assertion and focuses on behavior.
 
 from entroppy.core.boundaries import BoundaryType
 from entroppy.core.config import Correction
-from entroppy.core.pattern_extraction import (
-    find_suffix_patterns,
-    find_prefix_patterns,
-)
+from entroppy.core.pattern_extraction import find_prefix_patterns, find_suffix_patterns
 
 
 class TestFindSuffixPatterns:

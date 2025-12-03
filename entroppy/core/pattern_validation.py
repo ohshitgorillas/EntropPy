@@ -3,9 +3,12 @@
 import functools
 from typing import TYPE_CHECKING
 
-from entroppy.core.boundaries import (BoundaryIndex, BoundaryType,
-                                      would_trigger_at_end,
-                                      would_trigger_at_start)
+from entroppy.core.boundaries import (
+    BoundaryIndex,
+    BoundaryType,
+    would_trigger_at_end,
+    would_trigger_at_start,
+)
 from entroppy.platforms.base import MatchDirection
 from entroppy.utils.debug import log_debug_correction
 

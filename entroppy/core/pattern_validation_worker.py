@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from entroppy.core.boundaries import BoundaryIndex, BoundaryType
-from entroppy.core.pattern_conflicts import \
-    check_pattern_would_incorrectly_match_other_corrections
+from entroppy.core.pattern_conflicts import check_pattern_would_incorrectly_match_other_corrections
 from entroppy.core.pattern_indexes import CorrectionIndex, SourceWordIndex
 from entroppy.core.pattern_validation import (
-    check_pattern_conflicts, validate_pattern_for_all_occurrences)
+    check_pattern_conflicts,
+    validate_pattern_for_all_occurrences,
+)
 from entroppy.core.types import Correction
 from entroppy.platforms.base import MatchDirection
 

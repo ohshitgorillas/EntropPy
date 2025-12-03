@@ -7,8 +7,7 @@ from typing import Any
 from loguru import logger
 
 from entroppy.core import Config, Correction
-from entroppy.platforms.base import (MatchDirection, PlatformBackend,
-                                     PlatformConstraints)
+from entroppy.platforms.base import MatchDirection, PlatformBackend, PlatformConstraints
 from entroppy.platforms.espanso.file_writing import write_yaml_files
 from entroppy.platforms.espanso.organization import organize_by_letter
 from entroppy.platforms.espanso.ram_estimation import estimate_ram_usage
@@ -18,8 +17,7 @@ from entroppy.platforms.espanso.yaml_helpers import write_yaml_to_stream
 
 
 class EspansoBackend(PlatformBackend):
-    """
-    Backend for Espanso text expander.
+    """Backend for Espanso text expander.
 
     Characteristics:
     - Matches left-to-right

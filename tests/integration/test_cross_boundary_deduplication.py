@@ -1,13 +1,13 @@
 """Integration tests for cross-boundary deduplication behavior."""
 
 from entroppy.core import Config
-from entroppy.processing.stages import (
-    load_dictionaries,
-    generate_typos,
-    resolve_typo_collisions,
-    generalize_typo_patterns,
-)
 from entroppy.platforms.espanso import EspansoBackend
+from entroppy.processing.stages import (
+    generalize_typo_patterns,
+    generate_typos,
+    load_dictionaries,
+    resolve_typo_collisions,
+)
 
 
 class TestCrossBoundaryDeduplication:

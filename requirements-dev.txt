@@ -4,3 +4,5 @@ mypy
 types-tqdm
 types-pyyaml
 pydocstyle
+isort
+pre-commit

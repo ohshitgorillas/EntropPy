@@ -32,8 +32,7 @@ def determine_output_path(output_path: str | None) -> str | None:
 
 
 def generate_output(corrections: list[Correction], output_path: str | None, config: Config) -> None:
-    """
-    Generate QMK text output.
+    """Generate QMK text output.
 
     Format:
     typo -> correction

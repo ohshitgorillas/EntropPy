@@ -12,8 +12,7 @@ _PLATFORMS = {
 
 
 def get_platform_backend(platform_name: str) -> PlatformBackend:
-    """
-    Factory function to get platform backend instance.
+    """Factory function to get platform backend instance.
 
     Args:
         platform_name: Name of platform ('espanso', 'qmk', etc.)

@@ -9,8 +9,12 @@ from tqdm import tqdm
 from entroppy.core import BoundaryType, Correction
 from entroppy.platforms.qmk.typo_index import TypoIndex
 
-from .qmk_logging import (log_character_filtering, log_same_typo_conflict,
-                          log_substring_conflict, log_suffix_conflict)
+from .qmk_logging import (
+    log_character_filtering,
+    log_same_typo_conflict,
+    log_substring_conflict,
+    log_suffix_conflict,
+)
 
 if TYPE_CHECKING:
     from entroppy.utils.debug import DebugTypoMatcher
@@ -40,8 +44,7 @@ def filter_character_set_and_resolve_same_typo(
     debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], list, list]:
-    """
-    Combined pass: filter invalid characters and resolve same-typo conflicts.
+    """Combined pass: filter invalid characters and resolve same-typo conflicts.
 
     This combines two operations in a single pass to reduce iterations:
     1. Character set validation (only a-z and ')
@@ -130,8 +133,7 @@ def filter_character_set_and_resolve_same_typo(
 
 
 def resolve_same_typo_conflicts(corrections: list[Correction]) -> tuple[list[Correction], list]:
-    """
-    When multiple boundaries exist for same typo text, keep least restrictive.
+    """When multiple boundaries exist for same typo text, keep least restrictive.
 
     Example: `riet` (NONE) and `:riet` (LEFT) both present
     → Keep `riet` (NONE) since it's less restrictive
@@ -170,8 +172,7 @@ def detect_suffix_conflicts(
     debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], list]:
-    """
-    Detect RTL suffix conflicts across ALL typos.
+    """Detect RTL suffix conflicts across ALL typos.
 
     QMK scans right-to-left. If typing "wriet":
     - Finds suffix "riet" first
@@ -220,8 +221,7 @@ def detect_substring_conflicts(
     debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
 ) -> tuple[list[Correction], list]:
-    """
-    Detect general substring conflicts required by QMK.
+    """Detect general substring conflicts required by QMK.
 
     QMK's compiler rejects any case where one typo is a substring
     of another typo, regardless of position (prefix, suffix, or middle)
@@ -275,8 +275,7 @@ def detect_substring_conflicts(
 def filter_corrections(
     corrections: list[Correction],
 ) -> tuple[list[Correction], dict]:
-    """
-    Apply QMK-specific filtering.
+    """Apply QMK-specific filtering.
 
     Simplified to only perform essential filtering:
     - Character set validation (only a-z and ') - Required by QMK
