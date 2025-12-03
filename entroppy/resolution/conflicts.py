@@ -276,7 +276,7 @@ def _process_typo_for_conflicts(
     return False
 
 
-def _build_typo_index(
+def build_typo_index(
     corrections: list[Correction],
     detector: ConflictDetector,
     boundary: BoundaryType,
@@ -368,7 +368,7 @@ def resolve_conflicts_for_group(
     detector = get_detector_for_boundary(boundary)
 
     # Build index and identify blocked typos
-    typos_to_remove, blocking_map = _build_typo_index(
+    typos_to_remove, blocking_map = build_typo_index(
         corrections, detector, boundary, debug_words, debug_typo_matcher, collect_blocking_map
     )
 
