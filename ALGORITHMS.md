@@ -225,13 +225,22 @@ Not all patterns are valid. Each pattern must pass these checks in order:
 1. **Have at least 2 occurrences** - Patterns with only one occurrence are skipped (not worth generalizing)
 2. **Meet minimum length** - Pattern must be at least `min_typo_length` characters
 3. **Work for all occurrences** - The pattern must correctly transform all matching typos (validates that applying the pattern to each full typo produces the expected full word)
-4. **Not conflict with validation words** - Pattern typo must not be a validation word, and must not trigger at the start or end of validation words
+4. **Not conflict with validation words** - Pattern typo must not be a validation word, and must not trigger at the start or end of validation words. The boundary type determines which checks are performed:
+   - **RIGHT boundary**: Only checks if pattern would trigger at end (skips start check, since RIGHT only matches at word end)
+   - **LEFT boundary**: Only checks if pattern would trigger at start (skips end check, since LEFT only matches at word start)
+   - **BOTH boundary**: Skips both checks (BOTH only matches standalone words, not substrings)
+   - **NONE boundary**: Checks both start and end (NONE matches anywhere)
 5. **Not corrupt target words (highest priority for corruption checks)** - Pattern must not incorrectly transform any target word from corrections that use the pattern (prevents predictive corrections). This check is performed before checking source words.
 6. **Not corrupt source words** - Pattern must not incorrectly transform any source word
 7. **Not incorrectly match other corrections** - Pattern must not appear as a substring (prefix or suffix) of another correction's typo where applying the pattern would produce a different result. This check applies in both directions regardless of platform or matching direction:
    - **Suffix conflicts**: If pattern appears as suffix of another correction's typo, applying the pattern must produce the same result as the direct correction
    - **Prefix conflicts**: If pattern appears as prefix of another correction's typo, applying the pattern must produce the same result as the direct correction
    - Example: Pattern `toin → tion` is rejected because it would incorrectly match `washingtoin → washington` as a suffix, producing `washingtion` instead of `washington`
+8. **Not redundant with already-accepted patterns** - Pattern must not be redundant with shorter patterns that have already been accepted. A pattern is redundant if a shorter pattern would produce the same result when applied to the longer pattern's typo:
+   - Checks all positions where the shorter pattern appears in the longer pattern's typo
+   - If applying the shorter pattern produces the same result as the longer pattern, the longer pattern is rejected
+   - Example: If `tehr → ther` is already accepted, then `otehr → other` is rejected because applying `tehr → ther` to `otehr` at position 1 produces `other`
+   - This check works regardless of matching direction and prevents duplicate patterns in output
 
 ### Pattern Collision Resolution
 
