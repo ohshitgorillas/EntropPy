@@ -141,25 +141,47 @@ Trace specific words or typos through the pipeline (requires `--debug --verbose`
 
 ```bash
 # Trace specific words
-entroppy --debug --verbose --debug-words "the,because" --top-n 1000 --output corrections
+entroppy --platform qmk --max-corrections 1000 --debug --verbose --debug-words "there,other" --top-n 1000 --output corrections/autocorrect.txt
 
-# Trace typos with wildcard pattern matching (*) and word boundaries (:)
-entroppy --debug --verbose --debug-typos "teh,*toin:,abc*" --top-n 1000 --output corrections
+# Trace typos with pattern matching
+entroppy --platform qmk --max-corrections 1000 --debug --verbose --debug-typos "tehr,*toin:,abc*" --top-n 1000 --output corrections/autocorrect.txt
 ```
 
-**Pattern syntax:**
+**Pattern syntax for `--debug-typos`:**
 - `teh` - exact match
 - `*tion` - wildcards (matches typos ending in "tion")
 - `:teh` - left boundary only
 - `teh:` - right boundary only
 - `:teh:` - both boundaries
 
+**Example output:**
+
+Debug words show processing at each stage:
+```
+[DEBUG WORD: 'there'] [Stage 1] Included from wordfreq (rank: 34, zipf freq: 6.31)
+[DEBUG WORD: 'there'] [Stage 2] Generated typo: htere → there
+[DEBUG WORD: 'there'] [Stage 6] Ranked at position 1299/23648 (tier 2: direct corrections, score: 2.04e-03)
+[DEBUG WORD: 'there'] [Stage 6] Cut off by max_corrections limit: position 1299 (limit: 1000)
+```
+
+Debug typos show ranking and selection:
+```
+[DEBUG TYPO: 'tehr' (matched: tehr)] [Stage 6] Ranked at position 220/23648 (tier 1: patterns, score: 2.16e-03)
+[DEBUG TYPO: 'tehr' (matched: tehr)] [Stage 6] Made the cut: position 220 (within limit of 1000)
+```
+
+**Key fields:**
+- **Tier 1**: Patterns (ranked first)
+- **Tier 2**: Direct corrections (ranked second)
+- **Position**: Overall rank (e.g., `220/23648`)
+- **Made the cut**: Included in final output (within `--max-corrections` limit)
+
 ### Reports
 
 Generate detailed reports:
 
 ```bash
-entroppy --top-n 5000 --output corrections --reports reports --verbose
+entroppy --platform espanso --top-n 5000 --output corrections --reports reports --verbose
 ```
 
 Creates timestamped directory with:
@@ -238,15 +260,17 @@ Note that only Espanso currently supports numbers and non-apostrophe symbols; QM
 One word per line:
 
 ```text
-# Words to generate typos and corrections for
+# Words to generate typos and corrections for; these can bypass the max length requirement
 espanso
 autocorrect
 mechanical
 keyboard
+firmware
+supercalifragilisticexpialidocious
 ```
 
 ### Exclusion File (`--exclude`)
-Provides powerful control over what corrections are generated and what words are considered valid. The file supports two types of rules:
+Provides control over what corrections are generated and what words are considered valid. The file supports two types of rules:
 
 **1. Word exclusions** (removes from validation dictionary):
 ```text
