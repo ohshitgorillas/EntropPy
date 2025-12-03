@@ -115,6 +115,7 @@ def _validate_single_pattern_worker(
         set(context.source_words),
         match_direction,
         validation_index,
+        boundary,
         source_word_index,
         target_words=target_words,
     )

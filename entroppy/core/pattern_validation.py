@@ -265,6 +265,7 @@ def check_pattern_conflicts(
     source_words: set[str],
     match_direction: MatchDirection,
     validation_index: BoundaryIndex,
+    boundary: BoundaryType,
     source_word_index: "SourceWordIndex | None" = None,
     target_words: set[str] | None = None,
 ) -> tuple[bool, str | None]:
@@ -276,6 +277,7 @@ def check_pattern_conflicts(
         source_words: Set of source words
         match_direction: The match direction
         validation_index: Pre-built index for validation_set (must match validation_set)
+        boundary: The boundary type of the pattern (determines which checks to skip)
         source_word_index: Optional pre-built index for source_words (for optimization)
         target_words: Optional set of target words to check against
             (prevents predictive corrections)
@@ -288,20 +290,28 @@ def check_pattern_conflicts(
         return False, f"Conflicts with validation word '{typo_pattern}'"
 
     # Check if pattern would trigger at end of validation words
-    if would_trigger_at_end(typo_pattern, validation_index):
-        # Find an example validation word that ends with the pattern
-        example_word = _find_example_suffix_match(typo_pattern, validation_index, validation_set)
-        if example_word:
-            return False, f"Would trigger at end of validation words (e.g., '{example_word}')"
-        return False, "Would trigger at end of validation words"
+    # Skip this check for LEFT and BOTH boundaries (they don't match at word end)
+    if boundary not in (BoundaryType.LEFT, BoundaryType.BOTH):
+        if would_trigger_at_end(typo_pattern, validation_index):
+            # Find an example validation word that ends with the pattern
+            example_word = _find_example_suffix_match(
+                typo_pattern, validation_index, validation_set
+            )
+            if example_word:
+                return False, f"Would trigger at end of validation words (e.g., '{example_word}')"
+            return False, "Would trigger at end of validation words"
 
     # Check if pattern would trigger at start of validation words
-    if would_trigger_at_start(typo_pattern, validation_index):
-        # Find an example validation word that starts with the pattern
-        example_word = _find_example_prefix_match(typo_pattern, validation_index, validation_set)
-        if example_word:
-            return False, f"Would trigger at start of validation words (e.g., '{example_word}')"
-        return False, "Would trigger at start of validation words"
+    # Skip this check for RIGHT and BOTH boundaries (they don't match at word start)
+    if boundary not in (BoundaryType.RIGHT, BoundaryType.BOTH):
+        if would_trigger_at_start(typo_pattern, validation_index):
+            # Find an example validation word that starts with the pattern
+            example_word = _find_example_prefix_match(
+                typo_pattern, validation_index, validation_set
+            )
+            if example_word:
+                return False, f"Would trigger at start of validation words (e.g., '{example_word}')"
+            return False, "Would trigger at start of validation words"
 
     # FIRST: Check if pattern would corrupt target words
     # (highest priority - prevents predictive corrections)

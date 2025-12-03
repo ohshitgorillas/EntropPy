@@ -65,11 +65,21 @@ def generalize_patterns(
     indexes = _build_validation_indexes(validation_set, source_words, match_direction, corrections)
 
     # Extract debug typos for pattern extraction logging
-    debug_typos_set = _extract_debug_typos(debug_typo_matcher)
+    debug_typos_result = _extract_debug_typos(debug_typo_matcher)
+    if debug_typos_result:
+        debug_typos_exact, debug_typos_wildcard = debug_typos_result
+    else:
+        debug_typos_exact = set()
+        debug_typos_wildcard = set()
 
     # Extract and merge prefix/suffix patterns
     found_patterns = _extract_and_merge_patterns(
-        corrections, debug_typos_set, verbose, is_in_graveyard, pattern_cache
+        corrections,
+        debug_typos_exact,
+        debug_typos_wildcard,
+        verbose,
+        is_in_graveyard,
+        pattern_cache,
     )
 
     # Filter out patterns with only one occurrence before validation

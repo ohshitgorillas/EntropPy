@@ -70,21 +70,43 @@ def _filter_corrections_by_boundary(
 def _setup_debug_tracking(
     filtered_corrections: list[Correction],
     debug_typos: set[str] | None,
+    debug_typos_exact: set[str] | None = None,
+    debug_typos_wildcard: set[str] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]]:
     """Setup debug tracking for specific typos.
 
     Args:
         filtered_corrections: List of corrections to track
-        debug_typos: Optional set of typo strings to debug
+        debug_typos: Optional set of typo strings to debug (backward compatibility)
+        debug_typos_exact: Optional set of exact debug typo patterns
+            (for exact matching)
+        debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
+            (for substring matching)
 
     Returns:
         Dict mapping (typo, word, boundary) to list of debug info
     """
     debug_corrections: dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]] = {}
-    if debug_typos is not None and len(debug_typos) > 0:
+
+    # Use new parameters if provided, otherwise fall back to old behavior for backward compatibility
+    if debug_typos_exact is not None or debug_typos_wildcard is not None:
+        exact_patterns = debug_typos_exact or set()
+        wildcard_patterns = debug_typos_wildcard or set()
+
+        for typo, word, boundary in filtered_corrections:
+            typo_lower = typo.lower()
+            # Check exact patterns (exact match)
+            if any(typo_lower == pattern.lower() for pattern in exact_patterns):
+                debug_corrections[(typo, word, boundary)] = []
+            # Check wildcard patterns (substring match)
+            elif any(pattern.lower() in typo_lower for pattern in wildcard_patterns):
+                debug_corrections[(typo, word, boundary)] = []
+    elif debug_typos is not None and len(debug_typos) > 0:
+        # Backward compatibility: use substring matching for all patterns
         for typo, word, boundary in filtered_corrections:
             if any(debug_typo.lower() in typo.lower() for debug_typo in debug_typos):
                 debug_corrections[(typo, word, boundary)] = []
+
     return debug_corrections
 
 
@@ -270,13 +292,19 @@ def _find_common_patterns(
     pattern_candidates: dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]],
     debug_typos: set[str] | None,
     debug_enabled: bool,
+    debug_typos_exact: set[str] | None = None,
+    debug_typos_wildcard: set[str] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find patterns that have 2+ occurrences.
 
     Args:
         pattern_candidates: Dict of pattern candidates with their matches
-        debug_typos: Optional set of typo strings to debug
+        debug_typos: Optional set of typo strings to debug (backward compatibility)
         debug_enabled: Whether debug logging is enabled
+        debug_typos_exact: Optional set of exact debug typo patterns
+            (for exact matching)
+        debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
+            (for substring matching)
 
     Returns:
         Dict mapping (typo_pattern, word_pattern, boundary) to list of
@@ -295,13 +323,39 @@ def _find_common_patterns(
             if len(unique_matches) >= 2:
                 patterns[pattern_key].extend(unique_matches)
                 typo_pattern, word_pattern, boundary = pattern_key
-                if debug_enabled and debug_typos is not None:
-                    # Check if any debug typos are in this pattern
-                    if any(
-                        debug_typo.lower() in typo_pattern.lower()
-                        or any(debug_typo.lower() in m[0].lower() for m in unique_matches)
-                        for debug_typo in debug_typos
-                    ):
+                if debug_enabled:
+                    should_log = False
+
+                    # Use new parameters if provided
+                    if debug_typos_exact is not None or debug_typos_wildcard is not None:
+                        exact_patterns = debug_typos_exact or set()
+                        wildcard_patterns = debug_typos_wildcard or set()
+                        typo_pattern_lower = typo_pattern.lower()
+
+                        # Check exact patterns (exact match)
+                        if any(
+                            typo_pattern_lower == pattern.lower()
+                            or any(pattern.lower() == m[0].lower() for m in unique_matches)
+                            for pattern in exact_patterns
+                        ):
+                            should_log = True
+                        # Check wildcard patterns (substring match)
+                        elif any(
+                            pattern.lower() in typo_pattern_lower
+                            or any(pattern.lower() in m[0].lower() for m in unique_matches)
+                            for pattern in wildcard_patterns
+                        ):
+                            should_log = True
+                    # Backward compatibility: use substring matching for all patterns
+                    elif debug_typos is not None:
+                        if any(
+                            debug_typo.lower() in typo_pattern.lower()
+                            or any(debug_typo.lower() in m[0].lower() for m in unique_matches)
+                            for debug_typo in debug_typos
+                        ):
+                            should_log = True
+
+                    if should_log:
                         logger.debug(
                             f"[PATTERN EXTRACTION] ✓ PATTERN FOUND: "
                             f"'{typo_pattern}' → '{word_pattern}' "
@@ -375,6 +429,8 @@ def _find_patterns(
     pattern_cache: (
         dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
     ) = None,
+    debug_typos_exact: set[str] | None = None,
+    debug_typos_wildcard: set[str] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common patterns (prefix or suffix) in corrections.
 
@@ -420,7 +476,9 @@ def _find_patterns(
     )
 
     # Track debug info for specific typos
-    debug_corrections = _setup_debug_tracking(filtered_corrections, debug_typos)
+    debug_corrections = _setup_debug_tracking(
+        filtered_corrections, debug_typos, debug_typos_exact, debug_typos_wildcard
+    )
 
     # Optimized: Extract all valid patterns from each correction in a single pass
     if verbose:
@@ -471,7 +529,9 @@ def _find_patterns(
         )
 
     # Find common patterns (2+ occurrences)
-    patterns = _find_common_patterns(pattern_candidates, debug_typos, debug_enabled)
+    patterns = _find_common_patterns(
+        pattern_candidates, debug_typos, debug_enabled, debug_typos_exact, debug_typos_wildcard
+    )
 
     # Log debug summary
     _log_debug_summary(
@@ -495,6 +555,8 @@ def find_suffix_patterns(
     pattern_cache: (
         dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
     ) = None,
+    debug_typos_exact: set[str] | None = None,
+    debug_typos_wildcard: set[str] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common suffix patterns (for RIGHT boundaries).
 
@@ -507,6 +569,10 @@ def find_suffix_patterns(
         verbose: Whether to show progress bar
         is_in_graveyard: Optional function to check if pattern is in graveyard
         pattern_cache: Optional cache for pattern extraction results
+        debug_typos_exact: Optional set of exact debug typo patterns
+            (for exact matching)
+        debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
+            (for substring matching)
     """
     return _find_patterns(
         corrections,
@@ -516,6 +582,8 @@ def find_suffix_patterns(
         verbose=verbose,
         is_in_graveyard=is_in_graveyard,
         pattern_cache=pattern_cache,
+        debug_typos_exact=debug_typos_exact,
+        debug_typos_wildcard=debug_typos_wildcard,
     )
 
 
@@ -527,6 +595,8 @@ def find_prefix_patterns(
     pattern_cache: (
         dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
     ) = None,
+    debug_typos_exact: set[str] | None = None,
+    debug_typos_wildcard: set[str] | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common prefix patterns (for LEFT boundaries).
 
@@ -539,6 +609,10 @@ def find_prefix_patterns(
         verbose: Whether to show progress bar
         is_in_graveyard: Optional function to check if pattern is in graveyard
         pattern_cache: Optional cache for pattern extraction results
+        debug_typos_exact: Optional set of exact debug typo patterns
+            (for exact matching)
+        debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
+            (for substring matching)
     """
     return _find_patterns(
         corrections,
@@ -548,4 +622,6 @@ def find_prefix_patterns(
         verbose=verbose,
         is_in_graveyard=is_in_graveyard,
         pattern_cache=pattern_cache,
+        debug_typos_exact=debug_typos_exact,
+        debug_typos_wildcard=debug_typos_wildcard,
     )
