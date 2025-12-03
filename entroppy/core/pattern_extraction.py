@@ -49,6 +49,7 @@ def _find_patterns(
     is_suffix: bool,
     debug_typos: set[str] | None = None,
     verbose: bool = False,
+    is_in_graveyard: callable | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common patterns (prefix or suffix) in corrections.
 
@@ -164,6 +165,16 @@ def _find_patterns(
 
             # Group directly by pattern, regardless of other_part
             pattern_key = (typo_pattern, word_pattern, boundary)
+
+            # Skip if pattern is already in graveyard
+            if is_in_graveyard and is_in_graveyard(typo_pattern, word_pattern, boundary):
+                if is_debug:
+                    logger.debug(
+                        f"    SKIPPED - pattern already in graveyard: "
+                        f"'{typo_pattern}'→'{word_pattern}' ({boundary.value})"
+                    )
+                continue
+
             pattern_candidates[pattern_key].append((typo, word, boundary))
 
             if is_debug:
@@ -225,6 +236,7 @@ def find_suffix_patterns(
     corrections: list[Correction],
     debug_typos: set[str] | None = None,
     verbose: bool = False,
+    is_in_graveyard: callable | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common suffix patterns (for RIGHT boundaries).
 
@@ -235,9 +247,15 @@ def find_suffix_patterns(
         corrections: List of corrections to analyze
         debug_typos: Optional set of typo strings to debug (for logging)
         verbose: Whether to show progress bar
+        is_in_graveyard: Optional function to check if pattern is in graveyard
     """
     return _find_patterns(
-        corrections, BoundaryType.RIGHT, is_suffix=True, debug_typos=debug_typos, verbose=verbose
+        corrections,
+        BoundaryType.RIGHT,
+        is_suffix=True,
+        debug_typos=debug_typos,
+        verbose=verbose,
+        is_in_graveyard=is_in_graveyard,
     )
 
 
@@ -245,6 +263,7 @@ def find_prefix_patterns(
     corrections: list[Correction],
     debug_typos: set[str] | None = None,
     verbose: bool = False,
+    is_in_graveyard: callable | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common prefix patterns (for LEFT boundaries).
 
@@ -255,7 +274,13 @@ def find_prefix_patterns(
         corrections: List of corrections to analyze
         debug_typos: Optional set of typo strings to debug (for logging)
         verbose: Whether to show progress bar
+        is_in_graveyard: Optional function to check if pattern is in graveyard
     """
     return _find_patterns(
-        corrections, BoundaryType.LEFT, is_suffix=False, debug_typos=debug_typos, verbose=verbose
+        corrections,
+        BoundaryType.LEFT,
+        is_suffix=False,
+        debug_typos=debug_typos,
+        verbose=verbose,
+        is_in_graveyard=is_in_graveyard,
     )

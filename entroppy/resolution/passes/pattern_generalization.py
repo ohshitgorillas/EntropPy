@@ -6,6 +6,7 @@ from loguru import logger
 
 from entroppy.core.patterns import generalize_patterns
 from entroppy.platforms.base import MatchDirection
+from entroppy.resolution.state import RejectionReason
 from entroppy.resolution.solver import Pass
 
 if TYPE_CHECKING:
@@ -52,19 +53,37 @@ class PatternGeneralizationPass(Pass):
         corrections_list = list(state.active_corrections)
 
         try:
-            patterns, corrections_to_remove, _, _ = (
-                generalize_patterns(
-                    corrections_list,
-                    self.context.validation_set,
-                    self.context.source_words_set,
-                    self.context.min_typo_length,
-                    match_direction,
-                    verbose=False,
-                    debug_words=state.debug_words,
-                    debug_typo_matcher=state.debug_typo_matcher,
-                    jobs=1,  # Single-threaded for now (can be parallelized later)
-                )
+            patterns, corrections_to_remove, _, rejected_patterns = generalize_patterns(
+                corrections_list,
+                self.context.validation_set,
+                self.context.source_words_set,
+                self.context.min_typo_length,
+                match_direction,
+                verbose=False,
+                debug_words=state.debug_words,
+                debug_typo_matcher=state.debug_typo_matcher,
+                jobs=1,  # Single-threaded for now (can be parallelized later)
+                is_in_graveyard=state.is_in_graveyard,
             )
+
+            # Add rejected patterns to graveyard to prevent infinite loops
+            for typo_pattern, word_pattern, boundary, reason in rejected_patterns:
+                if not state.is_in_graveyard(typo_pattern, word_pattern, boundary):
+                    state.add_to_graveyard(
+                        typo_pattern,
+                        word_pattern,
+                        boundary,
+                        RejectionReason.PATTERN_VALIDATION_FAILED,
+                        blocker=reason,
+                    )
+                    # Log if this is a debug pattern
+                    if state.debug_typo_matcher and state.debug_typo_matcher.matches(
+                        typo_pattern, boundary
+                    ):
+                        logger.debug(
+                            f"[GRAVEYARD] Added rejected pattern to graveyard: "
+                            f"'{typo_pattern}' → '{word_pattern}' ({boundary.value}): {reason}"
+                        )
 
             # Add validated patterns to active set
             for pattern in patterns:

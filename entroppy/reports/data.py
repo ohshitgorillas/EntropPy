@@ -24,7 +24,7 @@ class ReportData:
     pattern_replacements: dict[tuple[str, str, BoundaryType], list[Correction]] = field(
         default_factory=dict
     )
-    rejected_patterns: list[tuple[str, str, str]] = field(default_factory=list)
+    rejected_patterns: list[tuple[str, str, BoundaryType, str]] = field(default_factory=list)
 
     # Conflicts: (long_typo, long_word, blocking_typo, blocking_word, boundary)
     removed_conflicts: list[tuple[str, str, str, str, BoundaryType]] = field(default_factory=list)

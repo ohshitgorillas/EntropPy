@@ -210,9 +210,9 @@ class TestPatternGeneralization:
 
         # Check: rejected_patterns should contain any cross-boundary conflicts
         cross_boundary_rejections = [
-            (typo, word, reasons)
-            for typo, word, reasons in result.rejected_patterns
-            if any("cross-boundary" in reason.lower() for reason in reasons)
+            (typo, word, boundary, reason)
+            for typo, word, boundary, reason in result.rejected_patterns
+            if "cross-boundary" in reason.lower()
         ]
 
         # If we have multiple corrections with same typo/word, some should be rejected

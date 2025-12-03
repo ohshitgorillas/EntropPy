@@ -65,14 +65,14 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
         # Create report directory early so we can save logs to it
         platform_name = platform.get_name()
         report_dir = create_report_directory(config.reports, platform_name)
-        
+
         # Set up log file in report directory
         # Extract timestamp from directory name (format: YYYY-MM-DD_HH-MM-SS_platform)
         # Timestamp is always the first 19 characters: YYYY-MM-DD_HH-MM-SS
         timestamp = report_dir.name[:19]
         log_file = report_dir / f"entroppy-{timestamp}.log"
         add_log_file_handler(log_file, verbose=config.verbose, debug=config.debug)
-        
+
         if verbose:
             logger.info(f"Logs will be saved to: {log_file}")
             logger.info("")

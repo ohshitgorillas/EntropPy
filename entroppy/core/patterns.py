@@ -2,6 +2,10 @@
 
 from typing import TYPE_CHECKING
 
+from loguru import logger
+
+from entroppy.core.boundaries import BoundaryType
+from entroppy.core.pattern_logging import is_debug_pattern
 from entroppy.core.pattern_validation_runner import (
     _build_validation_indexes,
     _extract_and_merge_patterns,
@@ -26,11 +30,12 @@ def generalize_patterns(
     debug_words: set[str] | None = None,
     debug_typo_matcher: "DebugTypoMatcher | None" = None,
     jobs: int = 1,
+    is_in_graveyard: callable | None = None,
 ) -> tuple[
     list[Correction],
     set[Correction],
     dict[Correction, list[Correction]],
-    list[tuple[str, str, str]],
+    list[tuple[str, str, BoundaryType, str]],
 ]:
     """Find repeated patterns, create generalized rules, and return corrections to be removed.
 
@@ -44,9 +49,12 @@ def generalize_patterns(
         debug_words: Set of words to debug (exact matches)
         debug_typo_matcher: Matcher for debug typos (with wildcards/boundaries)
         jobs: Number of parallel workers to use (1 = sequential)
+        is_in_graveyard: Optional function to check if a pattern is in graveyard
+            (prevents infinite loops by skipping already-rejected patterns)
 
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)
+        where rejected_patterns is a list of (typo_pattern, word_pattern, boundary, reason) tuples
     """
     if debug_words is None:
         debug_words = set()
@@ -58,10 +66,32 @@ def generalize_patterns(
     debug_typos_set = _extract_debug_typos(debug_typo_matcher)
 
     # Extract and merge prefix/suffix patterns
-    found_patterns = _extract_and_merge_patterns(corrections, debug_typos_set, verbose)
+    found_patterns = _extract_and_merge_patterns(
+        corrections, debug_typos_set, verbose, is_in_graveyard
+    )
 
     # Filter out patterns with only one occurrence before validation
     patterns_to_validate = {k: v for k, v in found_patterns.items() if len(v) >= 2}
+
+    # Filter out patterns already in graveyard to prevent infinite loops
+    if is_in_graveyard:
+        filtered_patterns = {}
+        skipped_count = 0
+        for (typo, word, boundary), occurrences in patterns_to_validate.items():
+            if is_in_graveyard(typo, word, boundary):
+                skipped_count += 1
+                # Debug log for patterns being skipped
+                if debug_typo_matcher and is_debug_pattern(typo, occurrences, debug_typo_matcher):
+                    logger.debug(
+                        f"[GRAVEYARD FILTER] Skipping pattern already in graveyard: "
+                        f"'{typo}' → '{word}' ({boundary.value})"
+                    )
+            else:
+                filtered_patterns[(typo, word, boundary)] = occurrences
+
+        patterns_to_validate = filtered_patterns
+        if skipped_count > 0 and verbose:
+            logger.debug(f"Filtered {skipped_count} patterns already in graveyard")
 
     # Choose parallel or single-threaded validation
     if jobs > 1 and len(patterns_to_validate) > 10:

@@ -68,7 +68,7 @@ def process_rejected_pattern(
     has_debug_occurrence: bool,
     debug_words: set[str],
     debug_typo_matcher: "DebugTypoMatcher | None",
-    rejected_patterns: list[tuple[str, str, str]],
+    rejected_patterns: list[tuple[str, str, BoundaryType, str]],
 ) -> None:
     """Process a rejected pattern by logging and adding to rejected list.
 
@@ -84,7 +84,7 @@ def process_rejected_pattern(
         debug_typo_matcher: Matcher for debug typos
         rejected_patterns: List to append rejected pattern to
     """
-    rejected_patterns.append((typo_pattern, word_pattern, reason))
+    rejected_patterns.append((typo_pattern, word_pattern, boundary, reason))
     if is_debug_pattern_flag:
         logger.debug(
             f"[PATTERN GENERALIZATION] REJECTED: '{typo_pattern}' → '{word_pattern}': {reason}"

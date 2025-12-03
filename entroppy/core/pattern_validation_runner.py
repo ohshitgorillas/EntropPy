@@ -79,6 +79,7 @@ def _extract_and_merge_patterns(
     corrections: list[Correction],
     debug_typos_set: set[str] | None,
     verbose: bool,
+    is_in_graveyard: callable | None = None,
 ) -> dict[tuple[str, str, BoundaryType], list[Correction]]:
     """Extract prefix and suffix patterns and merge them.
 
@@ -95,10 +96,10 @@ def _extract_and_merge_patterns(
     # - Prefix patterns: match at start of words (e.g., "teh" → "the")
     # - Suffix patterns: match at end of words (e.g., "toin" → "tion")
     prefix_patterns = find_prefix_patterns(
-        corrections, debug_typos=debug_typos_set, verbose=verbose
+        corrections, debug_typos=debug_typos_set, verbose=verbose, is_in_graveyard=is_in_graveyard
     )
     suffix_patterns = find_suffix_patterns(
-        corrections, debug_typos=debug_typos_set, verbose=verbose
+        corrections, debug_typos=debug_typos_set, verbose=verbose, is_in_graveyard=is_in_graveyard
     )
 
     # Combine both pattern types into single dict
@@ -228,7 +229,7 @@ def _run_single_threaded_validation(
     list[Correction],
     set[Correction],
     dict[Correction, list[Correction]],
-    list[tuple[str, str, str]],
+    list[tuple[str, str, BoundaryType, str]],
 ]:
     """Run pattern validation in single-threaded mode.
 
@@ -269,6 +270,8 @@ def _run_single_threaded_validation(
 
         # Debug logging for pattern candidates
         is_debug_pattern_flag = is_debug_pattern(typo_pattern, occurrences, debug_typo_matcher)
+        # Only log if this pattern wasn't already filtered by graveyard check
+        # (patterns_to_validate should already be filtered, but log anyway for debugging)
         log_pattern_candidate(typo_pattern, word_pattern, occurrences, debug_typo_matcher)
 
         # Validate the pattern
@@ -345,7 +348,7 @@ def _run_parallel_validation(
     list[Correction],
     set[Correction],
     dict[Correction, list[Correction]],
-    list[tuple[str, str, str]],
+    list[tuple[str, str, BoundaryType, str]],
 ]:
     """Run pattern validation in parallel mode.
 

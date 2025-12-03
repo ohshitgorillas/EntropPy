@@ -50,6 +50,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Infinite loop in pattern generalization**: Fixed issue where rejected patterns were repeatedly reprocessed
+  - Rejected patterns are now added to graveyard and skipped during extraction
+  - Updated `rejected_patterns` format to include boundary: `(typo_pattern, word_pattern, boundary, reason)`
+  - Graveyard check now happens during pattern extraction to prevent reprocessing
+
 - **QMK substring conflict detection**: Fixed multiple issues preventing garbage corrections and compilation errors
   - Now prevents garbage corrections by checking if shorter typos would produce incorrect results for longer typos
   - Catches all substring relationships (prefix, suffix, middle) to satisfy QMK's hard constraint

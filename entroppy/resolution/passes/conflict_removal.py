@@ -83,6 +83,9 @@ class ConflictRemovalPass(Pass):
 
         # Build character-based index for efficient lookup
         # Maps character → list of shorter typos with that character at the relevant position
+        # pylint: disable=duplicate-code
+        # Similar initialization pattern to conflicts.py, but logic diverges significantly
+        # after this point (uses state and different conflict checking)
         candidates_by_char = defaultdict(list)
 
         for typo in sorted_typos:

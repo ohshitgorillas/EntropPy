@@ -55,7 +55,7 @@ class PatternGeneralizationResult(StageResult):
     patterns: list[Correction] = Field(default_factory=list)
     removed_count: int = Field(0, ge=0)
     pattern_replacements: dict[Correction, list[Correction]] = Field(default_factory=dict)
-    rejected_patterns: list[tuple[str, str, str | list[str]]] = Field(default_factory=list)
+    rejected_patterns: list[tuple[str, str, BoundaryType, str]] = Field(default_factory=list)
 
 
 class ConflictRemovalResult(StageResult):

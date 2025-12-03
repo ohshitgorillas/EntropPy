@@ -68,7 +68,7 @@ def _validate_single_pattern_worker(
     bool,  # is_accepted
     Correction | None,  # pattern if accepted, None if rejected
     list[Correction],  # corrections_to_remove
-    tuple[str, str, str] | None,  # rejected_pattern tuple if rejected
+    tuple[str, str, BoundaryType, str] | None,  # rejected_pattern tuple if rejected
 ]:
     """Worker function to validate a single pattern.
 
@@ -92,7 +92,7 @@ def _validate_single_pattern_worker(
     # Reject patterns that are too short
     if len(typo_pattern) < context.min_typo_length:
         reason = f"Too short (< {context.min_typo_length})"
-        return False, None, [], (typo_pattern, word_pattern, reason)
+        return False, None, [], (typo_pattern, word_pattern, boundary, reason)
 
     # Validate that pattern works correctly for all occurrences
     is_valid, validation_error = validate_pattern_for_all_occurrences(
@@ -103,7 +103,7 @@ def _validate_single_pattern_worker(
             False,
             None,
             [],
-            (typo_pattern, word_pattern, validation_error or "Validation failed"),
+            (typo_pattern, word_pattern, boundary, validation_error or "Validation failed"),
         )
 
     # Extract target words from occurrences
@@ -121,7 +121,12 @@ def _validate_single_pattern_worker(
         target_words=target_words,
     )
     if not is_safe:
-        return False, None, [], (typo_pattern, word_pattern, conflict_error or "Conflict detected")
+        return (
+            False,
+            None,
+            [],
+            (typo_pattern, word_pattern, boundary, conflict_error or "Conflict detected"),
+        )
 
     # Check if pattern would incorrectly match other corrections
     is_safe, incorrect_match_error = check_pattern_would_incorrectly_match_other_corrections(
@@ -136,7 +141,7 @@ def _validate_single_pattern_worker(
             False,
             None,
             [],
-            (typo_pattern, word_pattern, incorrect_match_error or "Incorrect match"),
+            (typo_pattern, word_pattern, boundary, incorrect_match_error or "Incorrect match"),
         )
 
     # Pattern passed all checks - accept it

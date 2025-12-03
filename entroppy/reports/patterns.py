@@ -40,8 +40,10 @@ def generate_patterns_report(data: ReportData, report_dir: Path) -> None:
         if data.rejected_patterns:
             f.write("\nREJECTED PATTERNS\n")
             f.write("-" * 70 + "\n\n")
-            for pattern_typo, pattern_word, reason in data.rejected_patterns:
-                f.write(f"✗ {pattern_typo} → {pattern_word}\n")
+            for pattern_typo, pattern_word, boundary, reason in data.rejected_patterns:
+                f.write(
+                    f"✗ {pattern_typo} → {pattern_word} ({format_boundary_display(boundary)})\n"
+                )
                 f.write(f"  Reason: {reason}\n\n")
 
     write_file_safely(filepath, write_content, "writing patterns report")
