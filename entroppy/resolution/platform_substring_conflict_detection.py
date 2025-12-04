@@ -13,13 +13,14 @@ from entroppy.core.types import MatchDirection
 if TYPE_CHECKING:
     pass
 
-# Boundary priority mapping: more restrictive boundaries have higher priority
+# Boundary priority mapping: lower number = less restrictive (matches in more contexts)
 # Used to determine which correction to keep when resolving conflicts
+# We prefer less restrictive boundaries (lower priority) when both passed false trigger checks
 BOUNDARY_PRIORITY = {
-    BoundaryType.NONE: 0,
-    BoundaryType.LEFT: 1,
-    BoundaryType.RIGHT: 1,
-    BoundaryType.BOTH: 2,
+    BoundaryType.NONE: 0,  # Least restrictive (matches anywhere)
+    BoundaryType.LEFT: 1,  # More restrictive (matches at word start only)
+    BoundaryType.RIGHT: 1,  # More restrictive (matches at word end only)
+    BoundaryType.BOTH: 2,  # Most restrictive (matches standalone words only)
 }
 
 
@@ -70,32 +71,41 @@ def should_remove_shorter(
     Returns:
         True if shorter should be removed, False if longer should be removed
     """
-    # If they map to the same word, prefer the more restrictive boundary
-    # (keeps the one that's less likely to cause false triggers)
+    # If they map to the same word, prefer the less restrictive boundary
+    # (both boundaries passed false trigger checks in Stage 3, so less restrictive
+    # matches in more contexts and is more useful)
     if shorter_word == longer_word:
         shorter_priority = BOUNDARY_PRIORITY.get(shorter_boundary, 0)
         longer_priority = BOUNDARY_PRIORITY.get(longer_boundary, 0)
 
-        if longer_priority > shorter_priority:
-            return True  # Remove shorter (less restrictive)
-        return False  # Remove longer (less restrictive)
+        # Lower priority = less restrictive (NONE=0, LEFT/RIGHT=1, BOTH=2)
+        # If shorter is less restrictive, keep it (return False = don't remove shorter)
+        if shorter_priority < longer_priority:
+            return False  # Keep shorter (less restrictive), remove longer (more restrictive)
+        # If longer is less restrictive, remove shorter (return True = remove shorter)
+        return True  # Remove shorter (more restrictive), keep longer (less restrictive)
 
     # For RTL (QMK): QMK's compiler rejects ANY substring relationship
-    # We prefer to keep the more restrictive boundary
-    # (longer formatted usually means more restrictive)
+    # Prefer less restrictive boundary (matches in more contexts)
     if match_direction == MatchDirection.RIGHT_TO_LEFT:
-        # Keep longer (more restrictive), remove shorter
-        return True  # Remove shorter
+        shorter_priority = BOUNDARY_PRIORITY.get(shorter_boundary, 0)
+        longer_priority = BOUNDARY_PRIORITY.get(longer_boundary, 0)
+
+        # Lower priority = less restrictive
+        if shorter_priority < longer_priority:
+            return False  # Keep shorter (less restrictive), remove longer (more restrictive)
+        return True  # Remove shorter (more restrictive), keep longer (less restrictive)
 
     # For LTR (Espanso): shorter would match first, so longer never triggers
     # But boundaries are handled separately in YAML, so this is less critical
-    # Still, prefer more restrictive boundary
+    # Prefer less restrictive boundary (matches in more contexts)
     shorter_priority = BOUNDARY_PRIORITY.get(shorter_boundary, 0)
     longer_priority = BOUNDARY_PRIORITY.get(longer_boundary, 0)
 
-    if longer_priority > shorter_priority:
-        return True  # Remove shorter (less restrictive)
-    return False  # Remove longer (less restrictive)
+    # Lower priority = less restrictive
+    if shorter_priority < longer_priority:
+        return False  # Keep shorter (less restrictive), remove longer (more restrictive)
+    return True  # Remove shorter (more restrictive), keep longer (less restrictive)
 
 
 def build_length_buckets(
