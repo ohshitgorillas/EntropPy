@@ -13,7 +13,9 @@ that weren't detected within boundary groups.
 """
 
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from tqdm import tqdm
 
 from entroppy.core.boundaries import BoundaryType
 from entroppy.core.types import MatchDirection
@@ -85,7 +87,17 @@ class PlatformSubstringConflictPass(Pass):
         # Format: formatted_typo -> list of (correction, core_typo, boundary)
         formatted_to_corrections: dict[str, list[tuple[tuple, str, object]]] = defaultdict(list)
 
-        for correction in all_corrections:
+        if self.context.verbose:
+            corrections_iter: Any = tqdm(
+                all_corrections,
+                desc=f"    {self.name}",
+                unit="correction",
+                leave=False,
+            )
+        else:
+            corrections_iter = all_corrections
+
+        for correction in corrections_iter:
             typo, word, boundary = correction
             formatted_typo = self._format_typo_for_platform(typo, boundary)
             formatted_to_corrections[formatted_typo].append((correction, typo, boundary))
