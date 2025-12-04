@@ -53,6 +53,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Pass timing in verbose output**: Each solver pass now logs its execution time in the verbose output (e.g., "completed in 1m 12s"). This helps identify performance bottlenecks and optimize slow passes.
 - **Platform substring conflict detection**: New `PlatformSubstringConflictPass` in the iterative solver that runs after `ConflictRemovalPass` to catch cross-boundary substring conflicts. Includes debug logging support via `platform_substring_conflict_logging.py`.
 - **Progress bars for iterative solver**: Real-time progress tracking for passes when `--verbose` is enabled.
 

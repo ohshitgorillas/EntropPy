@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import time
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -174,12 +175,30 @@ class IterativeSolver:
             len(state.graveyard),
         )
 
+    def _format_pass_time(self, elapsed_seconds: float) -> str:
+        """Format elapsed time for pass logging.
+
+        Args:
+            elapsed_seconds: Elapsed time in seconds
+
+        Returns:
+            Formatted time string (e.g., "1m 12s", "45s", "2h 5m 30s")
+        """
+        if elapsed_seconds < 60:
+            return f"{int(elapsed_seconds)}s"
+        minutes, seconds = divmod(int(elapsed_seconds), 60)
+        if minutes < 60:
+            return f"{minutes}m {seconds}s"
+        hours, minutes = divmod(minutes, 60)
+        return f"{hours}h {minutes}m {seconds}s"
+
     def _log_pass_changes(
         self,
         pass_name: str,
         corrections_delta: int,
         patterns_delta: int,
         graveyard_delta: int,
+        elapsed_time: float | None = None,
     ) -> None:
         """Log changes made by a pass.
 
@@ -188,6 +207,7 @@ class IterativeSolver:
             corrections_delta: Change in corrections count
             patterns_delta: Change in patterns count
             graveyard_delta: Change in graveyard count
+            elapsed_time: Elapsed time in seconds (optional)
         """
         if corrections_delta == 0 and patterns_delta == 0 and graveyard_delta == 0:
             return
@@ -199,7 +219,12 @@ class IterativeSolver:
             changes.append(f"patterns: {patterns_delta:+d}")
         if graveyard_delta != 0:
             changes.append(f"graveyard: {graveyard_delta:+d}")
-        logger.info(f"  [{pass_name}] {', '.join(changes)}")
+
+        time_str = ""
+        if elapsed_time is not None:
+            time_str = f", completed in {self._format_pass_time(elapsed_time)}"
+
+        logger.info(f"  [{pass_name}] {', '.join(changes)}{time_str}")
 
     def _run_single_pass(
         self,
@@ -221,7 +246,9 @@ class IterativeSolver:
         Returns:
             Tuple of (corrections_after, patterns_after, graveyard_after)
         """
+        start_time = time.time()
         pass_instance.run(state)
+        elapsed_time = time.time() - start_time
 
         corrections_after, patterns_after, graveyard_after = self._get_state_counts(state)
 
@@ -230,7 +257,11 @@ class IterativeSolver:
         graveyard_delta = graveyard_after - graveyard_before
 
         self._log_pass_changes(
-            pass_instance.name, corrections_delta, patterns_delta, graveyard_delta
+            pass_instance.name,
+            corrections_delta,
+            patterns_delta,
+            graveyard_delta,
+            elapsed_time,
         )
 
         return corrections_after, patterns_after, graveyard_after
@@ -258,7 +289,9 @@ class IterativeSolver:
         graveyard_before_pass = graveyard_before
 
         for post_pass in passes_after:
+            start_time = time.time()
             post_pass.run(state)
+            elapsed_time = time.time() - start_time
 
             corrections_after, patterns_after, graveyard_after = self._get_state_counts(state)
 
@@ -267,7 +300,11 @@ class IterativeSolver:
             graveyard_delta = graveyard_after - graveyard_before_pass
 
             self._log_pass_changes(
-                post_pass.name, corrections_delta, patterns_delta, graveyard_delta
+                post_pass.name,
+                corrections_delta,
+                patterns_delta,
+                graveyard_delta,
+                elapsed_time,
             )
 
             corrections_before_pass = corrections_after
