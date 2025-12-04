@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from argparse import ArgumentParser
+import json
 from multiprocessing import cpu_count
 from typing import Literal
 

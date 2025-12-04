@@ -101,16 +101,7 @@ class TestCrossBoundaryDeduplication:
 
         adjacent_file = tmp_path / "adjacent.txt"
         adjacent_file.write_text(
-            "t -> y\n"
-            "h -> j\n"
-            "e -> w\n"
-            "a -> s\n"
-            "r -> t\n"
-            "s -> z\n"
-            "i -> u\n"
-            "n -> m\n"
-            "g -> h\n"
-            "b -> v\n"
+            "t -> y\nh -> j\ne -> w\na -> s\nr -> t\ns -> z\ni -> u\nn -> m\ng -> h\nb -> v\n"
         )
 
         output_dir = tmp_path / "output"
@@ -159,9 +150,9 @@ class TestCrossBoundaryDeduplication:
         all_corrections = solver_result.corrections + solver_result.patterns
         pairs = [(typo, word) for typo, word, _ in all_corrections]
         unique_pairs = set(pairs)
-        assert len(pairs) == len(
-            unique_pairs
-        ), f"Found {len(pairs) - len(unique_pairs)} duplicate pairs in output"
+        assert len(pairs) == len(unique_pairs), (
+            f"Found {len(pairs) - len(unique_pairs)} duplicate pairs in output"
+        )
 
     @pytest.mark.slow
     def test_direct_corrections_present_in_output(self, tmp_path):
@@ -235,16 +226,7 @@ class TestCrossBoundaryDeduplication:
 
         adjacent_file = tmp_path / "adjacent.txt"
         adjacent_file.write_text(
-            "s -> z\n"
-            "e -> w\n"
-            "c -> x\n"
-            "t -> y\n"
-            "i -> u\n"
-            "o -> p\n"
-            "n -> m\n"
-            "l -> k\n"
-            "r -> t\n"
-            "j -> h\n"
+            "s -> z\ne -> w\nc -> x\nt -> y\ni -> u\no -> p\nn -> m\nl -> k\nr -> t\nj -> h\n"
         )
 
         output_dir = tmp_path / "output"
@@ -371,9 +353,9 @@ class TestCrossBoundaryDeduplication:
         all_corrections = solver_result.corrections + solver_result.patterns
         pairs = [(typo, word) for typo, word, _ in all_corrections]
         unique_pairs = set(pairs)
-        assert len(pairs) == len(
-            unique_pairs
-        ), f"Found duplicates: {len(pairs)} total vs {len(unique_pairs)} unique"
+        assert len(pairs) == len(unique_pairs), (
+            f"Found duplicates: {len(pairs)} total vs {len(unique_pairs)} unique"
+        )
 
     @pytest.mark.slow
     def test_same_trigger_different_boundaries_prevented(self, tmp_path):
@@ -387,15 +369,7 @@ class TestCrossBoundaryDeduplication:
 
         adjacent_file = tmp_path / "adjacent.txt"
         adjacent_file.write_text(
-            "t -> y\n"
-            "e -> w\n"
-            "s -> z\n"
-            "c -> x\n"
-            "o -> p\n"
-            "n -> m\n"
-            "a -> e\n"
-            "p -> l\n"
-            "r -> t\n"
+            "t -> y\ne -> w\ns -> z\nc -> x\no -> p\nn -> m\na -> e\np -> l\nr -> t\n"
         )
 
         output_dir = tmp_path / "output"
@@ -449,5 +423,5 @@ class TestCrossBoundaryDeduplication:
             else:
                 # Same trigger should always map to same word
                 assert trigger_words[typo] == word, (
-                    f"Trigger '{typo}' maps to multiple words: " f"{trigger_words[typo]} and {word}"
+                    f"Trigger '{typo}' maps to multiple words: {trigger_words[typo]} and {word}"
                 )

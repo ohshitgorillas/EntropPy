@@ -1,9 +1,5 @@
-pylint
-pylint-per-file-ignores
-black
+ruff
 mypy
 types-tqdm
 types-pyyaml
-pydocstyle
-isort
 pre-commit

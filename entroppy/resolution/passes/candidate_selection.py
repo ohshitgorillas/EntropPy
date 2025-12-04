@@ -23,7 +23,6 @@ from entroppy.resolution.worker_context import (
 from entroppy.utils.helpers import cached_word_frequency
 
 if TYPE_CHECKING:
-    from entroppy.resolution.solver import PassContext
     from entroppy.resolution.state import DictionaryState
 
 

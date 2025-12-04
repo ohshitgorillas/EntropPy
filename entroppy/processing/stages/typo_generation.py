@@ -1,8 +1,8 @@
 """Stage 2: Typo generation with multiprocessing support."""
 
-import time
 from collections import defaultdict
 from multiprocessing import Pool
+import time
 from typing import Any
 
 from loguru import logger

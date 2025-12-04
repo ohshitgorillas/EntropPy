@@ -7,7 +7,6 @@ from entroppy.resolution import resolve_collisions
 
 if TYPE_CHECKING:
     from entroppy.processing.stages.data_models import DictionaryData
-    from entroppy.utils.debug import DebugTypoMatcher
 
 
 def call_resolve_collisions(

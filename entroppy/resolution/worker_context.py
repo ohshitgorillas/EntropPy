@@ -1,7 +1,7 @@
 """Worker context and initialization for parallel collision resolution."""
 
-import threading
 from dataclasses import dataclass
+import threading
 from typing import TYPE_CHECKING
 
 from entroppy.core.boundaries import BoundaryIndex

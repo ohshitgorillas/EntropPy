@@ -113,6 +113,9 @@ def _extract_and_merge_patterns(
         debug_typos_exact: Set of exact debug typo patterns (for exact matching)
         debug_typos_wildcard: Set of wildcard debug typo pattern cores (for substring matching)
         verbose: Whether to print verbose output
+        is_in_graveyard: Optional function to check if a pattern is in graveyard
+            (prevents infinite loops by skipping already-rejected patterns)
+        pattern_cache: Optional cache for pattern extraction results
 
     Returns:
         Dictionary mapping pattern keys to their occurrences

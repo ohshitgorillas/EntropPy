@@ -1,7 +1,7 @@
 """Espanso platform backend implementation."""
 
-import sys
 from pathlib import Path
+import sys
 from typing import Any
 
 from loguru import logger

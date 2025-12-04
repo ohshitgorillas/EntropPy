@@ -12,7 +12,6 @@ from entroppy.resolution.solver import Pass
 from entroppy.resolution.state import RejectionReason
 
 if TYPE_CHECKING:
-    from entroppy.resolution.solver import PassContext
     from entroppy.resolution.state import DictionaryState
 
 

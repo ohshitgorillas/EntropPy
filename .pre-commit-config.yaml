@@ -12,18 +12,14 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
 
-  - repo: https://github.com/psf/black
-    rev: 24.4.2
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
     hooks:
-      - id: black
-        language_version: python3
-        args: ['--line-length=100']
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        args: ['--profile', 'black', '--line-length=100']
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: ^(tests/|examples/)
+      - id: ruff-format
+        exclude: ^(tests/|examples/)
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.1
@@ -33,26 +29,11 @@ repos:
         args: ['--show-error-codes', '--ignore-missing-imports']
         exclude: ^(tests/|examples/)
 
-  - repo: https://github.com/pycqa/pylint
-    rev: v3.2.3
-    hooks:
-      - id: pylint
-        args: ['--disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements,too-many-instance-attributes,too-many-public-methods,too-few-public-methods,too-many-return-statements,too-many-boolean-expressions,too-many-nested-blocks']
-        exclude: ^(tests/|examples/)
-        additional_dependencies: [loguru, pydantic, tqdm, wordfreq, english-words, pyyaml]
-
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        args: ['--convention=google']
-        exclude: ^(tests/|examples/)
-
   - repo: local
     hooks:
       - id: pytest
         name: pytest
-        entry: pytest
+        entry: ./venv/bin/pytest
         language: system
         args: ['-v', '-m', 'not slow']
         pass_filenames: false

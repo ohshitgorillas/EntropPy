@@ -53,6 +53,7 @@ def generalize_patterns(
         jobs: Number of parallel workers to use (1 = sequential)
         is_in_graveyard: Optional function to check if a pattern is in graveyard
             (prevents infinite loops by skipping already-rejected patterns)
+        pattern_cache: Optional cache for pattern extraction results
 
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)

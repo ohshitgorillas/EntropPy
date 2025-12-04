@@ -9,7 +9,6 @@ from entroppy.utils.debug import log_debug_typo, log_debug_word
 
 if TYPE_CHECKING:
     from entroppy.matching import ExclusionMatcher
-    from entroppy.utils.debug import DebugTypoMatcher
 
 
 def log_word_loading(

@@ -21,7 +21,9 @@ from .worker_context import (
 )
 
 
-def _process_typo_worker(item: tuple[str, list[str]]) -> tuple[
+def _process_typo_worker(
+    item: tuple[str, list[str]],
+) -> tuple[
     list[Correction],  # corrections (can be multiple per typo now)
     list[tuple[str, str, str | None]],  # excluded_list
     list[tuple[str, list[str], float, BoundaryType]],  # skipped_collisions (now includes boundary)

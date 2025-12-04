@@ -18,10 +18,12 @@ Examples:
   %(prog)s --platform qmk --top-n 1000 -o corrections/autocorrect.txt -v
 
   # With the top 5000 most common English words and custom words
-  %(prog)s --platform espanso --top-n 5000 --include settings/include.txt -o corrections/autocorrect.txt
+  %(prog)s --platform espanso --top-n 5000 --include settings/include.txt \\
+      -o corrections/autocorrect.txt
 
   # With custom words only, do not use dictionary
-  %(prog)s --platform qmk --include settings/include.txt -o corrections/autocorrect.txt --max-corrections 800
+  %(prog)s --platform qmk --include settings/include.txt \\
+      -o corrections/autocorrect.txt --max-corrections 800
 
   # Using JSON config
   %(prog)s --config config.json

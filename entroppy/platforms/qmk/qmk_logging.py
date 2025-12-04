@@ -250,8 +250,7 @@ def log_suffix_conflict(
     if is_debug_correction(long_correction, debug_words, debug_typo_matcher):
         log_debug_correction(
             long_correction,
-            f"Filtered - suffix conflict (shorter typo '{short_typo}' -> "
-            f"'{short_word}' blocks it)",
+            f"Filtered - suffix conflict (shorter typo '{short_typo}' -> '{short_word}' blocks it)",
             debug_words,
             debug_typo_matcher,
             "Stage 6",

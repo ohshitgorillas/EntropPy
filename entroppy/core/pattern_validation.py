@@ -209,7 +209,7 @@ def validate_pattern_for_all_occurrences(
         )
         if not is_valid:
             error_msg = (
-                f"Creates '{expected_result}' instead of " f"'{full_word}' for typo '{full_typo}'"
+                f"Creates '{expected_result}' instead of '{full_word}' for typo '{full_typo}'"
             )
             return False, error_msg
     return True, None

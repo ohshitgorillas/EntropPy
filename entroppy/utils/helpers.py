@@ -2,8 +2,8 @@
 
 import functools
 import os
-import re
 from pathlib import Path
+import re
 from re import Pattern
 from typing import Callable, TextIO
 

@@ -206,11 +206,11 @@ def _format_incorrect_transformation(conflict_word: str, typo_str: str, word_str
     if conflict_word.startswith(typo_str):
         # Prefix case
         replacement = conflict_word.replace(typo_str, word_str, 1)
-        return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> ' f"{replacement}  xx INCORRECT"
+        return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> {replacement}  xx INCORRECT'
     if conflict_word.endswith(typo_str):
         # Suffix case
         replacement = conflict_word.rsplit(typo_str, 1)[0] + word_str
-        return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> ' f"{replacement}  xx INCORRECT"
+        return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> {replacement}  xx INCORRECT'
     # Middle substring case
     replacement = conflict_word.replace(typo_str, word_str, 1)
-    return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> ' f"{replacement}  xx INCORRECT"
+    return f'"{typo_str}" -> "{word_str}" in {conflict_word} -> {replacement}  xx INCORRECT'

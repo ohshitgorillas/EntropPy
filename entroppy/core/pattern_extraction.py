@@ -414,6 +414,9 @@ def _find_patterns(
         verbose: Whether to show progress bar
         is_in_graveyard: Optional function to check if pattern is in graveyard
         pattern_cache: Optional cache for pattern extraction results
+        debug_typos_exact: Optional set of exact debug typo patterns (for exact matching)
+        debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
+            (for substring matching)
 
     Returns:
         Dict mapping (typo_pattern, word_pattern, boundary) to list of

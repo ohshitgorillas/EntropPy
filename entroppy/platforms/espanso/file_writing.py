@@ -1,7 +1,7 @@
 """Espanso YAML file writing utilities."""
 
-import os
 from multiprocessing import Pool
+import os
 
 from loguru import logger
 
