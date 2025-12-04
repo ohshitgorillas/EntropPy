@@ -12,6 +12,7 @@ from entroppy.core import Config
 from entroppy.processing.stages.data_models import DictionaryData, TypoGenerationResult
 from entroppy.processing.stages.worker_context import WorkerContext, get_worker_context, init_worker
 from entroppy.resolution import process_word
+from entroppy.utils.debug import DebugTypoMatcher
 
 
 def process_word_worker(word: str) -> tuple[str, list[tuple[str, str]], list[str]]:
@@ -30,6 +31,14 @@ def process_word_worker(word: str) -> tuple[str, list[tuple[str, str]], list[str
     adj_map: dict[str, str] | None = None
     if context.adjacent_letters_map:
         adj_map = {k: "".join(v) if v else k for k, v in context.adjacent_letters_map.items() if v}
+
+    # Recreate DebugTypoMatcher in worker from patterns (not serializable due to compiled regex)
+    debug_typo_matcher: DebugTypoMatcher | None = (
+        DebugTypoMatcher.from_patterns(set(context.debug_typo_patterns))
+        if context.debug_typo_patterns
+        else None
+    )
+
     corrections, debug_messages = process_word(
         word,
         set(context.validation_set),
@@ -38,7 +47,7 @@ def process_word_worker(word: str) -> tuple[str, list[tuple[str, str]], list[str
         adj_map,
         set(context.exclusions_set),
         frozenset(context.debug_words),
-        context.debug_typo_matcher,
+        debug_typo_matcher,
     )
     return (word, corrections, debug_messages)
 

@@ -86,9 +86,9 @@ class TestPlatformSubstringConflicts:
         has_aemr = "aemr ->" in output_content or "aemr\t" in output_content
         has_colon_aemr = ":aemr ->" in output_content or ":aemr\t" in output_content
 
-        assert not (
-            has_aemr and has_colon_aemr
-        ), "Output should not contain both 'aemr' and ':aemr'"
+        assert not (has_aemr and has_colon_aemr), (
+            "Output should not contain both 'aemr' and ':aemr'"
+        )
 
     @pytest.mark.slow
     def test_qmk_prefers_less_restrictive_boundary_when_safe(self, tmp_path):
