@@ -26,7 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - CandidateSelectionPass: Shows progress for typos being processed
   - PatternGeneralizationPass: Shows progress for patterns being validated
   - ConflictRemovalPass: Shows progress for corrections/patterns being checked
-  - PlatformSubstringConflictPass: Shows progress for corrections/patterns being processed
+  - PlatformSubstringConflictPass: Shows progress for typos being checked (now tracks individual typos instead of length buckets)
   - PlatformConstraintsPass: Shows separate progress for corrections and patterns
 - **Refactored pattern extraction**: Split `_find_patterns()` (260 → 70 lines) into focused helper functions for better maintainability.
 

@@ -11,7 +11,7 @@ from entroppy.core.boundaries import BoundaryType
 from entroppy.core.types import MatchDirection
 
 if TYPE_CHECKING:
-    pass
+    from tqdm import tqdm
 
 # Boundary priority mapping: lower number = less restrictive (matches in more contexts)
 # Used to determine which correction to keep when resolving conflicts
@@ -192,14 +192,13 @@ def process_conflict_pair(
             f"'{formatted_typo}'"
         )
         return (correction1, reason), (correction1, correction2)
-    else:
-        # Remove the longer formatted one (formatted2)
-        reason = (
-            f"Cross-boundary substring conflict: "
-            f"'{formatted_typo}' contains substring "
-            f"'{shorter_formatted_typo}'"
-        )
-        return (correction2, reason), (correction2, correction1)
+    # Remove the longer formatted one (formatted2)
+    reason = (
+        f"Cross-boundary substring conflict: "
+        f"'{formatted_typo}' contains substring "
+        f"'{shorter_formatted_typo}'"
+    )
+    return (correction2, reason), (correction2, correction1)
 
 
 def check_bucket_conflicts(
@@ -211,6 +210,7 @@ def check_bucket_conflicts(
     match_direction: MatchDirection,
     processed_pairs: set[frozenset[tuple[str, str, BoundaryType]]],
     corrections_to_remove_set: set[tuple[str, str, BoundaryType]],
+    progress_bar: "tqdm | None" = None,
 ) -> tuple[
     list[tuple[tuple[str, str, BoundaryType], str]],
     dict[tuple[str, str, BoundaryType], tuple[str, str, BoundaryType]],
@@ -223,6 +223,7 @@ def check_bucket_conflicts(
         match_direction: Platform match direction
         processed_pairs: Set of already processed correction pairs
         corrections_to_remove_set: Set of corrections already marked for removal
+        progress_bar: Optional progress bar to update as typos are processed
 
     Returns:
         Tuple of:
@@ -233,6 +234,9 @@ def check_bucket_conflicts(
     conflict_pairs: dict[tuple[str, str, BoundaryType], tuple[str, str, BoundaryType]] = {}
 
     for formatted_typo, corrections_for_typo in current_bucket:
+        # Update progress bar for each formatted typo processed
+        if progress_bar is not None:
+            progress_bar.update(1)
         # Get index key (first character for general substring conflicts)
         index_key = formatted_typo[0] if formatted_typo else ""
 

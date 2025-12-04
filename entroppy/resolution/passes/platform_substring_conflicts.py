@@ -236,6 +236,9 @@ class PlatformSubstringConflictPass(Pass):
         # Process buckets in length order (shortest first)
         sorted_lengths = sorted(length_buckets.keys())
 
+        # Calculate total number of formatted typos for progress tracking
+        total_formatted_typos = sum(len(bucket) for bucket in length_buckets.values())
+
         # Character-based index: char -> list of (formatted_typo, corrections)
         # This index accumulates shorter typos across all processed buckets
         candidates_by_char: dict[
@@ -244,18 +247,17 @@ class PlatformSubstringConflictPass(Pass):
         ] = defaultdict(list)
 
         if self.context.verbose:
-            length_iter: Any = tqdm(
-                sorted_lengths,
+            progress_bar: Any = tqdm(
+                total=total_formatted_typos,
                 desc=f"    {self.name} (checking conflicts)",
-                total=len(sorted_lengths),
-                unit="bucket",
+                unit="typo",
                 leave=False,
             )
         else:
-            length_iter = sorted_lengths
+            progress_bar = None
 
         # Process each length bucket
-        for length in length_iter:
+        for length in sorted_lengths:
             current_bucket = length_buckets[length]
 
             corrections_to_remove, conflict_pairs = check_bucket_conflicts(
@@ -264,10 +266,14 @@ class PlatformSubstringConflictPass(Pass):
                 match_direction,
                 processed_pairs,
                 corrections_to_remove_set,
+                progress_bar=progress_bar,
             )
 
             all_corrections_to_remove.extend(corrections_to_remove)
             all_conflict_pairs.update(conflict_pairs)
+
+        if progress_bar is not None:
+            progress_bar.close()
 
         return all_corrections_to_remove, all_conflict_pairs
 
