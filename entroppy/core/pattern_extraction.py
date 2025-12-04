@@ -424,10 +424,6 @@ def _find_patterns(
     """
     debug_enabled = debug_typos is not None and len(debug_typos) > 0
 
-    # Track cache statistics
-    cache_hits = 0
-    cache_misses = 0
-
     # Filter corrections by boundary type
     filtered_corrections = _filter_corrections_by_boundary(corrections, boundary_type)
 
@@ -470,7 +466,7 @@ def _find_patterns(
         is_debug = (typo, word, boundary) in debug_corrections
 
         # Extract patterns from this correction
-        cached_patterns, was_cache_hit = _extract_patterns_from_correction(
+        cached_patterns, _ = _extract_patterns_from_correction(
             typo=typo,
             word=word,
             boundary=boundary,
@@ -479,12 +475,6 @@ def _find_patterns(
             pattern_cache=pattern_cache,
             debug_corrections=debug_corrections if is_debug else None,
         )
-
-        # Update cache statistics
-        if was_cache_hit:
-            cache_hits += 1
-        else:
-            cache_misses += 1
 
         # Process cached patterns, filtering by graveyard
         _process_cached_patterns(

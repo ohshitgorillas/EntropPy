@@ -49,10 +49,7 @@ class QMKBackend(PlatformBackend):
             max_word_length=Constants.QMK_MAX_STRING_LENGTH,
             allowed_chars=self.ALLOWED_CHARS,
             supports_boundaries=True,  # Via ':' notation
-            supports_case_propagation=True,
-            supports_regex=False,
             match_direction=MatchDirection.RIGHT_TO_LEFT,
-            output_format="text",
         )
 
     def filter_corrections(

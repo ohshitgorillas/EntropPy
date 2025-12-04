@@ -28,12 +28,9 @@ class PlatformConstraints:
 
     # Features
     supports_boundaries: bool
-    supports_case_propagation: bool
-    supports_regex: bool
 
     # Behavior
     match_direction: MatchDirection
-    output_format: str  # "yaml", "c_array", "json", etc.
 
 
 class PlatformBackend(ABC):

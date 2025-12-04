@@ -48,12 +48,6 @@ class ExclusionMatcher:
         # Use PatternMatcher for word-only exclusions
         self.word_pattern_matcher = PatternMatcher(word_only_patterns)
 
-        # Create a PatternMatcher for word patterns used in typo->word mappings
-        word_patterns_in_mappings = {word_pat for _, word_pat, _ in self.wildcard_typo_map}
-        # Extract word patterns from exact_typo_map (values are tuples of (word_pat, boundary))
-        word_patterns_in_mappings.update(word_pat for word_pat, _ in self.exact_typo_map.values())
-        self.word_matcher = PatternMatcher(word_patterns_in_mappings)
-
     def _match_wildcard(self, text: str, pattern: str) -> bool:
         """Helper to match a string against a simple wildcard pattern."""
         if "*" not in pattern:
@@ -103,14 +97,6 @@ class ExclusionMatcher:
                         return original_pattern
 
         return "unknown rule"
-
-    def should_ignore_in_validation(self, word: str) -> bool:
-        """Check if a validation word should be ignored during boundary detection.
-
-        This allows excluded patterns to not block valid typos.
-        For example, if "*toin" is excluded, "allantoin" won't block "toin" as a typo.
-        """
-        return self.word_pattern_matcher.matches(word)
 
     def filter_validation_set(self, validation_set: set[str]) -> set[str]:
         """Create a filtered validation set for boundary detection.

@@ -346,17 +346,6 @@ class DictionaryState:
 
         return False
 
-    def get_corrections_for_typo(self, typo: str) -> set[Correction]:
-        """Get all active corrections for a given typo.
-
-        Args:
-            typo: The typo to look up
-
-        Returns:
-            Set of corrections for this typo
-        """
-        return self._coverage_map.get(typo, set()).copy()
-
     def clear_dirty_flag(self) -> None:
         """Mark the state as clean (no changes in this iteration)."""
         self.is_dirty = False

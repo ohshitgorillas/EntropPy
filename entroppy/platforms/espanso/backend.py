@@ -41,10 +41,7 @@ class EspansoBackend(PlatformBackend):
             max_word_length=None,
             allowed_chars=None,
             supports_boundaries=True,
-            supports_case_propagation=True,
-            supports_regex=True,
             match_direction=MatchDirection.LEFT_TO_RIGHT,
-            output_format="yaml",
         )
 
     def filter_corrections(
