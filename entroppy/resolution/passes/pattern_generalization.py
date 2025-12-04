@@ -71,7 +71,7 @@ class PatternGeneralizationPass(Pass):
             patterns, corrections_to_remove, pattern_replacements, rejected_patterns = (
                 generalize_patterns(
                     corrections_list,
-                    self.context.validation_set,
+                    self.context.filtered_validation_set,
                     self.context.source_words_set,
                     self.context.min_typo_length,
                     match_direction,
