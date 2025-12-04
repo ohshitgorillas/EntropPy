@@ -430,10 +430,22 @@ def check_bucket_conflicts(
             # (they would be indexed under ':')
             index_keys_to_check.append(":")
 
+        # Also check all characters in the formatted typo to catch middle/end substrings
+        # (e.g., "cnt" in "ocnt" - they start with different chars but one is substring of other)
+        for char in formatted_typo:
+            if char not in index_keys_to_check:
+                index_keys_to_check.append(char)
+
         # Check against shorter typos with matching index keys
+        # By checking all characters in the longer typo, we ensure we catch any substring
+        # relationships (e.g., "cnt" in "ocnt" - "cnt" starts with 'c' which is in "ocnt")
+        checked_shorter_typos: set[str] = set()
         for key_to_check in index_keys_to_check:
             if key_to_check in candidates_by_char:
                 for shorter_formatted_typo, shorter_corrections in candidates_by_char[key_to_check]:
+                    if shorter_formatted_typo in checked_shorter_typos:
+                        continue
+                    checked_shorter_typos.add(shorter_formatted_typo)
                     # Check if shorter is a substring of current
                     if is_substring(shorter_formatted_typo, formatted_typo):
                         # Check all combinations of corrections with early termination

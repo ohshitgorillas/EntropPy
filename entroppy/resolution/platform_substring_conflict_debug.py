@@ -166,7 +166,9 @@ def log_resolution_decision(
 
     message = (
         f"Resolution decision: Removing '{removed_typo}' ({removed_boundary.value}), "
-        f"keeping '{kept_typo}' ({kept_boundary.value}). {decision_reason}"
+        f"keeping '{kept_typo}' ({kept_boundary.value}). "
+        f"Less restrictive: '{less_restrictive_typo}' ({less_restrictive_boundary.value}). "
+        f"{decision_reason}"
     )
 
     # Log for removed correction if it's being debugged

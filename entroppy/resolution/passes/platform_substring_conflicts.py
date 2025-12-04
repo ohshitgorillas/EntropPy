@@ -13,7 +13,9 @@ that weren't detected within boundary groups.
 """
 
 from collections import defaultdict
+from dataclasses import dataclass
 from multiprocessing import Pool
+import threading
 from typing import TYPE_CHECKING, Any
 
 from tqdm import tqdm
@@ -35,22 +37,65 @@ if TYPE_CHECKING:
     from entroppy.resolution.state import DictionaryState
 
 
+@dataclass(frozen=True)
+class FormattingContext:
+    """Immutable context for formatting workers.
+
+    This encapsulates the platform information needed for formatting corrections.
+    The frozen dataclass ensures immutability and thread-safety.
+
+    Attributes:
+        is_qmk: Whether the platform is QMK (requires boundary formatting)
+    """
+
+    is_qmk: bool
+
+
+# Thread-local storage for formatting worker context
+_formatting_worker_context = threading.local()
+
+
+def init_formatting_worker(context: FormattingContext) -> None:
+    """Initialize worker process with formatting context.
+
+    Args:
+        context: FormattingContext to store in thread-local storage
+    """
+    _formatting_worker_context.value = context
+
+
+def get_formatting_worker_context() -> FormattingContext:
+    """Get the current worker's formatting context from thread-local storage.
+
+    Returns:
+        FormattingContext for this worker
+
+    Raises:
+        RuntimeError: If called before init_formatting_worker
+    """
+    try:
+        return _formatting_worker_context.value  # type: ignore[no-any-return]
+    except AttributeError as e:
+        raise RuntimeError(
+            "Formatting worker context not initialized. Call init_formatting_worker first."
+        ) from e
+
+
 def _format_correction_worker(
-    item: tuple[tuple[str, str, BoundaryType], bool],
+    correction: tuple[str, str, BoundaryType],
 ) -> tuple[tuple[str, str, BoundaryType], str]:
     """Worker function to format a single correction.
 
     Args:
-        item: Tuple of (correction, is_qmk) where correction is (typo, word, boundary)
-              and is_qmk indicates if platform is QMK
+        correction: Tuple of (typo, word, boundary)
 
     Returns:
         Tuple of (correction, formatted_typo)
     """
-    correction, is_qmk = item
+    context = get_formatting_worker_context()
     typo, _word, boundary = correction
 
-    if is_qmk:
+    if context.is_qmk:
         formatted_typo = format_boundary_markers(typo, boundary)
     else:
         # For non-QMK platforms, boundaries are handled separately
@@ -145,22 +190,26 @@ class PlatformSubstringConflictPass(Pass):
         use_parallel = self.context.jobs > 1 and len(all_corrections) >= 100
 
         if use_parallel:
-            # Prepare tasks for parallel processing
-            tasks = [(correction, is_qmk) for correction in all_corrections]
+            # Create worker context (immutable, serializable)
+            formatting_context = FormattingContext(is_qmk=is_qmk)
 
-            # Process in parallel
-            with Pool(processes=self.context.jobs) as pool:
+            # Process in parallel using initializer pattern (avoids pickle)
+            with Pool(
+                processes=self.context.jobs,
+                initializer=init_formatting_worker,
+                initargs=(formatting_context,),
+            ) as pool:
                 if self.context.verbose:
-                    results_iter = pool.imap(_format_correction_worker, tasks)
+                    results_iter = pool.imap(_format_correction_worker, all_corrections)
                     results: Any = tqdm(
                         results_iter,
                         desc=f"    {self.name}",
-                        total=len(tasks),
+                        total=len(all_corrections),
                         unit="correction",
                         leave=False,
                     )
                 else:
-                    results = pool.imap(_format_correction_worker, tasks)
+                    results = pool.imap(_format_correction_worker, all_corrections)
 
                 formatted_results = list(results)
         else:
