@@ -1,9 +1,15 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+
 ## [Unreleased]
 
 ### Fixed
 
+- **Platform substring conflicts prefer less restrictive boundaries**: Fixed logic to prefer less restrictive boundaries (NONE > LEFT/RIGHT > BOTH) when resolving cross-boundary substring conflicts. Previously kept more restrictive boundaries even when less restrictive ones didn't cause false triggers, reducing correction usefulness.
 - **Removed verbose debug logging for non-debug typos**: Removed `[CACHE MISS]` and `[CACHE HIT]` debug log messages that were being logged for all typos when `--verbose` was enabled. These messages are now only logged for debug typos/words (when `--debug-typo` or `--debug-word` is specified).
 
 ### Changed
@@ -15,6 +21,13 @@
 - **Pattern validation boundary checks**: Patterns with safe boundaries (RIGHT, LEFT, BOTH) now skip position checks where they cannot match, fixing incorrect rejections like "teh -> the" with RIGHT boundary.
 - **Substring conflict detection**: Now includes patterns in conflict detection (not just direct corrections), checks all positions (not just prefix/suffix), and simplified QMK filtering to prevent restoring invalid corrections.
 - **Type errors and report generation**: Fixed all mypy type errors across 88 files and ensured report generation properly extracts data from solver state.
+- **Progress bars in iterative solver**: Progress bars now track actual work items (typos, corrections, patterns) instead of passes, and the top-level iterations progress bar has been removed. Individual passes show progress for their specific work items:
+  - CandidateSelectionPass: Shows progress for typos being processed
+  - PatternGeneralizationPass: Shows progress for patterns being validated
+  - ConflictRemovalPass: Shows progress for corrections/patterns being checked
+  - PlatformSubstringConflictPass: Shows progress for corrections/patterns being processed
+  - PlatformConstraintsPass: Shows separate progress for corrections and patterns
+- **Refactored pattern extraction**: Split `_find_patterns()` (260 → 70 lines) into focused helper functions for better maintainability.
 
 ### Performance
 
@@ -34,27 +47,8 @@
 ### Added
 
 - **Platform substring conflict detection**: New `PlatformSubstringConflictPass` in the iterative solver that runs after `ConflictRemovalPass` to catch cross-boundary substring conflicts. Includes debug logging support via `platform_substring_conflict_logging.py`.
-- **Progress bars for iterative solver**: Real-time progress tracking for iterations and passes when `--verbose` is enabled.
+- **Progress bars for iterative solver**: Real-time progress tracking for passes when `--verbose` is enabled.
 
-### Changed
-
-- **Refactored pattern extraction**: Split `_find_patterns()` (260 → 70 lines) into focused helper functions for better maintainability.
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-
-## [Unreleased]
-
-### Changed
-
-- **Progress bars in iterative solver**: Progress bars now track actual work items (typos, corrections, patterns) instead of passes
-- **Removed iterations progress bar**: Removed the top-level iterations progress bar from the iterative solver
-  - CandidateSelectionPass: Shows progress for typos being processed
-  - PatternGeneralizationPass: Shows progress for patterns being validated
-  - ConflictRemovalPass: Shows progress for corrections/patterns being checked
-  - PlatformSubstringConflictPass: Shows progress for corrections/patterns being processed
-  - PlatformConstraintsPass: Shows separate progress for corrections and patterns
 
 ## [0.6.0] - 2025-12-02
 
