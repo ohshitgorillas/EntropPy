@@ -222,6 +222,4 @@ def load_source_words(config: Config, verbose: bool = False) -> list[str]:
     )
 
     # Take the top N valid words
-    filtered = list(itertools.islice(valid_words, config.top_n))
-
-    return filtered
+    return list(itertools.islice(valid_words, config.top_n))
