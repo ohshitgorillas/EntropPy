@@ -524,9 +524,7 @@ class CandidateSelectionPass(Pass):
             results = pool.imap_unordered(_process_typo_batch_worker, chunks)
 
             # Wrap with progress bar
-            if (
-                self.context.verbose and self.context.jobs > 1
-            ):  # Show progress for parallel processing
+            if self.context.verbose:
                 results_wrapped_iter: Any = tqdm(
                     results,
                     total=len(chunks),

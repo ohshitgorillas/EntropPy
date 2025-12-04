@@ -360,12 +360,6 @@ def _log_debug_summary(
     pattern_candidates: dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]],
     patterns: dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]],
     debug_corrections: dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]],
-    pattern_cache: (
-        dict[tuple[str, str, BoundaryType, bool], list[tuple[str, str, BoundaryType, int]]] | None
-    ) = None,
-    cache_hits: int = 0,
-    cache_misses: int = 0,
-    verbose: bool = False,
 ) -> None:
     """Log debug summary information.
 
@@ -373,24 +367,12 @@ def _log_debug_summary(
         pattern_candidates: Dict of pattern candidates
         patterns: Dict of final patterns
         debug_corrections: Dict of debug corrections
-        pattern_cache: Optional cache for pattern extraction results
-        cache_hits: Number of cache hits
-        cache_misses: Number of cache misses
-        verbose: Whether to log verbose messages
     """
     debug_enabled = len(debug_corrections) > 0
 
     if debug_enabled:
         logger.debug(
             f"[PATTERN EXTRACTION] Found {len(pattern_candidates)} unique pattern candidates"
-        )
-
-    # Log cache statistics if cache is being used
-    if pattern_cache is not None and verbose:
-        cache_size = len(pattern_cache)
-        logger.debug(
-            f"[PATTERN EXTRACTION] Cache stats: {cache_hits} hits, {cache_misses} misses, "
-            f"{cache_size} total entries"
         )
 
     if debug_enabled:
@@ -524,10 +506,6 @@ def _find_patterns(
         pattern_candidates=pattern_candidates,
         patterns=patterns,
         debug_corrections=debug_corrections,
-        pattern_cache=pattern_cache,
-        cache_hits=cache_hits,
-        cache_misses=cache_misses,
-        verbose=verbose,
     )
 
     return patterns

@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 
 - **Progress bars in iterative solver**: Progress bars now track actual work items (typos, corrections, patterns) instead of passes
+- **Removed iterations progress bar**: Removed the top-level iterations progress bar from the iterative solver
   - CandidateSelectionPass: Shows progress for typos being processed
   - PatternGeneralizationPass: Shows progress for patterns being validated
   - ConflictRemovalPass: Shows progress for corrections/patterns being checked

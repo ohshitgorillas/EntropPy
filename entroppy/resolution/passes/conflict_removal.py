@@ -178,12 +178,15 @@ class ConflictRemovalPass(Pass):
         # Process tasks in parallel
         with Pool(processes=self.context.jobs) as pool:
             if self.context.verbose:
-                # Show progress bar for parallel processing
-                # Note: starmap is blocking, so we show a bar that completes when done
+                # Use starmap_async for progress tracking
+                async_result = pool.starmap_async(_process_conflict_batch_worker, tasks)
+                # Show progress while waiting
                 with tqdm(
                     total=len(tasks), desc=f"    {self.name}", unit="batch", leave=False
                 ) as pbar:
-                    results = pool.starmap(_process_conflict_batch_worker, tasks)
+                    while not async_result.ready():
+                        async_result.wait(timeout=0.1)
+                    results = async_result.get()
                     pbar.update(len(tasks))
             else:
                 results = pool.starmap(_process_conflict_batch_worker, tasks)

@@ -109,7 +109,18 @@ class PlatformSubstringConflictPass(Pass):
         # Sort formatted typos by length for efficient checking
         sorted_formatted = sorted(formatted_to_corrections.keys(), key=len)
 
-        for i, formatted1 in enumerate(sorted_formatted):
+        if self.context.verbose:
+            formatted_iter: Any = tqdm(
+                enumerate(sorted_formatted),
+                desc=f"    {self.name} (checking conflicts)",
+                total=len(sorted_formatted),
+                unit="typo",
+                leave=False,
+            )
+        else:
+            formatted_iter = enumerate(sorted_formatted)
+
+        for i, formatted1 in formatted_iter:
             for formatted2 in sorted_formatted[i + 1 :]:
                 # Check if formatted1 is a substring of formatted2
                 if self._is_substring(formatted1, formatted2):
