@@ -93,11 +93,15 @@ class TestFalseTriggerGraveyarding:
     @pytest.mark.slow
     def test_false_trigger_added_to_graveyard(self) -> None:
         """When a boundary would cause false triggers, it is added to graveyard."""
-        typo_map = {"tain": ["train"]}
-        validation_set = {"train", "containing", "maintain", "attain"}
-        source_words_set = {"train"}
+        # Use a typo where natural boundary is NONE (typo doesn't appear in filtered validation)
+        # but NONE would cause false triggers because typo is a prefix of the target word
+        # The target word check in false_trigger_check detects this
+        typo_map = {"alway": ["always"]}
+        validation_set = {"other", "words"}  # 'alway' doesn't appear in validation set
+        source_words_set = set()  # Empty - so 'alway' doesn't appear in source either
 
         state = DictionaryState(typo_map)
+        # validation_index is built from filtered_validation_set (same as validation_set here)
         validation_index = BoundaryIndex(validation_set)
         source_index = BoundaryIndex(source_words_set)
 
@@ -121,7 +125,8 @@ class TestFalseTriggerGraveyarding:
         pass_obj.run(state)
 
         # Verify NONE boundary is in graveyard with FALSE_TRIGGER reason
-        assert state.is_in_graveyard("tain", "train", BoundaryType.NONE)
+        # NONE would cause false triggers because 'alway' is a prefix of target word 'always'
+        assert state.is_in_graveyard("alway", "always", BoundaryType.NONE)
 
     @pytest.mark.slow
     def test_safer_boundary_tried_after_false_trigger(self) -> None:
@@ -161,11 +166,15 @@ class TestFalseTriggerGraveyarding:
     @pytest.mark.slow
     def test_false_trigger_graveyard_reason(self) -> None:
         """Graveyard entry for false trigger has correct reason."""
-        typo_map = {"tain": ["train"]}
-        validation_set = {"train", "containing", "maintain", "attain"}
-        source_words_set = {"train"}
+        # Use a typo where natural boundary is NONE (typo doesn't appear in filtered validation)
+        # but NONE would cause false triggers because typo is a prefix of the target word
+        # The target word check in false_trigger_check detects this
+        typo_map = {"alway": ["always"]}
+        validation_set = {"other", "words"}  # 'alway' doesn't appear in validation set
+        source_words_set = set()  # Empty - so 'alway' doesn't appear in source either
 
         state = DictionaryState(typo_map)
+        # validation_index is built from filtered_validation_set (same as validation_set here)
         validation_index = BoundaryIndex(validation_set)
         source_index = BoundaryIndex(source_words_set)
 
@@ -188,7 +197,7 @@ class TestFalseTriggerGraveyarding:
         pass_obj = CandidateSelectionPass(pass_context)
         pass_obj.run(state)
 
-        graveyard_entry = state.graveyard.get(("tain", "train", BoundaryType.NONE))
+        graveyard_entry = state.graveyard.get(("alway", "always", BoundaryType.NONE))
         assert graveyard_entry is not None
         assert graveyard_entry.reason == RejectionReason.FALSE_TRIGGER
 

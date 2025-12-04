@@ -85,6 +85,7 @@ class TestDictionaryLoading:
         result = load_dictionaries(config, verbose=False)
 
         # Filtered set should be smaller if any *ball words were removed
+        # pylint: disable=no-member
         assert result.filtered_validation_set.issubset(result.validation_set)
 
 
@@ -491,7 +492,7 @@ class TestConflictRemoval:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
-            max_iterations=3,  # Reduced for faster tests
+            max_iterations=5,  # Need at least 5 iterations for this case to converge
         )
 
         dict_data = load_dictionaries(config, verbose=False)

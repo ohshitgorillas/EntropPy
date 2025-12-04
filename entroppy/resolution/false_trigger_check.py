@@ -72,8 +72,19 @@ def _would_cause_false_trigger(
     # So a boundary causes false triggers if it would match where the typo appears:
     if boundary == BoundaryType.NONE:
         # NONE matches anywhere, so false trigger if typo appears anywhere
-        would_cause = is_substring
-        reason = "typo appears as substring" if is_substring else None
+        # (as prefix, suffix, or middle substring)
+        would_cause = would_trigger_start or would_trigger_end or is_substring
+        if would_cause:
+            if would_trigger_start_target or would_trigger_end_target or is_substring_target:
+                reason = "typo appears in target word"
+            elif would_trigger_start_val or would_trigger_end_val or is_substring_val:
+                reason = "typo appears as substring in validation words"
+            elif would_trigger_start_src or would_trigger_end_src or is_substring_src:
+                reason = "typo appears as substring in source words"
+            else:
+                reason = "typo appears as substring"
+        else:
+            reason = None
     elif boundary == BoundaryType.LEFT:
         # LEFT matches at word start, so false trigger if typo appears as prefix
         # (LEFT would match words starting with typo, which is incorrect)
