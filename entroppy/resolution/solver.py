@@ -70,10 +70,9 @@ class PassContext:
             PassContext instance
         """
         # Build boundary indices
-        # Use FULL validation set (not filtered) for false trigger checking
-        # We need to check against ALL English words to prevent false triggers,
-        # not just words that passed our filters
-        validation_index = BoundaryIndex(dictionary_data.validation_set)
+        # Use filtered validation set for boundary detection - words matching exclusion
+        # patterns (like *ball) should not block valid typos from using NONE boundary
+        validation_index = BoundaryIndex(dictionary_data.filtered_validation_set)
         source_index = BoundaryIndex(dictionary_data.source_words_set)
 
         return cls(
