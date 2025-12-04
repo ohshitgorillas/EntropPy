@@ -246,7 +246,7 @@ Creates timestamped directory with:
 | `--max-word-length` | `10` | Maximum word length |
 | `--typo-freq-threshold` | `0.0` | Skip typos above this frequency |
 | `--max-entries-per-file` | `500` | Max corrections per YAML file |
-| `--hurtmycpu` | `False` | Generate typos for ALL english-words (not just top-n) |
+| `--hurtmycpu` | `False` | Alises `--overnight` and `--takeforever`; generate typos for ALL english-words (not just top-n) |
 | `--verbose`, `-v` | `False` | Verbose output |
 | `--debug`, `-d` | `False` | Debug logging |
 
