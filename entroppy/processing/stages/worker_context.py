@@ -48,12 +48,17 @@ class WorkerContext:
         Returns:
             New WorkerContext instance
         """
+        # Convert dict[str, str] to dict[str, list[str]] by splitting string values
+        adjacent_letters_map: dict[str, list[str]] = {}
+        if dict_data.adjacent_letters_map:
+            adjacent_letters_map = {k: list(v) for k, v in dict_data.adjacent_letters_map.items()}
+
         return cls(
             validation_set=frozenset(dict_data.validation_set),
             filtered_validation_set=frozenset(dict_data.filtered_validation_set),
             source_words_set=frozenset(dict_data.source_words_set),
             typo_freq_threshold=config.typo_freq_threshold,
-            adjacent_letters_map=dict_data.adjacent_letters_map,
+            adjacent_letters_map=adjacent_letters_map,
             exclusions_set=frozenset(dict_data.exclusions),
             debug_words=frozenset(config.debug_words),
             debug_typo_matcher=config.debug_typo_matcher,

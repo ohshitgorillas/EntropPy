@@ -47,3 +47,14 @@ repos:
       - id: pydocstyle
         args: ['--convention=google']
         exclude: ^(tests/|examples/)
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        args: ['-v', '-m', 'not slow']
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

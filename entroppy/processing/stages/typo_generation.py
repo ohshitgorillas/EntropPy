@@ -26,10 +26,10 @@ def process_word_worker(word: str) -> tuple[str, list[tuple[str, str]], list[str
     """
     context = get_worker_context()
     # Convert dict[str, list[str]] to dict[str, str] for process_word
-    # Take first adjacent letter from each list
+    # Join all adjacent letters back into a string
     adj_map: dict[str, str] | None = None
     if context.adjacent_letters_map:
-        adj_map = {k: v[0] if v else k for k, v in context.adjacent_letters_map.items() if v}
+        adj_map = {k: "".join(v) if v else k for k, v in context.adjacent_letters_map.items() if v}
     corrections, debug_messages = process_word(
         word,
         set(context.validation_set),

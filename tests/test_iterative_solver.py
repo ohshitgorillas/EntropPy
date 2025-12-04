@@ -15,6 +15,7 @@ from entroppy.resolution.state import DictionaryState
 class TestIterativeSolver:
     """Test the iterative solver architecture."""
 
+    @pytest.mark.slow
     def test_basic_solver_convergence(self):
         """Test that the solver converges on a simple case."""
         # Create a simple typo map
@@ -65,6 +66,7 @@ class TestIterativeSolver:
         assert result.iterations > 0, "Should run at least one iteration"
         assert len(result.corrections) > 0, "Should have corrections"
 
+    @pytest.mark.slow
     def test_self_healing_conflict_resolution(self):
         """Test that conflicts trigger self-healing (retry with stricter boundaries).
 
@@ -131,6 +133,7 @@ class TestIterativeSolver:
         # Verify that graveyard has entries (from the conflict)
         assert result.graveyard_size > 0, "Graveyard should have rejected corrections"
 
+    @pytest.mark.slow
     def test_multiple_iterations_with_patterns(self):
         """Test that solver handles pattern generalization across iterations."""
         # Create typo map with pattern candidates

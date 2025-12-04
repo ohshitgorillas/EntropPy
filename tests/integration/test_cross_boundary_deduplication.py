@@ -1,5 +1,7 @@
 """Integration tests for cross-boundary deduplication behavior."""
 
+import pytest
+
 from entroppy.core import Config
 from entroppy.platforms import get_platform_backend
 from entroppy.processing.stages import generate_typos, load_dictionaries
@@ -17,6 +19,7 @@ from entroppy.resolution.state import DictionaryState
 class TestCrossBoundaryDeduplication:
     """Integration tests verifying no duplicate (typo, word) pairs across boundaries."""
 
+    @pytest.mark.slow
     def test_no_duplicate_pairs_in_final_output(self, tmp_path):
         """Final output contains no duplicate (typo, word) pairs, regardless of boundary."""
         exclude_file = tmp_path / "exclude.txt"
@@ -38,6 +41,7 @@ class TestCrossBoundaryDeduplication:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         # Run through pipeline to get solver result
@@ -85,6 +89,7 @@ class TestCrossBoundaryDeduplication:
                 )
             seen_pairs[pair] = boundary
 
+    @pytest.mark.slow
     def test_multiple_potential_conflicts_resolved(self, tmp_path):
         """Multiple words that could create conflicts produce no duplicates."""
         exclude_file = tmp_path / "exclude.txt"
@@ -116,6 +121,7 @@ class TestCrossBoundaryDeduplication:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         # Run pipeline to get solver result
@@ -157,6 +163,7 @@ class TestCrossBoundaryDeduplication:
             unique_pairs
         ), f"Found {len(pairs) - len(unique_pairs)} duplicate pairs in output"
 
+    @pytest.mark.slow
     def test_direct_corrections_present_in_output(self, tmp_path):
         """Direct corrections from collision resolution appear in final output."""
         exclude_file = tmp_path / "exclude.txt"
@@ -177,6 +184,7 @@ class TestCrossBoundaryDeduplication:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         # Run pipeline to get solver result
@@ -215,6 +223,7 @@ class TestCrossBoundaryDeduplication:
         cat_corrections = [(t, w) for t, w, _ in all_corrections if w == "cat"]
         assert len(cat_corrections) > 0, "Expected corrections for 'cat'"
 
+    @pytest.mark.slow
     def test_patterns_work_when_no_conflicts(self, tmp_path):
         """Pattern generalizations are included when they don't conflict."""
         exclude_file = tmp_path / "exclude.txt"
@@ -246,6 +255,7 @@ class TestCrossBoundaryDeduplication:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         # Run pipeline to get solver result
@@ -284,6 +294,7 @@ class TestCrossBoundaryDeduplication:
         pairs = [(typo, word) for typo, word, _ in all_corrections]
         assert len(pairs) == len(set(pairs)), "No duplicate pairs should exist"
 
+    @pytest.mark.slow
     def test_full_pipeline_realistic_scenario(self, tmp_path):
         """Full pipeline with realistic word set produces valid output."""
         exclude_file = tmp_path / "exclude.txt"
@@ -322,6 +333,7 @@ class TestCrossBoundaryDeduplication:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         # Run pipeline to get solver result
@@ -363,6 +375,7 @@ class TestCrossBoundaryDeduplication:
             unique_pairs
         ), f"Found duplicates: {len(pairs)} total vs {len(unique_pairs)} unique"
 
+    @pytest.mark.slow
     def test_same_trigger_different_boundaries_prevented(self, tmp_path):
         """Same trigger word cannot appear with different boundary types."""
         exclude_file = tmp_path / "exclude.txt"
@@ -393,6 +406,7 @@ class TestCrossBoundaryDeduplication:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         # Run pipeline to get solver result

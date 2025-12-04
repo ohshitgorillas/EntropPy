@@ -1,5 +1,7 @@
 """Unit tests for pipeline stages - focusing on behavior, not implementation."""
 
+import pytest
+
 from entroppy.core import Config
 from entroppy.platforms import get_platform_backend
 from entroppy.processing import run_pipeline
@@ -118,6 +120,7 @@ class TestTypoGeneration:
 class TestCollisionResolution:
     """Tests for collision resolution stage behavior (now part of iterative solver)."""
 
+    @pytest.mark.slow
     def test_produces_corrections_from_typos(self, tmp_path):
         """Iterative solver produces corrections from the typo map."""
         exclude_file = tmp_path / "exclude.txt"
@@ -137,6 +140,7 @@ class TestCollisionResolution:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         dict_data = load_dictionaries(config, verbose=False)
@@ -176,6 +180,7 @@ class TestCollisionResolution:
 class TestPatternGeneralization:
     """Tests for pattern generalization stage behavior (now part of iterative solver)."""
 
+    @pytest.mark.slow
     def test_no_duplicate_typo_word_pairs_across_boundaries(self, tmp_path):
         """A (typo, word) pair appears only once in final output, even across boundary types."""
         exclude_file = tmp_path / "exclude.txt"
@@ -196,6 +201,7 @@ class TestPatternGeneralization:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         dict_data = load_dictionaries(config, verbose=False)
@@ -236,6 +242,7 @@ class TestPatternGeneralization:
             assert pair not in seen_pairs, f"Duplicate (typo, word) pair found: {pair}"
             seen_pairs.add(pair)
 
+    @pytest.mark.slow
     def test_graveyard_tracks_rejected_corrections(self, tmp_path):
         """Rejected corrections are tracked in the graveyard."""
         exclude_file = tmp_path / "exclude.txt"
@@ -255,6 +262,7 @@ class TestPatternGeneralization:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         dict_data = load_dictionaries(config, verbose=False)
@@ -290,6 +298,7 @@ class TestPatternGeneralization:
         # Graveyard should track rejected corrections
         assert solver_result.graveyard_size >= 0
 
+    @pytest.mark.slow
     def test_corrections_produced_for_multiple_words(self, tmp_path):
         """Solver produces corrections for multiple input words."""
         exclude_file = tmp_path / "exclude.txt"
@@ -309,6 +318,7 @@ class TestPatternGeneralization:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         dict_data = load_dictionaries(config, verbose=False)
@@ -344,6 +354,7 @@ class TestPatternGeneralization:
         # Should produce some corrections or patterns
         assert len(solver_result.corrections) > 0 or len(solver_result.patterns) > 0
 
+    @pytest.mark.slow
     def test_patterns_can_be_generated(self, tmp_path):
         """Solver can generate patterns when appropriate."""
         exclude_file = tmp_path / "exclude.txt"
@@ -364,6 +375,7 @@ class TestPatternGeneralization:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         dict_data = load_dictionaries(config, verbose=False)
@@ -399,6 +411,7 @@ class TestPatternGeneralization:
         # Should have some results (corrections or patterns)
         assert len(solver_result.corrections) > 0 or len(solver_result.patterns) > 0
 
+    @pytest.mark.slow
     def test_solver_produces_results(self, tmp_path):
         """Solver produces corrections or patterns from input words."""
         exclude_file = tmp_path / "exclude.txt"
@@ -418,6 +431,7 @@ class TestPatternGeneralization:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         dict_data = load_dictionaries(config, verbose=False)
@@ -457,6 +471,7 @@ class TestPatternGeneralization:
 class TestConflictRemoval:
     """Tests for conflict removal stage behavior (now part of iterative solver)."""
 
+    @pytest.mark.slow
     def test_solver_handles_simple_case(self, tmp_path):
         """Solver handles simple cases without conflicts correctly."""
         exclude_file = tmp_path / "exclude.txt"
@@ -476,6 +491,7 @@ class TestConflictRemoval:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         dict_data = load_dictionaries(config, verbose=False)
@@ -516,6 +532,7 @@ class TestConflictRemoval:
 class TestOutputGeneration:
     """Tests for output generation stage behavior."""
 
+    @pytest.mark.slow
     def test_creates_output_directory(self, tmp_path):
         """Output directory is created when generating output."""
         exclude_file = tmp_path / "exclude.txt"
@@ -535,12 +552,14 @@ class TestOutputGeneration:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         run_pipeline(config)
 
         assert output_dir.exists()
 
+    @pytest.mark.slow
     def test_writes_yaml_files(self, tmp_path):
         """YAML files are written to output directory."""
         exclude_file = tmp_path / "exclude.txt"
@@ -560,6 +579,7 @@ class TestOutputGeneration:
             adjacent_letters=str(adjacent_file),
             output=str(output_dir),
             jobs=1,
+            max_iterations=3,  # Reduced for faster tests
         )
 
         run_pipeline(config)

@@ -76,6 +76,14 @@ addopts = [
     "-v",
     "--strict-markers",
 ]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.pylint.MASTER]
+load-plugins = [
+    "pylint_per_file_ignores",
+]
 
 [tool.pylint.main]
 disable = [
@@ -91,6 +99,7 @@ disable = [
     "too-many-boolean-expressions",
     "too-many-nested-blocks",
 ]
+per-file-ignores = "tests/**/*.py:duplicate-code,protected-access,redefined-outer-name,attribute-defined-outside-init,consider-using-with,no-member,missing-function-docstring"
 
 [tool.isort]
 profile = "black"
