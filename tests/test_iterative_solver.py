@@ -42,11 +42,14 @@ class TestIterativeSolver:
             source_words_set=source_words_set,
             user_words_set=set(),
             exclusion_matcher=None,
+            exclusion_set=set(),
             validation_index=validation_index,
             source_index=source_index,
             platform=None,
             min_typo_length=2,
             collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
         )
 
         # Create passes
@@ -98,11 +101,14 @@ class TestIterativeSolver:
             source_words_set=source_words_set,
             user_words_set=set(),
             exclusion_matcher=None,
+            exclusion_set=set(),
             validation_index=validation_index,
             source_index=source_index,
             platform=None,
             min_typo_length=2,
             collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
         )
 
         # Create passes
@@ -153,11 +159,14 @@ class TestIterativeSolver:
             source_words_set=source_words_set,
             user_words_set=set(),
             exclusion_matcher=None,
+            exclusion_set=set(),
             validation_index=validation_index,
             source_index=source_index,
             platform=None,
             min_typo_length=2,
             collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
         )
 
         # Create passes (including pattern generalization)
