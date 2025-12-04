@@ -478,7 +478,7 @@ class TestCheckPatternConflicts:
         assert "validation word" in error_msg.lower()
 
     def test_right_boundary_skips_start_trigger_check(self) -> None:
-        """When pattern has RIGHT boundary, skips check for triggering at start of validation words."""
+        """When pattern has RIGHT boundary, skips check for triggering at start."""
         validation_set = {"tehueco", "other"}
         validation_index = BoundaryIndex(validation_set)
         # "teh" would trigger at start of "tehueco", but RIGHT boundary only matches at end

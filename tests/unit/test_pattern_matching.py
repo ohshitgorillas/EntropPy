@@ -8,8 +8,6 @@ import pytest
 
 from entroppy.matching import PatternMatcher
 
-# pylint: disable=protected-access
-
 
 class TestPatternMatcherBehavior:
     """Test PatternMatcher behavior with various patterns and operations."""

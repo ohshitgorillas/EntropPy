@@ -1,13 +1,17 @@
 """Integration tests for cross-boundary deduplication behavior."""
 
 from entroppy.core import Config
-from entroppy.platforms.espanso import EspansoBackend
-from entroppy.processing.stages import (
-    generalize_typo_patterns,
-    generate_typos,
-    load_dictionaries,
-    resolve_typo_collisions,
+from entroppy.platforms import get_platform_backend
+from entroppy.processing.stages import generate_typos, load_dictionaries
+from entroppy.resolution.passes import (
+    CandidateSelectionPass,
+    ConflictRemovalPass,
+    PatternGeneralizationPass,
+    PlatformConstraintsPass,
+    PlatformSubstringConflictPass,
 )
+from entroppy.resolution.solver import IterativeSolver, PassContext
+from entroppy.resolution.state import DictionaryState
 
 
 class TestCrossBoundaryDeduplication:
@@ -26,27 +30,52 @@ class TestCrossBoundaryDeduplication:
         # Adjacent letters that can create "teh" from "the"
         adjacent_file.write_text("t -> y\nh -> j\ne -> w\n")
 
+        output_dir = tmp_path / "output"
+
         config = Config(
             exclude=str(exclude_file),
             include=str(include_file),
             adjacent_letters=str(adjacent_file),
-            output="output",
+            output=str(output_dir),
             jobs=1,
         )
 
-        # Run through pipeline stages
+        # Run through pipeline to get solver result
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
-        platform = EspansoBackend()
-        match_direction = platform.get_constraints().match_direction
-        pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, match_direction, verbose=False
+
+        # Create solver state and run iterative solver
+        platform = get_platform_backend(config.platform)
+        pass_context = PassContext.from_dictionary_data(
+            dictionary_data=dict_data,
+            platform=platform,
+            min_typo_length=config.min_typo_length,
+            collision_threshold=config.freq_ratio,
+            jobs=config.jobs,
+            verbose=False,
         )
+
+        state = DictionaryState(
+            raw_typo_map=typo_result.typo_map,
+            debug_words=config.debug_words,
+            debug_typo_matcher=config.debug_typo_matcher,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+            PlatformSubstringConflictPass(pass_context),
+            PlatformConstraintsPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=config.max_iterations)
+        solver_result = solver.solve(state)
 
         # BEHAVIOR: Check no (typo, word) pair appears more than once
         seen_pairs = {}
-        for typo, word, boundary in pattern_result.corrections:
+        all_corrections = solver_result.corrections + solver_result.patterns
+        for typo, word, boundary in all_corrections:
             pair = (typo, word)
             if pair in seen_pairs:
                 raise AssertionError(
@@ -79,26 +108,50 @@ class TestCrossBoundaryDeduplication:
             "b -> v\n"
         )
 
+        output_dir = tmp_path / "output"
+
         config = Config(
             exclude=str(exclude_file),
             include=str(include_file),
             adjacent_letters=str(adjacent_file),
-            output="output",
+            output=str(output_dir),
             jobs=1,
         )
 
-        # Run pipeline
+        # Run pipeline to get solver result
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
-        platform = EspansoBackend()
-        match_direction = platform.get_constraints().match_direction
-        pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, match_direction, verbose=False
+
+        platform = get_platform_backend(config.platform)
+        pass_context = PassContext.from_dictionary_data(
+            dictionary_data=dict_data,
+            platform=platform,
+            min_typo_length=config.min_typo_length,
+            collision_threshold=config.freq_ratio,
+            jobs=config.jobs,
+            verbose=False,
         )
 
+        state = DictionaryState(
+            raw_typo_map=typo_result.typo_map,
+            debug_words=config.debug_words,
+            debug_typo_matcher=config.debug_typo_matcher,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+            PlatformSubstringConflictPass(pass_context),
+            PlatformConstraintsPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=config.max_iterations)
+        solver_result = solver.solve(state)
+
         # BEHAVIOR: Verify no duplicates in final output
-        pairs = [(typo, word) for typo, word, _ in pattern_result.corrections]
+        all_corrections = solver_result.corrections + solver_result.patterns
+        pairs = [(typo, word) for typo, word, _ in all_corrections]
         unique_pairs = set(pairs)
         assert len(pairs) == len(
             unique_pairs
@@ -116,26 +169,50 @@ class TestCrossBoundaryDeduplication:
         adjacent_file = tmp_path / "adjacent.txt"
         adjacent_file.write_text("c -> x\na -> e\nt -> y\n")
 
+        output_dir = tmp_path / "output"
+
         config = Config(
             exclude=str(exclude_file),
             include=str(include_file),
             adjacent_letters=str(adjacent_file),
-            output="output",
+            output=str(output_dir),
             jobs=1,
         )
 
-        # Run pipeline
+        # Run pipeline to get solver result
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
-        platform = EspansoBackend()
-        match_direction = platform.get_constraints().match_direction
-        pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, match_direction, verbose=False
+
+        platform = get_platform_backend(config.platform)
+        pass_context = PassContext.from_dictionary_data(
+            dictionary_data=dict_data,
+            platform=platform,
+            min_typo_length=config.min_typo_length,
+            collision_threshold=config.freq_ratio,
+            jobs=config.jobs,
+            verbose=False,
         )
 
+        state = DictionaryState(
+            raw_typo_map=typo_result.typo_map,
+            debug_words=config.debug_words,
+            debug_typo_matcher=config.debug_typo_matcher,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+            PlatformSubstringConflictPass(pass_context),
+            PlatformConstraintsPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=config.max_iterations)
+        solver_result = solver.solve(state)
+
         # BEHAVIOR: Verify corrections for target word exist
-        cat_corrections = [(t, w) for t, w, _ in pattern_result.corrections if w == "cat"]
+        all_corrections = solver_result.corrections + solver_result.patterns
+        cat_corrections = [(t, w) for t, w, _ in all_corrections if w == "cat"]
         assert len(cat_corrections) > 0, "Expected corrections for 'cat'"
 
     def test_patterns_work_when_no_conflicts(self, tmp_path):
@@ -161,26 +238,50 @@ class TestCrossBoundaryDeduplication:
             "j -> h\n"
         )
 
+        output_dir = tmp_path / "output"
+
         config = Config(
             exclude=str(exclude_file),
             include=str(include_file),
             adjacent_letters=str(adjacent_file),
-            output="output",
+            output=str(output_dir),
             jobs=1,
         )
 
-        # Run pipeline
+        # Run pipeline to get solver result
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
-        platform = EspansoBackend()
-        match_direction = platform.get_constraints().match_direction
-        pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, match_direction, verbose=False
+
+        platform = get_platform_backend(config.platform)
+        pass_context = PassContext.from_dictionary_data(
+            dictionary_data=dict_data,
+            platform=platform,
+            min_typo_length=config.min_typo_length,
+            collision_threshold=config.freq_ratio,
+            jobs=config.jobs,
+            verbose=False,
         )
 
+        state = DictionaryState(
+            raw_typo_map=typo_result.typo_map,
+            debug_words=config.debug_words,
+            debug_typo_matcher=config.debug_typo_matcher,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+            PlatformSubstringConflictPass(pass_context),
+            PlatformConstraintsPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=config.max_iterations)
+        solver_result = solver.solve(state)
+
         # BEHAVIOR: Verify no duplicate pairs in output
-        pairs = [(typo, word) for typo, word, _ in pattern_result.corrections]
+        all_corrections = solver_result.corrections + solver_result.patterns
+        pairs = [(typo, word) for typo, word, _ in all_corrections]
         assert len(pairs) == len(set(pairs)), "No duplicate pairs should exist"
 
     def test_full_pipeline_realistic_scenario(self, tmp_path):
@@ -213,26 +314,50 @@ class TestCrossBoundaryDeduplication:
             "b -> v\nb -> n\n"
         )
 
+        output_dir = tmp_path / "output"
+
         config = Config(
             exclude=str(exclude_file),
             include=str(include_file),
             adjacent_letters=str(adjacent_file),
-            output="output",
+            output=str(output_dir),
             jobs=1,
         )
 
-        # Run full pipeline
+        # Run pipeline to get solver result
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
-        platform = EspansoBackend()
-        match_direction = platform.get_constraints().match_direction
-        pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, match_direction, verbose=False
+
+        platform = get_platform_backend(config.platform)
+        pass_context = PassContext.from_dictionary_data(
+            dictionary_data=dict_data,
+            platform=platform,
+            min_typo_length=config.min_typo_length,
+            collision_threshold=config.freq_ratio,
+            jobs=config.jobs,
+            verbose=False,
         )
 
+        state = DictionaryState(
+            raw_typo_map=typo_result.typo_map,
+            debug_words=config.debug_words,
+            debug_typo_matcher=config.debug_typo_matcher,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+            PlatformSubstringConflictPass(pass_context),
+            PlatformConstraintsPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=config.max_iterations)
+        solver_result = solver.solve(state)
+
         # BEHAVIOR: No duplicate (typo, word) pairs in realistic scenario
-        pairs = [(typo, word) for typo, word, _ in pattern_result.corrections]
+        all_corrections = solver_result.corrections + solver_result.patterns
+        pairs = [(typo, word) for typo, word, _ in all_corrections]
         unique_pairs = set(pairs)
         assert len(pairs) == len(
             unique_pairs
@@ -260,27 +385,51 @@ class TestCrossBoundaryDeduplication:
             "r -> t\n"
         )
 
+        output_dir = tmp_path / "output"
+
         config = Config(
             exclude=str(exclude_file),
             include=str(include_file),
             adjacent_letters=str(adjacent_file),
-            output="output",
+            output=str(output_dir),
             jobs=1,
         )
 
-        # Run pipeline
+        # Run pipeline to get solver result
         dict_data = load_dictionaries(config, verbose=False)
         typo_result = generate_typos(dict_data, config, verbose=False)
-        collision_result = resolve_typo_collisions(typo_result, dict_data, config, verbose=False)
-        platform = EspansoBackend()
-        match_direction = platform.get_constraints().match_direction
-        pattern_result = generalize_typo_patterns(
-            collision_result, dict_data, config, match_direction, verbose=False
+
+        platform = get_platform_backend(config.platform)
+        pass_context = PassContext.from_dictionary_data(
+            dictionary_data=dict_data,
+            platform=platform,
+            min_typo_length=config.min_typo_length,
+            collision_threshold=config.freq_ratio,
+            jobs=config.jobs,
+            verbose=False,
         )
 
+        state = DictionaryState(
+            raw_typo_map=typo_result.typo_map,
+            debug_words=config.debug_words,
+            debug_typo_matcher=config.debug_typo_matcher,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+            PlatformSubstringConflictPass(pass_context),
+            PlatformConstraintsPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=config.max_iterations)
+        solver_result = solver.solve(state)
+
         # BEHAVIOR: Each trigger maps to exactly one word (no disambiguation)
+        all_corrections = solver_result.corrections + solver_result.patterns
         trigger_words = {}
-        for typo, word, _ in pattern_result.corrections:
+        for typo, word, _ in all_corrections:
             if typo not in trigger_words:
                 trigger_words[typo] = word
             else:

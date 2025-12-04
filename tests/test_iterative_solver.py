@@ -2,13 +2,11 @@
 
 import pytest
 
-from entroppy.core import BoundaryType
 from entroppy.core.boundaries import BoundaryIndex
 from entroppy.resolution.passes import (
     CandidateSelectionPass,
     ConflictRemovalPass,
     PatternGeneralizationPass,
-    PlatformConstraintsPass,
 )
 from entroppy.resolution.solver import IterativeSolver, PassContext
 from entroppy.resolution.state import DictionaryState
@@ -192,7 +190,6 @@ class TestIterativeSolver:
         """Test that platform constraints are enforced by the solver."""
         # This test would need a mock platform with constraints
         # For now, just verify the structure is in place
-        pass
 
 
 if __name__ == "__main__":
