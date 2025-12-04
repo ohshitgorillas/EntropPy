@@ -36,7 +36,7 @@ class Config(BaseModel):
     # Platform selection
     platform: Literal["espanso", "qmk"] = Field("espanso", description="Target platform")
     max_corrections: int | None = Field(None, ge=1, description="QMK memory limit")
-    max_iterations: int = Field(10, ge=1, description="Maximum iterations for iterative solver")
+    max_iterations: int = Field(20, ge=1, description="Maximum iterations for iterative solver")
     hurtmycpu: bool = Field(
         False, description="Generate typos for ALL english-words (not just top-n)"
     )
@@ -138,7 +138,7 @@ def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Conf
         "max_entries_per_file": get_value("max_entries_per_file", 500),
         "reports": get_value("reports", None),
         "max_corrections": get_value("max_corrections", None),
-        "max_iterations": get_value("max_iterations", 10),
+        "max_iterations": get_value("max_iterations", 20),
         "hurtmycpu": cli_args.hurtmycpu or json_config.get("hurtmycpu", False),
         "debug_words": get_value("debug_words", None),
         "debug_typos": get_value("debug_typos", None),
