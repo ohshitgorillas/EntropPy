@@ -122,7 +122,6 @@ def _extract_patterns_from_correction(
     debug_corrections: (
         dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]] | None
     ) = None,
-    verbose: bool = False,
 ) -> tuple[list[tuple[str, str, BoundaryType, int]], bool]:
     """Extract all valid patterns from a single correction.
 
@@ -134,7 +133,6 @@ def _extract_patterns_from_correction(
         is_debug: Whether this correction is being debugged
         pattern_cache: Optional cache for pattern extraction results
         debug_corrections: Optional dict to populate with debug info
-        verbose: Whether to log verbose messages
 
     Returns:
         Tuple of (list of extracted patterns, was_cache_hit)
@@ -161,11 +159,6 @@ def _extract_patterns_from_correction(
         was_cache_hit = True
         if is_debug:
             logger.debug(f"  Using cached patterns: {len(cached_patterns)} patterns found")
-        elif verbose:
-            logger.debug(
-                f"[CACHE HIT] {typo}→{word} ({boundary.value}, "
-                f"{'suffix' if is_suffix else 'prefix'}): {len(cached_patterns)} patterns"
-            )
 
     # Extract patterns if not cached
     if cached_patterns is None:
@@ -213,12 +206,6 @@ def _extract_patterns_from_correction(
         # Store in cache for future iterations
         if pattern_cache is not None:
             pattern_cache[cache_key] = cached_patterns
-            if verbose and not is_debug:
-                logger.debug(
-                    f"[CACHE MISS] {typo}→{word} ({boundary.value}, "
-                    f"{'suffix' if is_suffix else 'prefix'}): "
-                    f"extracted {len(cached_patterns)} patterns"
-                )
 
     return cached_patterns, was_cache_hit
 
@@ -506,7 +493,6 @@ def _find_patterns(
             is_debug=is_debug,
             pattern_cache=pattern_cache,
             debug_corrections=debug_corrections if is_debug else None,
-            verbose=verbose,
         )
 
         # Update cache statistics
