@@ -130,6 +130,26 @@ entroppy \
     --verbose
 ```
 
+### Comprehensive Pattern Discovery
+
+For maximum pattern discovery, use `--hurtmycpu` (aliases: `--overnight`, `--takeforever`) to generate typos for ALL words in the `english-words` dictionary instead of just the top-N from wordfreq:
+
+```bash
+entroppy \
+    --platform espanso \
+    --hurtmycpu \
+    --top-n 5000 \
+    --output corrections \
+    --verbose
+```
+
+**When to use `--hurtmycpu`:**
+- **Pattern discovery**: Finds patterns that only appear in less common words (e.g., discovering `kign -> king` requires processing words like "walking", "talking", "working", "looking" which may not be in the top-N)
+- **Comprehensive coverage**: Ensures all possible patterns are discovered, not just those from common words
+- **Time trade-off**: Processing time increases significantly (hours to overnight) but finds patterns that would otherwise be missed
+
+**Note**: The `--top-n` argument still controls final dictionary selection/ranking, so you can discover patterns from all words while still limiting output size.
+
 **Note on `--typo-freq-threshold`**: This setting is tricky to use effectively. While it can help filter out rare legitimate words (like verb conjugations not in `english-words`), common typos often appear in `wordfreq` at similar frequencies to rare legitimate words:
 
 **Common typos in wordfreq:**
@@ -226,6 +246,7 @@ Creates timestamped directory with:
 | `--max-word-length` | `10` | Maximum word length |
 | `--typo-freq-threshold` | `0.0` | Skip typos above this frequency |
 | `--max-entries-per-file` | `500` | Max corrections per YAML file |
+| `--hurtmycpu` | `False` | Generate typos for ALL english-words (not just top-n) |
 | `--verbose`, `-v` | `False` | Verbose output |
 | `--debug`, `-d` | `False` | Debug logging |
 
@@ -235,6 +256,7 @@ Creates timestamped directory with:
 {
   "platform": "espanso",
   "top_n": 5000,
+  "hurtmycpu": false,
   "output": "corrections",
   "reports": "reports",
   "min_typo_length": 4,
