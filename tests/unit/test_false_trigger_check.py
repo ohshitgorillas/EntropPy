@@ -8,7 +8,10 @@ import pytest
 
 from entroppy.core import BoundaryType
 from entroppy.core.boundaries import BoundaryIndex
-from entroppy.resolution.passes import CandidateSelectionPass
+from entroppy.resolution.passes import (
+    CandidateSelectionPass,
+    PatternGeneralizationPass,
+)
 from entroppy.resolution.solver import IterativeSolver, PassContext
 from entroppy.resolution.state import DictionaryState, RejectionReason
 
@@ -188,3 +191,43 @@ class TestFalseTriggerGraveyarding:
         graveyard_entry = state.graveyard.get(("tain", "train", BoundaryType.NONE))
         assert graveyard_entry is not None
         assert graveyard_entry.reason == RejectionReason.FALSE_TRIGGER
+
+
+class TestPatternSubstringFalseTriggers:
+    """Test that patterns with NONE boundary appearing as substrings are not added."""
+
+    @pytest.mark.slow
+    def test_pattern_simet_not_added_when_in_dosimeter(self) -> None:
+        """Pattern 'simet' is not added when it appears as substring in 'dosimeter'."""
+        typo_map = {"simet": ["somet"], "simetr": ["sometr"]}
+        validation_set = {"dosimeter", "bradypnea", "snowmobile", "somet", "sometr"}
+        source_words_set = {"somet", "sometr"}
+
+        state = DictionaryState(typo_map)
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        candidate_pass = CandidateSelectionPass(pass_context)
+        candidate_pass.run(state)
+
+        pattern_pass = PatternGeneralizationPass(pass_context)
+        pattern_pass.run(state)
+
+        simet_patterns = [p for p in state.active_patterns if p[0] == "simet"]
+        assert len(simet_patterns) == 0
