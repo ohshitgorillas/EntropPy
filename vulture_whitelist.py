@@ -3,7 +3,7 @@
 This file contains code that vulture incorrectly flags as unused
 but is actually used by frameworks (Pydantic) that static analysis cannot detect.
 """
-
+# pylint: disable=all
 # Pydantic field validator - used by framework via @field_validator decorator
 _.parse_string_set  # noqa: F821  # unused method (entroppy/core/config.py:50)
 
