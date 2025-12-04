@@ -2,7 +2,9 @@
 
 from collections import defaultdict
 from multiprocessing import Pool
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from tqdm import tqdm
 
 from entroppy.core import BoundaryType
 from entroppy.resolution.conflicts import build_typo_index, get_detector_for_boundary
@@ -119,7 +121,17 @@ class ConflictRemovalPass(Pass):
             self._process_parallel(state, by_boundary)
         else:
             # Process each boundary group sequentially
-            for boundary, corrections in by_boundary.items():
+            if self.context.verbose:
+                boundary_items: Any = tqdm(
+                    by_boundary.items(),
+                    desc=f"    {self.name}",
+                    unit="boundary",
+                    leave=False,
+                )
+            else:
+                boundary_items = by_boundary.items()
+
+            for boundary, corrections in boundary_items:
                 self._process_boundary_group(state, corrections, boundary)
 
     def _process_parallel(
@@ -165,7 +177,16 @@ class ConflictRemovalPass(Pass):
 
         # Process tasks in parallel
         with Pool(processes=self.context.jobs) as pool:
-            results = pool.starmap(_process_conflict_batch_worker, tasks)
+            if self.context.verbose:
+                # Show progress bar for parallel processing
+                # Note: starmap is blocking, so we show a bar that completes when done
+                with tqdm(
+                    total=len(tasks), desc=f"    {self.name}", unit="batch", leave=False
+                ) as pbar:
+                    results = pool.starmap(_process_conflict_batch_worker, tasks)
+                    pbar.update(len(tasks))
+            else:
+                results = pool.starmap(_process_conflict_batch_worker, tasks)
 
         # Aggregate results and apply removals
         blocked_corrections = []
