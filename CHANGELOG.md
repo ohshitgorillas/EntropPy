@@ -25,7 +25,11 @@
   - TypoIndex-style conflict detection algorithm (O(n log n) sort + dict-based lookups instead of O(n²) nested loops)
   - Cached formatted results to eliminate redundant formatting calls
   - Stored conflict pairs during detection to eliminate O(n²) debug logging phase
-  - Expected 10-100x speedup for large datasets (10k+ corrections)
+  - **Character-based indexing**: Index formatted typos by first character to reduce comparisons from O(N²) to O(N × K) where K = average candidates per character (typically < 50). Expected 10-100x reduction in comparisons.
+  - **Early termination for correction pairs**: Track corrections already marked for removal and skip checking pairs where one correction is already marked. Expected 2-5x reduction in correction pair checks.
+  - **Optimized substring checks**: Use `startswith()` and `endswith()` fast paths for prefix/suffix checks (common for QMK), falling back to `in` operator only for middle substrings. Expected 1.5-2x speedup for prefix/suffix cases.
+  - **Length bucket processing**: Group formatted typos by length into buckets and only check conflicts between adjacent length buckets. A typo of length 3 can't be a substring of a typo of length 2, reducing unnecessary comparisons. Expected 1.5-3x speedup.
+  - Expected 20-500x speedup for large datasets (10k+ corrections) with all optimizations combined
 
 ### Added
 

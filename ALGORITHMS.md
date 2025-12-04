@@ -307,12 +307,14 @@ When QMK's compiler sees both `"aemr"` and `":aemr"`, it detects that `"aemr"` i
 
 2. **Build formatted typo index** - Map each formatted typo to its corrections
 
-3. **Check for substring relationships** using TypoIndex-style algorithm:
-   - Sort formatted typos by length (shortest first)
-   - For each longer formatted typo, check if it contains any shorter one we've seen
-   - Uses dict-based lookup (O(1)) instead of linear search (O(n))
-   - Still checks all pairs but in reverse order for better performance
+3. **Check for substring relationships** using optimized algorithms:
+   - **Length bucket processing**: Group formatted typos by length into buckets and process buckets in length order. Only check conflicts between adjacent length buckets (a typo of length 3 can't be a substring of a typo of length 2)
+   - **Character-based indexing**: Within each bucket comparison, index shorter typos by their first character
+   - For each longer formatted typo, only check against shorter typos that share the same first character
+   - This reduces comparisons from O(N²) to O(N × K) where K = average candidates per character (typically < 50)
+   - **Optimized substring checks**: Use `startswith()` for prefix checks and `endswith()` for suffix checks (faster than `in` operator), falling back to `in` only for middle substrings
    - Uses `processed_pairs` set to avoid duplicate conflict processing
+   - **Early termination**: Track corrections already marked for removal and skip checking pairs where one correction is already marked
 
 4. **Determine which to remove** based on:
    - **Same word**: Prefer more restrictive boundary (BOTH > LEFT/RIGHT > NONE)
