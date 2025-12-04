@@ -75,6 +75,7 @@ select = [
     "I",   # isort
     "D",   # pydocstyle
     "RET", # refurb: catches unnecessary else after return, etc.
+    "ARG", # ruff: unused function arguments
 ]
 ignore = [
     "PLR0913", # Too many arguments (pylint: too-many-arguments)
