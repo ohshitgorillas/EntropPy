@@ -136,6 +136,42 @@ def _count_pattern_replacements(
     return total_replacements
 
 
+def _write_pattern_score_range(
+    f: TextIO,
+    final_set: set[Correction],
+    user_set: set[Correction],
+    pattern_scores: list[tuple[float, str, str, BoundaryType]],
+) -> None:
+    """Write score range for patterns."""
+    pattern_scores_in_final = [
+        s[0]
+        for s in pattern_scores
+        if (s[1], s[2], s[3]) in final_set and (s[1], s[2], s[3]) not in user_set
+    ]
+    if pattern_scores_in_final:
+        min_score = min(pattern_scores_in_final)
+        max_score = max(pattern_scores_in_final)
+        f.write(f"Score range (patterns):             {min_score:.6f} - {max_score:.6f}\n")
+
+
+def _write_direct_score_range(
+    f: TextIO,
+    final_set: set[Correction],
+    pattern_set: set[tuple[str, str]],
+    direct_scores: list[tuple[float, str, str, BoundaryType]],
+) -> None:
+    """Write score range for direct corrections."""
+    direct_scores_in_final = [
+        s[0]
+        for s in direct_scores
+        if (s[1], s[2], s[3]) in final_set and (s[1], s[2]) not in pattern_set
+    ]
+    if direct_scores_in_final:
+        min_score = min(direct_scores_in_final)
+        max_score = max(direct_scores_in_final)
+        f.write(f"Score range (direct):                {min_score:.6f} - {max_score:.6f}\n")
+
+
 def _write_score_ranges(
     f: TextIO,
     final_set: set[Correction],
@@ -155,26 +191,10 @@ def _write_score_ranges(
         direct_scores: Direct correction scores list
     """
     if pattern_scores:
-        pattern_scores_in_final = [
-            s[0]
-            for s in pattern_scores
-            if (s[1], s[2], s[3]) in final_set and (s[1], s[2], s[3]) not in user_set
-        ]
-        if pattern_scores_in_final:
-            min_score = min(pattern_scores_in_final)
-            max_score = max(pattern_scores_in_final)
-            f.write(f"Score range (patterns):             {min_score:.6f} - {max_score:.6f}\n")
+        _write_pattern_score_range(f, final_set, user_set, pattern_scores)
 
     if direct_scores:
-        direct_scores_in_final = [
-            s[0]
-            for s in direct_scores
-            if (s[1], s[2], s[3]) in final_set and (s[1], s[2]) not in pattern_set
-        ]
-        if direct_scores_in_final:
-            min_score = min(direct_scores_in_final)
-            max_score = max(direct_scores_in_final)
-            f.write(f"Score range (direct):                {min_score:.6f} - {max_score:.6f}\n")
+        _write_direct_score_range(f, final_set, pattern_set, direct_scores)
 
 
 def _write_summary_by_type(

@@ -1,5 +1,6 @@
 """Main processing pipeline orchestration."""
 
+from pathlib import Path
 import time
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,56 @@ if TYPE_CHECKING:
     pass
 
 
+def _log_platform_info(platform: PlatformBackend, verbose: bool) -> None:
+    """Log platform information if verbose."""
+    if verbose:
+        platform_name = platform.get_name()
+        logger.info(f"Platform: {platform_name}")
+        constraints = platform.get_constraints()
+        if constraints.max_corrections:
+            logger.info(f"Max corrections limit: {constraints.max_corrections}")
+        logger.info("")
+
+
+def _generate_reports(
+    config: Config,
+    platform: PlatformBackend,
+    final_corrections: list,
+    ranked_corrections: list,
+    all_corrections: list,
+    solver_result,
+    pattern_replacements: dict,
+    dict_data,
+    report_dir: Path | None,
+    report_data,
+    verbose: bool,
+) -> None:
+    """Generate reports if enabled."""
+    if config.reports and report_data is not None and report_dir is not None:
+        run_stage_9_reports(
+            platform,
+            final_corrections,
+            ranked_corrections,
+            all_corrections,
+            solver_result,
+            pattern_replacements,
+            dict_data,
+            report_dir,
+            report_data,
+            config,
+            verbose,
+        )
+
+
+def _print_debug_summary(config: Config, solver_result, verbose: bool) -> None:
+    """Print debug summary if debugging is enabled."""
+    if config.debug_words or config.debug_typo_matcher:
+        if verbose:
+            logger.info("")
+            logger.info("Debug Summary:")
+        logger.info(solver_result.debug_trace)
+
+
 def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> None:
     """Main processing pipeline using iterative solver architecture.
 
@@ -39,15 +90,8 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
     if platform is None:
         platform = initialize_platform(config)
 
-    # Get platform constraints
-    constraints = platform.get_constraints()
-
-    if verbose:
-        platform_name = platform.get_name()
-        logger.info(f"Platform: {platform_name}")
-        if constraints.max_corrections:
-            logger.info(f"Max corrections limit: {constraints.max_corrections}")
-        logger.info("")
+    # Log platform information
+    _log_platform_info(platform, verbose)
 
     # Initialize report data and create report directory if reports are enabled
     report_data, report_dir = setup_reporting(config, platform, start_time)
@@ -64,6 +108,7 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
     )
 
     # Stage 7: Platform-specific ranking and filtering
+    constraints = platform.get_constraints()
     final_corrections, ranked_corrections, pattern_replacements = run_stage_7_ranking(
         solver_result, state, dict_data, platform, config, constraints, verbose, report_data
     )
@@ -75,20 +120,19 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
     all_corrections = list(dict.fromkeys(solver_result.corrections + solver_result.patterns))
 
     # Generate reports if enabled
-    if config.reports and report_data is not None and report_dir is not None:
-        run_stage_9_reports(
-            platform,
-            final_corrections,
-            ranked_corrections,
-            all_corrections,
-            solver_result,
-            pattern_replacements,
-            dict_data,
-            report_dir,
-            report_data,
-            config,
-            verbose,
-        )
+    _generate_reports(
+        config,
+        platform,
+        final_corrections,
+        ranked_corrections,
+        all_corrections,
+        solver_result,
+        pattern_replacements,
+        dict_data,
+        report_dir,
+        report_data,
+        verbose,
+    )
 
     # Print total time
     elapsed_time = time.time() - start_time
@@ -96,8 +140,4 @@ def run_pipeline(config: Config, platform: PlatformBackend | None = None) -> Non
         logger.info(f"Total processing time: {format_time(elapsed_time)}")
 
     # Print debug summary if debugging is enabled
-    if config.debug_words or config.debug_typo_matcher:
-        if verbose:
-            logger.info("")
-            logger.info("Debug Summary:")
-        logger.info(solver_result.debug_trace)
+    _print_debug_summary(config, solver_result, verbose)

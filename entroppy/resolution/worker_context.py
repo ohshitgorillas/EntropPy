@@ -2,12 +2,8 @@
 
 from dataclasses import dataclass
 import threading
-from typing import TYPE_CHECKING
 
-from entroppy.core.boundaries import BoundaryIndex
-
-if TYPE_CHECKING:
-    from entroppy.core import BoundaryType
+from entroppy.core.boundaries import BoundaryIndex, BoundaryType
 
 
 @dataclass(frozen=True)
@@ -69,7 +65,10 @@ def get_collision_worker_context() -> CollisionResolutionContext:
         RuntimeError: If called before init_collision_worker
     """
     try:
-        return _worker_context.value  # type: ignore[no-any-return]
+        context = _worker_context.value
+        if not isinstance(context, CollisionResolutionContext):
+            raise RuntimeError("Invalid collision resolution context type")
+        return context
     except AttributeError as e:
         raise RuntimeError(
             "Collision resolution worker context not initialized. Call init_collision_worker first."
@@ -116,7 +115,7 @@ class CandidateSelectionContext:
     collision_threshold: float
     exclusion_set: frozenset[str]
     covered_typos: frozenset[str]
-    graveyard: frozenset[tuple[str, str, "BoundaryType"]]  # type: ignore
+    graveyard: frozenset[tuple[str, str, BoundaryType]]
 
 
 # Thread-local storage for candidate selection worker context and indexes
@@ -148,7 +147,10 @@ def get_candidate_selection_worker_context() -> "CandidateSelectionContext":
         RuntimeError: If called before init_candidate_selection_worker
     """
     try:
-        return _candidate_worker_context.value  # type: ignore[no-any-return]
+        context = _candidate_worker_context.value
+        if not isinstance(context, CandidateSelectionContext):
+            raise RuntimeError("Invalid candidate selection context type")
+        return context
     except AttributeError as e:
         raise RuntimeError(
             "Candidate selection worker context not initialized. "

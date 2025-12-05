@@ -35,6 +35,51 @@ def _filter_corrections_by_boundary(
     ]
 
 
+def _check_exact_and_wildcard_patterns(
+    typo_lower: str,
+    exact_patterns: set[str],
+    wildcard_patterns: set[str],
+) -> bool:
+    """Check if typo matches exact or wildcard patterns."""
+    # Check exact patterns (exact match)
+    if any(typo_lower == pattern.lower() for pattern in exact_patterns):
+        return True
+    # Check wildcard patterns (substring match)
+    if any(pattern.lower() in typo_lower for pattern in wildcard_patterns):
+        return True
+    return False
+
+
+def _setup_debug_tracking_new_params(
+    filtered_corrections: list[Correction],
+    exact_patterns: set[str],
+    wildcard_patterns: set[str],
+) -> dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]]:
+    """Setup debug tracking using new exact/wildcard pattern parameters."""
+    debug_corrections: dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]] = {}
+
+    for typo, word, boundary in filtered_corrections:
+        typo_lower = typo.lower()
+        if _check_exact_and_wildcard_patterns(typo_lower, exact_patterns, wildcard_patterns):
+            debug_corrections[(typo, word, boundary)] = []
+
+    return debug_corrections
+
+
+def _setup_debug_tracking_legacy(
+    filtered_corrections: list[Correction],
+    debug_typos: set[str],
+) -> dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]]:
+    """Setup debug tracking using legacy substring matching."""
+    debug_corrections: dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]] = {}
+
+    for typo, word, boundary in filtered_corrections:
+        if any(debug_typo.lower() in typo.lower() for debug_typo in debug_typos):
+            debug_corrections[(typo, word, boundary)] = []
+
+    return debug_corrections
+
+
 def _setup_debug_tracking(
     filtered_corrections: list[Correction],
     debug_typos: set[str] | None,
@@ -54,28 +99,57 @@ def _setup_debug_tracking(
     Returns:
         Dict mapping (typo, word, boundary) to list of debug info
     """
-    debug_corrections: dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]] = {}
-
     # Use new parameters if provided, otherwise fall back to old behavior for backward compatibility
     if debug_typos_exact is not None or debug_typos_wildcard is not None:
         exact_patterns = debug_typos_exact or set()
         wildcard_patterns = debug_typos_wildcard or set()
+        return _setup_debug_tracking_new_params(
+            filtered_corrections, exact_patterns, wildcard_patterns
+        )
 
-        for typo, word, boundary in filtered_corrections:
-            typo_lower = typo.lower()
-            # Check exact patterns (exact match)
-            if any(typo_lower == pattern.lower() for pattern in exact_patterns):
-                debug_corrections[(typo, word, boundary)] = []
-            # Check wildcard patterns (substring match)
-            elif any(pattern.lower() in typo_lower for pattern in wildcard_patterns):
-                debug_corrections[(typo, word, boundary)] = []
-    elif debug_typos is not None and len(debug_typos) > 0:
-        # Backward compatibility: use substring matching for all patterns
-        for typo, word, boundary in filtered_corrections:
-            if any(debug_typo.lower() in typo.lower() for debug_typo in debug_typos):
-                debug_corrections[(typo, word, boundary)] = []
+    if debug_typos is not None and len(debug_typos) > 0:
+        return _setup_debug_tracking_legacy(filtered_corrections, debug_typos)
 
-    return debug_corrections
+    return {}
+
+
+def _check_exact_pattern_match(
+    typo_pattern_lower: str,
+    unique_matches: list[tuple[str, str, BoundaryType]],
+    exact_patterns: set[str],
+) -> bool:
+    """Check if typo pattern or matches match exact patterns."""
+    return any(
+        typo_pattern_lower == pattern.lower()
+        or any(pattern.lower() == m[0].lower() for m in unique_matches)
+        for pattern in exact_patterns
+    )
+
+
+def _check_wildcard_pattern_match(
+    typo_pattern_lower: str,
+    unique_matches: list[tuple[str, str, BoundaryType]],
+    wildcard_patterns: set[str],
+) -> bool:
+    """Check if typo pattern or matches match wildcard patterns."""
+    return any(
+        pattern.lower() in typo_pattern_lower
+        or any(pattern.lower() in m[0].lower() for m in unique_matches)
+        for pattern in wildcard_patterns
+    )
+
+
+def _check_legacy_pattern_match(
+    typo_pattern_lower: str,
+    unique_matches: list[tuple[str, str, BoundaryType]],
+    debug_typos: set[str],
+) -> bool:
+    """Check if typo pattern or matches match legacy debug typos."""
+    return any(
+        debug_typo.lower() in typo_pattern_lower
+        or any(debug_typo.lower() in m[0].lower() for m in unique_matches)
+        for debug_typo in debug_typos
+    )
 
 
 def _should_log_pattern(
@@ -103,28 +177,17 @@ def _should_log_pattern(
         wildcard_patterns = debug_typos_wildcard or set()
         typo_pattern_lower = typo_pattern.lower()
 
-        # Check exact patterns (exact match)
-        if any(
-            typo_pattern_lower == pattern.lower()
-            or any(pattern.lower() == m[0].lower() for m in unique_matches)
-            for pattern in exact_patterns
-        ):
+        if _check_exact_pattern_match(typo_pattern_lower, unique_matches, exact_patterns):
             return True
-        # Check wildcard patterns (substring match)
-        if any(
-            pattern.lower() in typo_pattern_lower
-            or any(pattern.lower() in m[0].lower() for m in unique_matches)
-            for pattern in wildcard_patterns
-        ):
+        if _check_wildcard_pattern_match(typo_pattern_lower, unique_matches, wildcard_patterns):
             return True
+        return False
+
     # Backward compatibility: use substring matching for all patterns
-    elif debug_typos is not None:
-        if any(
-            debug_typo.lower() in typo_pattern.lower()
-            or any(debug_typo.lower() in m[0].lower() for m in unique_matches)
-            for debug_typo in debug_typos
-        ):
-            return True
+    if debug_typos is not None:
+        typo_pattern_lower = typo_pattern.lower()
+        return _check_legacy_pattern_match(typo_pattern_lower, unique_matches, debug_typos)
+
     return False
 
 

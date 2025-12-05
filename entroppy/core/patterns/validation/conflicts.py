@@ -75,12 +75,91 @@ def _check_prefix_match(
     return True, None
 
 
+def _check_indexed_suffix_matches(
+    typo_pattern: str,
+    word_pattern: str,
+    correction_index: "CorrectionIndex",
+    pattern_typos: set[tuple[str, str]],
+) -> tuple[bool, str | None]:
+    """Check suffix matches using index."""
+    suffix_matches = correction_index.get_suffix_matches(typo_pattern)
+    for other_typo, other_word, _ in suffix_matches:
+        # Skip corrections that this pattern replaces
+        if (other_typo, other_word) in pattern_typos:
+            continue
+        # Skip if pattern is the same as the typo (no conflict)
+        if other_typo == typo_pattern:
+            continue
+
+        # Check if pattern would incorrectly match as suffix
+        is_safe, error_msg = _check_suffix_match(typo_pattern, word_pattern, other_typo, other_word)
+        if not is_safe:
+            return False, error_msg
+
+    return True, None
+
+
+def _check_indexed_prefix_matches(
+    typo_pattern: str,
+    word_pattern: str,
+    correction_index: "CorrectionIndex",
+    pattern_typos: set[tuple[str, str]],
+) -> tuple[bool, str | None]:
+    """Check prefix matches using index."""
+    prefix_matches = correction_index.get_prefix_matches(typo_pattern)
+    for other_typo, other_word, _ in prefix_matches:
+        # Skip corrections that this pattern replaces
+        if (other_typo, other_word) in pattern_typos:
+            continue
+        # Skip if pattern is the same as the typo (no conflict)
+        if other_typo == typo_pattern:
+            continue
+
+        # Check if pattern would incorrectly match as prefix
+        is_safe, error_msg = _check_prefix_match(typo_pattern, word_pattern, other_typo, other_word)
+        if not is_safe:
+            return False, error_msg
+
+    return True, None
+
+
+def _check_linear_scan_matches(
+    typo_pattern: str,
+    word_pattern: str,
+    all_corrections: list[Correction],
+    pattern_typos: set[tuple[str, str]],
+) -> tuple[bool, str | None]:
+    """Check matches using linear scan (fallback)."""
+    for other_typo, other_word, _ in all_corrections:
+        # Skip corrections that this pattern replaces
+        if (other_typo, other_word) in pattern_typos:
+            continue
+
+        # Check if pattern appears as SUFFIX of other correction's typo
+        if other_typo.endswith(typo_pattern) and other_typo != typo_pattern:
+            is_safe, error_msg = _check_suffix_match(
+                typo_pattern, word_pattern, other_typo, other_word
+            )
+            if not is_safe:
+                return False, error_msg
+
+        # Check if pattern appears as PREFIX of other correction's typo
+        if other_typo.startswith(typo_pattern) and other_typo != typo_pattern:
+            is_safe, error_msg = _check_prefix_match(
+                typo_pattern, word_pattern, other_typo, other_word
+            )
+            if not is_safe:
+                return False, error_msg
+
+    return True, None
+
+
 def check_pattern_would_incorrectly_match_other_corrections(
     typo_pattern: str,
     word_pattern: str,
     all_corrections: list[Correction],
     pattern_occurrences: list[Correction],
-    correction_index: "CorrectionIndex | None" = None,  # type: ignore[name-defined]
+    correction_index: "CorrectionIndex | None" = None,
 ) -> tuple[bool, str | None]:
     """Check if a pattern would incorrectly match other corrections.
 
@@ -116,60 +195,25 @@ def check_pattern_would_incorrectly_match_other_corrections(
     # Use index if available, otherwise fall back to linear scan
     if correction_index is not None:
         # Check suffix matches (for RTL/QMK)
-        suffix_matches = correction_index.get_suffix_matches(typo_pattern)
-        for other_typo, other_word, _ in suffix_matches:
-            # Skip corrections that this pattern replaces
-            if (other_typo, other_word) in pattern_typos:
-                continue
-            # Skip if pattern is the same as the typo (no conflict)
-            if other_typo == typo_pattern:
-                continue
-
-            # Check if pattern would incorrectly match as suffix
-            is_safe, error_msg = _check_suffix_match(
-                typo_pattern, word_pattern, other_typo, other_word
-            )
-            if not is_safe:
-                return False, error_msg
+        is_safe, error = _check_indexed_suffix_matches(
+            typo_pattern, word_pattern, correction_index, pattern_typos
+        )
+        if not is_safe:
+            return is_safe, error
 
         # Check prefix matches (for LTR/Espanso)
-        prefix_matches = correction_index.get_prefix_matches(typo_pattern)
-        for other_typo, other_word, _ in prefix_matches:
-            # Skip corrections that this pattern replaces
-            if (other_typo, other_word) in pattern_typos:
-                continue
-            # Skip if pattern is the same as the typo (no conflict)
-            if other_typo == typo_pattern:
-                continue
-
-            # Check if pattern would incorrectly match as prefix
-            is_safe, error_msg = _check_prefix_match(
-                typo_pattern, word_pattern, other_typo, other_word
-            )
-            if not is_safe:
-                return False, error_msg
+        is_safe, error = _check_indexed_prefix_matches(
+            typo_pattern, word_pattern, correction_index, pattern_typos
+        )
+        if not is_safe:
+            return is_safe, error
     else:
         # Fallback to original linear scan (for backward compatibility)
-        for other_typo, other_word, _ in all_corrections:
-            # Skip corrections that this pattern replaces
-            if (other_typo, other_word) in pattern_typos:
-                continue
-
-            # Check if pattern appears as SUFFIX of other correction's typo
-            if other_typo.endswith(typo_pattern) and other_typo != typo_pattern:
-                is_safe, error_msg = _check_suffix_match(
-                    typo_pattern, word_pattern, other_typo, other_word
-                )
-                if not is_safe:
-                    return False, error_msg
-
-            # Check if pattern appears as PREFIX of other correction's typo
-            if other_typo.startswith(typo_pattern) and other_typo != typo_pattern:
-                is_safe, error_msg = _check_prefix_match(
-                    typo_pattern, word_pattern, other_typo, other_word
-                )
-                if not is_safe:
-                    return False, error_msg
+        is_safe, error = _check_linear_scan_matches(
+            typo_pattern, word_pattern, all_corrections, pattern_typos
+        )
+        if not is_safe:
+            return is_safe, error
 
     return True, None
 

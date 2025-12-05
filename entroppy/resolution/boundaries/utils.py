@@ -99,6 +99,16 @@ def _check_typo_in_target_word(
     return is_prefix, is_suffix, is_substring
 
 
+def _collect_examples_from_index(
+    typo: str, index: dict[str, set[str]], examples: list[str], max_examples: int = 3
+) -> None:
+    """Collect example words from an index, avoiding duplicates."""
+    if typo in index:
+        for word in index[typo]:
+            if word != typo and word not in examples and len(examples) < max_examples:
+                examples.append(word)
+
+
 def _get_example_words_with_prefix(
     typo: str, validation_index: BoundaryIndex, source_index: BoundaryIndex
 ) -> list[str]:
@@ -114,15 +124,10 @@ def _get_example_words_with_prefix(
     """
     examples: list[str] = []
     # Check validation index first
-    if typo in validation_index.prefix_index:
-        for word in validation_index.prefix_index[typo]:
-            if word != typo and len(examples) < 3:
-                examples.append(word)
+    _collect_examples_from_index(typo, validation_index.prefix_index, examples)
     # Then check source index if we need more examples
-    if len(examples) < 3 and typo in source_index.prefix_index:
-        for word in source_index.prefix_index[typo]:
-            if word != typo and word not in examples and len(examples) < 3:
-                examples.append(word)
+    if len(examples) < 3:
+        _collect_examples_from_index(typo, source_index.prefix_index, examples)
     return examples
 
 
@@ -141,16 +146,29 @@ def _get_example_words_with_suffix(
     """
     examples: list[str] = []
     # Check validation index first
-    if typo in validation_index.suffix_index:
-        for word in validation_index.suffix_index[typo]:
-            if word != typo and len(examples) < 3:
-                examples.append(word)
+    _collect_examples_from_index(typo, validation_index.suffix_index, examples)
     # Then check source index if we need more examples
-    if len(examples) < 3 and typo in source_index.suffix_index:
-        for word in source_index.suffix_index[typo]:
-            if word != typo and word not in examples and len(examples) < 3:
-                examples.append(word)
+    if len(examples) < 3:
+        _collect_examples_from_index(typo, source_index.suffix_index, examples)
     return examples
+
+
+def _is_valid_substring_match(typo: str, word: str) -> bool:
+    """Check if word contains typo as a substring (not prefix/suffix)."""
+    return typo in word and word != typo and not word.startswith(typo) and not word.endswith(typo)
+
+
+def _collect_substring_examples(
+    typo: str, word_set: set[str], examples: list[str], max_examples: int = 3
+) -> None:
+    """Collect example words containing typo as substring from word set."""
+    for word in word_set:
+        if (
+            _is_valid_substring_match(typo, word)
+            and word not in examples
+            and len(examples) < max_examples
+        ):
+            examples.append(word)
 
 
 def _get_example_words_with_substring(
@@ -168,27 +186,20 @@ def _get_example_words_with_substring(
     """
     examples: list[str] = []
     # Check validation index first
-    for word in validation_index.word_set:
-        if (
-            typo in word
-            and word != typo
-            and not word.startswith(typo)
-            and not word.endswith(typo)
-            and len(examples) < 3
-        ):
-            examples.append(word)
+    validation_set = (
+        set(validation_index.word_set)
+        if isinstance(validation_index.word_set, frozenset)
+        else validation_index.word_set
+    )
+    _collect_substring_examples(typo, validation_set, examples)
     # Then check source index if we need more examples
     if len(examples) < 3:
-        for word in source_index.word_set:
-            if (
-                typo in word
-                and word != typo
-                and not word.startswith(typo)
-                and not word.endswith(typo)
-                and word not in examples
-                and len(examples) < 3
-            ):
-                examples.append(word)
+        source_set = (
+            set(source_index.word_set)
+            if isinstance(source_index.word_set, frozenset)
+            else source_index.word_set
+        )
+        _collect_substring_examples(typo, source_set, examples)
     return examples
 
 

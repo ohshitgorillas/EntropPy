@@ -37,7 +37,8 @@ def find_blocking_word(blocking_typo: str, state: DictionaryState) -> str | None
         The blocking word if found, None otherwise
     """
     # Try to find the blocking correction in active corrections
-    for corr_typo, corr_word, _ in state.active_corrections:
+    for correction in state.active_corrections:
+        corr_typo, corr_word, _ = correction
         if corr_typo == blocking_typo:
             return corr_word
 
@@ -67,6 +68,30 @@ def extract_conflict_data(
             )
 
 
+def _extract_rejection_data(
+    entry: GraveyardEntry,
+    state: DictionaryState,
+    report_data: ReportData,
+    pass_context: PassContext,
+) -> None:
+    """Extract data for a single graveyard entry based on rejection reason."""
+    if entry.reason == RejectionReason.COLLISION_AMBIGUOUS:
+        extract_collision_data(entry, state, report_data)
+    elif entry.reason == RejectionReason.BLOCKED_BY_CONFLICT:
+        extract_conflict_data(entry, state, report_data)
+    elif entry.reason == RejectionReason.EXCLUDED_BY_PATTERN:
+        report_data.excluded_corrections.append(
+            (entry.typo, entry.word, entry.blocker or "exclusion pattern")
+        )
+    elif entry.reason == RejectionReason.TOO_SHORT:
+        min_length = pass_context.min_typo_length
+        report_data.skipped_short.append((entry.typo, entry.word, min_length))
+    elif entry.reason == RejectionReason.PATTERN_VALIDATION_FAILED:
+        report_data.rejected_patterns.append(
+            (entry.typo, entry.word, entry.boundary, entry.blocker or "validation failed")
+        )
+
+
 def extract_graveyard_data_for_reporting(
     state: DictionaryState, report_data: ReportData, pass_context: PassContext
 ) -> None:
@@ -78,21 +103,7 @@ def extract_graveyard_data_for_reporting(
         pass_context: Pass context for accessing configuration
     """
     for entry in state.graveyard.values():
-        if entry.reason == RejectionReason.COLLISION_AMBIGUOUS:
-            extract_collision_data(entry, state, report_data)
-        elif entry.reason == RejectionReason.BLOCKED_BY_CONFLICT:
-            extract_conflict_data(entry, state, report_data)
-        elif entry.reason == RejectionReason.EXCLUDED_BY_PATTERN:
-            report_data.excluded_corrections.append(
-                (entry.typo, entry.word, entry.blocker or "exclusion pattern")
-            )
-        elif entry.reason == RejectionReason.TOO_SHORT:
-            min_length = pass_context.min_typo_length
-            report_data.skipped_short.append((entry.typo, entry.word, min_length))
-        elif entry.reason == RejectionReason.PATTERN_VALIDATION_FAILED:
-            report_data.rejected_patterns.append(
-                (entry.typo, entry.word, entry.boundary, entry.blocker or "validation failed")
-            )
+        _extract_rejection_data(entry, state, report_data, pass_context)
 
     # Extract pattern data
     for pattern in state.active_patterns:

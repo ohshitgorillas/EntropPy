@@ -133,6 +133,42 @@ class ConflictRemovalPass(Pass):
             for boundary, corrections in boundary_items:
                 self._process_boundary_group(state, corrections, boundary)
 
+    def _shard_large_group(
+        self, corrections: list[tuple[str, str, BoundaryType]]
+    ) -> list[list[tuple[str, str, BoundaryType]]]:
+        """Shard a large group of corrections by first character."""
+        sharded = defaultdict(list)
+        for correction in corrections:
+            typo = correction[0]
+            if typo:
+                first_char = typo[0].lower()
+                sharded[first_char].append(correction)
+            else:
+                # Empty typos go to a special shard
+                sharded[""].append(correction)
+
+        return [shard for shard in sharded.values() if shard]
+
+    def _prepare_parallel_tasks(
+        self, by_boundary: dict[BoundaryType, list[tuple[str, str, BoundaryType]]]
+    ) -> list[tuple[BoundaryType, list[tuple[str, str, BoundaryType]]]]:
+        """Prepare tasks for parallel processing."""
+        tasks = []
+        for boundary, corrections in by_boundary.items():
+            if not corrections:
+                continue
+
+            # For large groups (especially NONE), shard by first character
+            if len(corrections) > 1000:
+                shards = self._shard_large_group(corrections)
+                for shard_corrections in shards:
+                    tasks.append((boundary, shard_corrections))
+            else:
+                # Small group, process as-is
+                tasks.append((boundary, corrections))
+
+        return tasks
+
     def _process_parallel(
         self,
         state: "DictionaryState",
@@ -145,31 +181,7 @@ class ConflictRemovalPass(Pass):
             by_boundary: Dictionary mapping boundary types to their corrections
         """
         # Prepare tasks: each boundary group, and sharded large groups
-        tasks = []
-        for boundary, corrections in by_boundary.items():
-            if not corrections:
-                continue
-
-            # For large groups (especially NONE), shard by first character
-            if len(corrections) > 1000:
-                # Shard by first character of typo
-                sharded = defaultdict(list)
-                for correction in corrections:
-                    typo = correction[0]
-                    if typo:
-                        first_char = typo[0].lower()
-                        sharded[first_char].append(correction)
-                    else:
-                        # Empty typos go to a special shard
-                        sharded[""].append(correction)
-
-                # Add each shard as a task
-                for shard_corrections in sharded.values():
-                    if shard_corrections:
-                        tasks.append((boundary, shard_corrections))
-            else:
-                # Small group, process as-is
-                tasks.append((boundary, corrections))
+        tasks = self._prepare_parallel_tasks(by_boundary)
 
         if not tasks:
             return
@@ -230,6 +242,61 @@ class ConflictRemovalPass(Pass):
                 blocker_typo,
             )
 
+    def _check_typo_against_candidates(
+        self,
+        state: "DictionaryState",
+        typo: str,
+        index_key: str,
+        candidates_by_char: dict[str, list[str]],
+        typo_to_correction: dict[str, tuple[str, str, BoundaryType]],
+        detector,
+    ) -> bool:
+        """Check if typo is blocked by any candidate, returning True if blocked."""
+        if index_key not in candidates_by_char:
+            return False
+
+        for candidate in candidates_by_char[index_key]:
+            blocking_correction = self._check_if_blocked(
+                state,
+                typo,
+                candidate,
+                typo_to_correction,
+                detector,
+            )
+            if blocking_correction:
+                return True
+
+        return False
+
+    def _remove_blocked_corrections(
+        self,
+        state: "DictionaryState",
+        typos_to_remove: set[str],
+        typo_to_correction: dict[str, tuple[str, str, BoundaryType]],
+    ) -> None:
+        """Remove all blocked corrections/patterns from state."""
+        for typo in typos_to_remove:
+            correction = typo_to_correction[typo]
+            typo_str, word, boundary_type = correction
+
+            # Remove from active set (check both corrections and patterns)
+            if correction in state.active_corrections:
+                state.remove_correction(
+                    typo_str,
+                    word,
+                    boundary_type,
+                    self.name,
+                    "Blocked by substring conflict",
+                )
+            elif correction in state.active_patterns:
+                state.remove_pattern(
+                    typo_str,
+                    word,
+                    boundary_type,
+                    self.name,
+                    "Blocked by substring conflict",
+                )
+
     def _process_boundary_group(
         self,
         state: "DictionaryState",
@@ -272,46 +339,16 @@ class ConflictRemovalPass(Pass):
             index_key = detector.get_index_key(typo)
 
             # Check against candidates that share the same index character
-            if index_key in candidates_by_char:
-                for candidate in candidates_by_char[index_key]:
-                    blocking_correction = self._check_if_blocked(
-                        state,
-                        typo,
-                        candidate,
-                        typo_to_correction,
-                        detector,
-                    )
-                    if blocking_correction:
-                        # Mark for removal
-                        typos_to_remove.add(typo)
-                        break  # No need to check other candidates
-
-            # If not blocked, add to index for future comparisons
-            if typo not in typos_to_remove:
+            if self._check_typo_against_candidates(
+                state, typo, index_key, candidates_by_char, typo_to_correction, detector
+            ):
+                typos_to_remove.add(typo)
+            else:
+                # If not blocked, add to index for future comparisons
                 candidates_by_char[index_key].append(typo)
 
         # Remove all blocked corrections/patterns
-        for typo in typos_to_remove:
-            correction = typo_to_correction[typo]
-            typo_str, word, boundary_type = correction
-
-            # Remove from active set (check both corrections and patterns)
-            if correction in state.active_corrections:
-                state.remove_correction(
-                    typo_str,
-                    word,
-                    boundary_type,
-                    self.name,
-                    "Blocked by substring conflict",
-                )
-            elif correction in state.active_patterns:
-                state.remove_pattern(
-                    typo_str,
-                    word,
-                    boundary_type,
-                    self.name,
-                    "Blocked by substring conflict",
-                )
+        self._remove_blocked_corrections(state, typos_to_remove, typo_to_correction)
 
     def _check_if_blocked(
         self,

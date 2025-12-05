@@ -200,9 +200,35 @@ def _process_single_word_with_boundary_worker(
         return  # Successfully added
 
 
-def _resolve_collision_by_frequency_worker(
+def _calculate_frequency_ratio(words: list[str]) -> tuple[str, float]:
+    """Calculate frequency ratio and return most common word."""
+    word_freqs = [(w, cached_word_frequency(w, "en")) for w in words]
+    word_freqs.sort(key=lambda x: x[1], reverse=True)
+
+    most_common = word_freqs[0]
+    second_most = word_freqs[1] if len(word_freqs) > 1 else (None, 0)
+    ratio = most_common[1] / second_most[1] if second_most[1] > 0 else float("inf")
+
+    return most_common[0], ratio
+
+
+def _handle_ambiguous_collision(
     typo: str,
     words: list[str],
+    boundary: BoundaryType,
+    ratio: float,
+    graveyard_entries: list[tuple[str, str, BoundaryType, RejectionReason, str | None]],
+) -> None:
+    """Handle ambiguous collision by adding all words to graveyard."""
+    for word in words:
+        graveyard_entries.append(
+            (typo, word, boundary, RejectionReason.COLLISION_AMBIGUOUS, f"ratio={ratio:.2f}")
+        )
+
+
+def _try_boundaries_for_correction(
+    typo: str,
+    word: str,
     boundary: BoundaryType,
     context: CandidateSelectionContext,
     validation_index,
@@ -211,39 +237,7 @@ def _resolve_collision_by_frequency_worker(
     corrections: list[tuple[str, str, BoundaryType]],
     graveyard_entries: list[tuple[str, str, BoundaryType, RejectionReason, str | None]],
 ) -> None:
-    """Resolve a collision using frequency analysis in worker.
-
-    Args:
-        typo: The typo string
-        words: List of competing words
-        boundary: The boundary type for this group
-        context: Worker context
-        validation_index: Boundary index for validation set
-        source_index: Boundary index for source words
-        exclusion_matcher: Exclusion matcher (or None)
-        corrections: List to append corrections to
-        graveyard_entries: List to append graveyard entries to
-    """
-    # Get frequencies for all words
-    word_freqs = [(w, cached_word_frequency(w, "en")) for w in words]
-    word_freqs.sort(key=lambda x: x[1], reverse=True)
-
-    most_common = word_freqs[0]
-    second_most = word_freqs[1] if len(word_freqs) > 1 else (None, 0)
-    ratio = most_common[1] / second_most[1] if second_most[1] > 0 else float("inf")
-
-    if ratio <= context.collision_threshold:
-        # Ambiguous collision - add all words to graveyard
-        for word in words:
-            graveyard_entries.append(
-                (typo, word, boundary, RejectionReason.COLLISION_AMBIGUOUS, f"ratio={ratio:.2f}")
-            )
-        return
-
-    # Can resolve collision - use most common word
-    word = most_common[0]
-
-    # Try boundaries in order
+    """Try boundaries in order to find a valid correction."""
     boundaries_to_try = _get_boundary_order(boundary)
 
     for bound in boundaries_to_try:
@@ -280,6 +274,53 @@ def _resolve_collision_by_frequency_worker(
         # Add the correction
         corrections.append((typo, word, bound))
         return  # Successfully added
+
+
+def _resolve_collision_by_frequency_worker(
+    typo: str,
+    words: list[str],
+    boundary: BoundaryType,
+    context: CandidateSelectionContext,
+    validation_index,
+    source_index,
+    exclusion_matcher: ExclusionMatcher | None,
+    corrections: list[tuple[str, str, BoundaryType]],
+    graveyard_entries: list[tuple[str, str, BoundaryType, RejectionReason, str | None]],
+) -> None:
+    """Resolve a collision using frequency analysis in worker.
+
+    Args:
+        typo: The typo string
+        words: List of competing words
+        boundary: The boundary type for this group
+        context: Worker context
+        validation_index: Boundary index for validation set
+        source_index: Boundary index for source words
+        exclusion_matcher: Exclusion matcher (or None)
+        corrections: List to append corrections to
+        graveyard_entries: List to append graveyard entries to
+    """
+    # Get frequencies for all words and calculate ratio
+    word, ratio = _calculate_frequency_ratio(words)
+
+    if ratio <= context.collision_threshold:
+        # Ambiguous collision - add all words to graveyard
+        _handle_ambiguous_collision(typo, words, boundary, ratio, graveyard_entries)
+        return
+
+    # Can resolve collision - use most common word
+    # Try boundaries in order
+    _try_boundaries_for_correction(
+        typo,
+        word,
+        boundary,
+        context,
+        validation_index,
+        source_index,
+        exclusion_matcher,
+        corrections,
+        graveyard_entries,
+    )
 
 
 def _process_collision_worker(

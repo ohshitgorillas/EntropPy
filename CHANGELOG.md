@@ -9,6 +9,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Complexity threshold increased from C to B**: Updated xenon complexity threshold from C to B (stricter), requiring refactoring of C-rank functions to meet the new standard. Successfully refactored all C-rank functions to meet B-rank threshold, reducing complexity errors from ~30+ to 0. All functions now meet the B-rank complexity requirement:
+  - `__main__.py:main` - Extracted validation, debug setup, config summary, and error handling into separate functions
+  - `core/config.py:load_config` - Extracted JSON loading, config dict building, and validation into helper functions
+  - `core/pattern_generalization.py:generalize_patterns` - Extracted debug typo extraction, graveyard filtering, and validation routing
+  - `processing/pipeline.py:run_pipeline` - Extracted platform logging, report generation, and debug summary into helper functions
+  - `processing/stages/dictionary_loading.py:load_dictionaries` - Extracted validation set loading, source word loading, and debug logging
+  - `processing/stages/typo_generation.py:generate_typos` - Extracted multiprocessing and single-threaded processing paths
+  - `processing/pipeline_reporting.py:extract_graveyard_data_for_reporting` - Extracted rejection reason handling
+  - `data/dictionary.py` - Extracted common file reading error handling and refactored multiple load functions
+  - `core/patterns/indexes.py:SourceWordIndex.__init__` - Extracted RTL and LTR pattern building
+  - `core/boundaries/types.py:BoundaryIndex.__init__` - Extracted prefix, suffix, and substring index building
+  - `resolution/boundaries/selection.py:log_boundary_selection_details` - Extracted safety details and check parts building
+  - `resolution/boundaries/utils.py` - Extracted common example word collection logic for prefix/suffix/substring
+  - `resolution/false_trigger_check.py:_determine_false_trigger_for_boundary` - Extracted NONE boundary reason determination
+  - `utils/debug.py` - Extracted pattern categorization, boundary pattern checking, and match collection into focused helper methods
+  - `core/patterns/extraction/filters.py` - Extracted debug tracking setup and pattern logging checks into separate functions
+  - `core/patterns/extraction/matcher.py` - Extracted single pattern extraction and cached pattern processing into helper functions
+  - `core/patterns/validation/validator.py:check_pattern_conflicts` - Extracted boundary-specific conflict checks (end trigger, start trigger, NONE boundary, target/source corruption)
+  - `core/patterns/validation/batch_processor.py` - Extracted pattern occurrence count and length validation checks
+  - `core/patterns/validation/conflicts.py:check_pattern_would_incorrectly_match_other_corrections` - Extracted indexed suffix/prefix matching and linear scan logic
+  - `platforms/qmk/reports.py:_write_score_ranges` - Extracted pattern and direct score range writing
+  - `platforms/qmk/ranking/sorter.py:_log_ranking_debug` - Extracted tier info calculation and nearby corrections collection
+  - `platforms/qmk/ranking/tiers.py:separate_by_type` - Extracted pattern replacement building and correction type processing
+  - `platforms/espanso/file_writing.py:write_yaml_files` - Extracted filename generation and write task creation
+  - `resolution/platform_conflicts/resolution.py:should_remove_shorter` - Extracted boundary priority identification and false trigger checking
+  - `resolution/platform_conflicts/detection.py:_process_typo_conflicts` - Extracted conflict combination processing
+  - `resolution/collision.py:_process_single_threaded_collisions` - Extracted single word and collision item processing
+  - `resolution/passes/conflict_removal.py` - Extracted sharding logic, task preparation, and boundary group processing
+  - `resolution/passes/candidate_selection_workers.py:_resolve_collision_by_frequency_worker` - Extracted frequency calculation and boundary trying logic
+  - `resolution/passes/pattern_generalization.py:run` - Extracted match direction retrieval and rejected pattern processing
+  - `resolution/passes/candidate_selection/selector.py:_resolve_collision_by_frequency` - Extracted ambiguous collision handling and boundary trying
+  - Fixed module-level complexity issue in `resolution/boundaries/selection.py`
 - **Major code organization refactoring**: Reorganized codebase by splitting large files and consolidating related modules into logical package structures:
   - **Pattern code consolidation**: Moved pattern-related files into `core/patterns/` package with subdirectories:
     - `core/patterns/indexes.py` - Pattern indexing classes

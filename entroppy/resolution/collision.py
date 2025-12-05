@@ -12,6 +12,10 @@ from entroppy.matching import ExclusionMatcher
 from entroppy.utils.debug import DebugTypoMatcher
 
 from .boundaries.selection import log_boundary_selection_details
+from .collision_helpers import (
+    _process_collision_item,
+    _process_single_word_item,
+)
 from .processing import process_collision_case, process_single_word_correction
 from .worker_context import (
     CollisionResolutionContext,
@@ -234,10 +238,10 @@ def _process_single_threaded_collisions(
     else:
         items_iter = list(typo_map.items())
 
-    final_corrections = []
-    skipped_collisions = []
-    skipped_short = []
-    excluded_corrections = []
+    final_corrections: list[Correction] = []
+    skipped_collisions: list[tuple[str, list[str], float, BoundaryType]] = []
+    skipped_short: list[tuple[str, str, int]] = []
+    excluded_corrections: list[tuple[str, str, str | None]] = []
 
     if exclusion_matcher is None:
         exclusion_matcher = ExclusionMatcher(set())
@@ -246,11 +250,9 @@ def _process_single_threaded_collisions(
         unique_words = list(set(word_list))
 
         if len(unique_words) == 1:
-            # Single word case: no collision
-            word = unique_words[0]
-            correction, was_skipped_short, excluded_info, _ = process_single_word_correction(
+            _process_single_word_item(
                 typo,
-                word,
+                unique_words,
                 min_typo_length,
                 min_word_length,
                 user_words,
@@ -259,47 +261,27 @@ def _process_single_threaded_collisions(
                 debug_typo_matcher,
                 validation_index,
                 source_index,
+                final_corrections,
+                skipped_short,
+                excluded_corrections,
             )
-
-            if was_skipped_short:
-                skipped_short.append((typo, word, len(typo)))
-            elif excluded_info:
-                excluded_corrections.append(excluded_info)
-            elif correction:
-                final_corrections.append(correction)
         else:
-            # Collision case: multiple words compete for same typo
-            corrections_list, excluded_list, skipped_collisions_list, boundary_details_list = (
-                process_collision_case(
-                    typo,
-                    unique_words,
-                    freq_ratio,
-                    min_typo_length,
-                    min_word_length,
-                    user_words,
-                    exclusion_matcher,
-                    debug_words,
-                    debug_typo_matcher,
-                    validation_index,
-                    source_index,
-                )
+            _process_collision_item(
+                typo,
+                unique_words,
+                freq_ratio,
+                min_typo_length,
+                min_word_length,
+                user_words,
+                exclusion_matcher,
+                debug_words,
+                debug_typo_matcher,
+                validation_index,
+                source_index,
+                final_corrections,
+                excluded_corrections,
+                skipped_collisions,
             )
-
-            # Accumulate all results
-            final_corrections.extend(corrections_list)
-            excluded_corrections.extend(excluded_list)
-            skipped_collisions.extend(skipped_collisions_list)
-
-            # Log boundary selection details for accepted corrections
-            if boundary_details_list and debug_typo_matcher:
-                for bd in boundary_details_list:
-                    log_boundary_selection_details(
-                        bd["typo"],
-                        bd["word"],
-                        BoundaryType(bd["boundary"]),
-                        bd["details"],
-                        debug_typo_matcher,
-                    )
 
     return final_corrections, skipped_collisions, skipped_short, excluded_corrections
 

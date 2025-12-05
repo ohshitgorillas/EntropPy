@@ -74,7 +74,10 @@ def get_formatting_worker_context() -> FormattingContext:
         RuntimeError: If called before init_formatting_worker
     """
     try:
-        return _formatting_worker_context.value  # type: ignore[no-any-return]
+        context = _formatting_worker_context.value
+        if not isinstance(context, FormattingContext):
+            raise RuntimeError("Invalid formatting context type")
+        return context
     except AttributeError as e:
         raise RuntimeError(
             "Formatting worker context not initialized. Call init_formatting_worker first."

@@ -52,6 +52,91 @@ def process_word_worker(word: str) -> tuple[str, list[tuple[str, str]], list[str
     return (word, corrections, debug_messages)
 
 
+def _process_multiprocessing(
+    dict_data: DictionaryData,
+    config: Config,
+    verbose: bool,
+) -> tuple[defaultdict[str, list[str]], list[str]]:
+    """Process words using multiprocessing."""
+    if verbose:
+        logger.info(f"  Using {config.jobs} parallel workers")
+        logger.info("  Initializing workers and building indexes...")
+
+    # Create worker context (immutable, serializable)
+    context = WorkerContext.from_dict_data(dict_data, config)
+
+    typo_map = defaultdict(list)
+    all_debug_messages = []
+
+    with Pool(
+        processes=config.jobs,
+        initializer=init_worker,
+        initargs=(context,),
+    ) as pool:
+        results = pool.imap_unordered(process_word_worker, dict_data.source_words)
+
+        # Wrap with progress bar
+        if verbose:
+            results_wrapped_iter: Any = tqdm(
+                results,
+                total=len(dict_data.source_words),
+                desc="Processing words",
+                unit="word",
+            )
+        else:
+            results_wrapped_iter = results
+
+        for word, corrections, debug_messages in results_wrapped_iter:
+            for typo, correction_word in corrections:
+                typo_map[typo].append(correction_word)
+            # Collect debug messages from workers
+            all_debug_messages.extend(debug_messages)
+
+    # Print all collected debug messages after workers complete
+    for message in all_debug_messages:
+        logger.debug(message)
+
+    return typo_map, all_debug_messages
+
+
+def _process_single_threaded(
+    dict_data: DictionaryData,
+    config: Config,
+    verbose: bool,
+) -> tuple[defaultdict[str, list[str]], list[str]]:
+    """Process words using single-threaded mode."""
+    typo_map = defaultdict(list)
+    all_debug_messages: list[str] = []
+
+    if verbose:
+        words_iter: list[str] = list(
+            tqdm(dict_data.source_words, desc="Processing words", unit="word")
+        )
+    else:
+        words_iter = dict_data.source_words
+
+    for word in words_iter:
+        # Convert dict[str, str] to dict[str, str] | None (already correct type)
+        adj_map = dict_data.adjacent_letters_map if dict_data.adjacent_letters_map else None
+        corrections, debug_messages = process_word(
+            word,
+            dict_data.validation_set,
+            dict_data.source_words_set,
+            config.typo_freq_threshold,
+            adj_map,
+            dict_data.exclusions,
+            frozenset(config.debug_words),
+            config.debug_typo_matcher,
+        )
+        for typo, correction_word in corrections:
+            typo_map[typo].append(correction_word)
+        # In single-threaded mode, log immediately
+        for message in debug_messages:
+            logger.debug(message)
+
+    return typo_map, all_debug_messages
+
+
 def generate_typos(
     dict_data: DictionaryData,
     config: Config,
@@ -72,72 +157,10 @@ def generate_typos(
     if verbose:
         logger.info(f"  Processing {len(dict_data.source_words)} words...")
 
-    typo_map = defaultdict(list)
-    all_debug_messages = []
-
     if config.jobs > 1:
-        # Multiprocessing mode
-        if verbose:
-            logger.info(f"  Using {config.jobs} parallel workers")
-            logger.info("  Initializing workers and building indexes...")
-
-        # Create worker context (immutable, serializable)
-        context = WorkerContext.from_dict_data(dict_data, config)
-
-        with Pool(
-            processes=config.jobs,
-            initializer=init_worker,
-            initargs=(context,),
-        ) as pool:
-            results = pool.imap_unordered(process_word_worker, dict_data.source_words)
-
-            # Wrap with progress bar
-            if verbose:
-                results_wrapped_iter: Any = tqdm(
-                    results,
-                    total=len(dict_data.source_words),
-                    desc="Processing words",
-                    unit="word",
-                )
-            else:
-                results_wrapped_iter = results
-
-            for word, corrections, debug_messages in results_wrapped_iter:
-                for typo, correction_word in corrections:
-                    typo_map[typo].append(correction_word)
-                # Collect debug messages from workers
-                all_debug_messages.extend(debug_messages)
-
-        # Print all collected debug messages after workers complete
-        for message in all_debug_messages:
-            logger.debug(message)
+        typo_map, _ = _process_multiprocessing(dict_data, config, verbose)
     else:
-        # Single-threaded mode
-        if verbose:
-            words_iter: list[str] = list(
-                tqdm(dict_data.source_words, desc="Processing words", unit="word")
-            )
-        else:
-            words_iter = dict_data.source_words
-
-        for word in words_iter:
-            # Convert dict[str, str] to dict[str, str] | None (already correct type)
-            adj_map = dict_data.adjacent_letters_map if dict_data.adjacent_letters_map else None
-            corrections, debug_messages = process_word(
-                word,
-                dict_data.validation_set,
-                dict_data.source_words_set,
-                config.typo_freq_threshold,
-                adj_map,
-                dict_data.exclusions,
-                frozenset(config.debug_words),
-                config.debug_typo_matcher,
-            )
-            for typo, correction_word in corrections:
-                typo_map[typo].append(correction_word)
-            # In single-threaded mode, log immediately
-            for message in debug_messages:
-                logger.debug(message)
+        typo_map, _ = _process_single_threaded(dict_data, config, verbose)
 
     elapsed_time = time.time() - start_time
 

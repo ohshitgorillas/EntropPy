@@ -19,6 +19,34 @@ class SourceWordIndex:
         source_words: Original source words set for reference
     """
 
+    def _build_rtl_patterns(self, word: str) -> None:
+        """Build RTL patterns (prefixes) for a word."""
+        # RTL: Index all patterns that appear at word boundaries (prefixes)
+        # A pattern appears at a boundary if it starts at:
+        # - Position 0 (start of word), OR
+        # - After a non-alpha character
+        for i in range(len(word)):
+            # Check if position i is at a word boundary
+            if i == 0 or not word[i - 1].isalpha():
+                # Extract all substrings starting at this boundary position
+                for j in range(i + 1, len(word) + 1):
+                    pattern = word[i:j]
+                    self.rtl_patterns.add(pattern)
+
+    def _build_ltr_patterns(self, word: str) -> None:
+        """Build LTR patterns (suffixes) for a word."""
+        # LTR: Index all patterns that appear at word boundaries (suffixes)
+        # A pattern appears at a boundary if it ends at:
+        # - End of word, OR
+        # - Before a non-alpha character
+        for i in range(len(word)):
+            # Extract all substrings ending at position i or later
+            for j in range(i + 1, len(word) + 1):
+                pattern = word[i:j]
+                # Check if this pattern ends at a word boundary
+                if j >= len(word) or not word[j].isalpha():
+                    self.ltr_patterns.add(pattern)
+
     def __init__(
         self, source_words: set[str] | frozenset[str], match_direction: MatchDirection
     ) -> None:
@@ -34,29 +62,9 @@ class SourceWordIndex:
 
         for word in source_words:
             if match_direction == MatchDirection.RIGHT_TO_LEFT:
-                # RTL: Index all patterns that appear at word boundaries (prefixes)
-                # A pattern appears at a boundary if it starts at:
-                # - Position 0 (start of word), OR
-                # - After a non-alpha character
-                for i in range(len(word)):
-                    # Check if position i is at a word boundary
-                    if i == 0 or not word[i - 1].isalpha():
-                        # Extract all substrings starting at this boundary position
-                        for j in range(i + 1, len(word) + 1):
-                            pattern = word[i:j]
-                            self.rtl_patterns.add(pattern)
+                self._build_rtl_patterns(word)
             else:
-                # LTR: Index all patterns that appear at word boundaries (suffixes)
-                # A pattern appears at a boundary if it ends at:
-                # - End of word, OR
-                # - Before a non-alpha character
-                for i in range(len(word)):
-                    # Extract all substrings ending at position i or later
-                    for j in range(i + 1, len(word) + 1):
-                        pattern = word[i:j]
-                        # Check if this pattern ends at a word boundary
-                        if j >= len(word) or not word[j].isalpha():
-                            self.ltr_patterns.add(pattern)
+                self._build_ltr_patterns(word)
 
     def would_corrupt(self, typo_pattern: str, match_direction: MatchDirection) -> bool:
         """Check if a pattern would corrupt any source word.

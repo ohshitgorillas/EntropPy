@@ -33,6 +33,74 @@ def _build_pattern_sets(
     return pattern_typos, replaced_by_patterns
 
 
+def _build_replaced_by_patterns(
+    patterns: list[Correction],
+    pattern_replacements: dict[Correction, list[Correction]],
+) -> set[tuple[str, str]]:
+    """Build set of (typo, word) tuples replaced by patterns."""
+    replaced_by_patterns = set()
+    for pattern in patterns:
+        pattern_key = (pattern[0], pattern[1], pattern[2])
+        if pattern_key in pattern_replacements:
+            for replaced in pattern_replacements[pattern_key]:
+                replaced_by_patterns.add((replaced[0], replaced[1]))
+    return replaced_by_patterns
+
+
+def _process_user_correction(
+    correction: Correction,
+    user_corrections: list[Correction],
+    debug_words: set[str] | None,
+    debug_typo_matcher: "DebugTypoMatcher | None",
+) -> None:
+    """Process a user word correction."""
+    user_corrections.append(correction)
+    log_separation_by_type(
+        correction,
+        "user word",
+        f"Separated as user word (infinite priority, tier 0, "
+        f"total user words: {len(user_corrections)})",
+        debug_words or set(),
+        debug_typo_matcher,
+    )
+
+
+def _process_pattern_correction(
+    correction: Correction,
+    pattern_corrections: list[Correction],
+    debug_words: set[str] | None,
+    debug_typo_matcher: "DebugTypoMatcher | None",
+) -> None:
+    """Process a pattern correction."""
+    pattern_corrections.append(correction)
+    log_separation_by_type(
+        correction,
+        "pattern",
+        f"Separated as pattern (tier 1, scored by sum of replacement "
+        f"frequencies, total patterns: {len(pattern_corrections)})",
+        debug_words or set(),
+        debug_typo_matcher,
+    )
+
+
+def _process_direct_correction(
+    correction: Correction,
+    direct_corrections: list[Correction],
+    debug_words: set[str] | None,
+    debug_typo_matcher: "DebugTypoMatcher | None",
+) -> None:
+    """Process a direct correction."""
+    direct_corrections.append(correction)
+    log_separation_by_type(
+        correction,
+        "direct",
+        f"Separated as direct correction (tier 2, scored by word frequency, "
+        f"total direct: {len(direct_corrections)})",
+        debug_words or set(),
+        debug_typo_matcher,
+    )
+
+
 def separate_by_type(
     corrections: list[Correction],
     patterns: list[Correction],
@@ -58,58 +126,35 @@ def separate_by_type(
     Returns:
         Tuple of (user_corrections, pattern_corrections, direct_corrections)
     """
-    user_corrections = []
-    pattern_corrections = []
-    direct_corrections = []
+    user_corrections: list[Correction] = []
+    pattern_corrections: list[Correction] = []
+    direct_corrections: list[Correction] = []
 
     # Use cached sets if provided, otherwise build them
-    if cached_pattern_typos is not None:
-        pattern_typos = cached_pattern_typos
-    else:
-        pattern_typos = {(p[0], p[1]) for p in patterns}
+    pattern_typos = (
+        cached_pattern_typos
+        if cached_pattern_typos is not None
+        else {(p[0], p[1]) for p in patterns}
+    )
 
-    if cached_replaced_by_patterns is not None:
-        replaced_by_patterns = cached_replaced_by_patterns
-    else:
-        replaced_by_patterns = set()
-        for pattern in patterns:
-            pattern_key = (pattern[0], pattern[1], pattern[2])
-            if pattern_key in pattern_replacements:
-                for replaced in pattern_replacements[pattern_key]:
-                    replaced_by_patterns.add((replaced[0], replaced[1]))
+    replaced_by_patterns = (
+        cached_replaced_by_patterns
+        if cached_replaced_by_patterns is not None
+        else _build_replaced_by_patterns(patterns, pattern_replacements)
+    )
 
     for typo, word, boundary in corrections:
         correction = (typo, word, boundary)
 
         if word in user_words:
-            user_corrections.append((typo, word, boundary))
-            log_separation_by_type(
-                correction,
-                "user word",
-                f"Separated as user word (infinite priority, tier 0, "
-                f"total user words: {len(user_corrections)})",
-                debug_words or set(),
-                debug_typo_matcher,
-            )
+            _process_user_correction(correction, user_corrections, debug_words, debug_typo_matcher)
         elif (typo, word) in pattern_typos:
-            pattern_corrections.append((typo, word, boundary))
-            log_separation_by_type(
-                correction,
-                "pattern",
-                f"Separated as pattern (tier 1, scored by sum of replacement "
-                f"frequencies, total patterns: {len(pattern_corrections)})",
-                debug_words or set(),
-                debug_typo_matcher,
+            _process_pattern_correction(
+                correction, pattern_corrections, debug_words, debug_typo_matcher
             )
         elif (typo, word) not in replaced_by_patterns:
-            direct_corrections.append((typo, word, boundary))
-            log_separation_by_type(
-                correction,
-                "direct",
-                f"Separated as direct correction (tier 2, scored by word frequency, "
-                f"total direct: {len(direct_corrections)})",
-                debug_words or set(),
-                debug_typo_matcher,
+            _process_direct_correction(
+                correction, direct_corrections, debug_words, debug_typo_matcher
             )
         else:
             # Correction was replaced by a pattern

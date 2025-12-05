@@ -79,8 +79,36 @@ class Config(BaseModel):
     }
 
 
-def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Config:
-    """Load JSON config, override with CLI args, return Config object."""
+def _load_json_config(json_path: str) -> dict:
+    """Load JSON config file with error handling."""
+    json_path = expand_file_path(json_path) or json_path
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            result: dict[str, object] = json.load(f)
+            return result
+    except FileNotFoundError:
+        logger.error(f"✗ Config file not found: {json_path}")
+        logger.error("  Please check the file path and try again")
+        raise
+    except json.JSONDecodeError as e:
+        logger.error(f"✗ Invalid JSON in config file {json_path}: {e}")
+        logger.error("  Please validate your JSON syntax")
+        raise ValueError(f"Invalid JSON configuration: {e}") from e
+    except PermissionError:
+        logger.error(f"✗ Permission denied reading config file: {json_path}")
+        logger.error("  Please check file permissions and try again")
+        raise
+    except UnicodeDecodeError as e:
+        logger.error(f"✗ Encoding error reading config file {json_path}: {e}")
+        logger.error("  Please ensure the file is UTF-8 encoded")
+        raise
+    except Exception as e:
+        logger.error(f"✗ Unexpected error reading config file {json_path}: {e}")
+        raise
+
+
+def _build_config_dict(cli_args, parser: ArgumentParser, json_config: dict) -> dict:
+    """Build configuration dictionary with CLI args taking precedence over JSON."""
 
     def get_value(key: str, fallback):
         """Get value with correct priority: CLI > JSON > Fallback."""
@@ -92,35 +120,7 @@ def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Conf
         # Otherwise, try JSON, then the hardcoded fallback
         return json_config.get(key, fallback)
 
-    json_config = {}
-    if json_path:
-        json_path = expand_file_path(json_path) or json_path
-        try:
-            with open(json_path, "r", encoding="utf-8") as f:
-                json_config = json.load(f)
-        except FileNotFoundError:
-            logger.error(f"✗ Config file not found: {json_path}")
-            logger.error("  Please check the file path and try again")
-            raise
-        except json.JSONDecodeError as e:
-            logger.error(f"✗ Invalid JSON in config file {json_path}: {e}")
-            logger.error("  Please validate your JSON syntax")
-            raise ValueError(f"Invalid JSON configuration: {e}") from e
-        except PermissionError:
-            logger.error(f"✗ Permission denied reading config file: {json_path}")
-            logger.error("  Please check file permissions and try again")
-            raise
-        except UnicodeDecodeError as e:
-            logger.error(f"✗ Encoding error reading config file {json_path}: {e}")
-            logger.error("  Please ensure the file is UTF-8 encoded")
-            raise
-        except Exception as e:
-            logger.error(f"✗ Unexpected error reading config file {json_path}: {e}")
-            raise
-
-    # Build config dict with CLI args taking precedence over JSON
-    # Pydantic will handle validation and type coercion automatically
-    config_dict = {
+    return {
         "platform": get_value("platform", "espanso"),
         "top_n": get_value("top_n", None),
         "max_word_length": get_value("max_word_length", 10),
@@ -144,10 +144,26 @@ def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Conf
         "debug_typos": get_value("debug_typos", None),
     }
 
-    # Pydantic handles validation automatically
+
+def _validate_and_create_config(config_dict: dict[str, object]) -> Config:
+    """Validate and create Config object from dictionary."""
     try:
-        return Config.model_validate(config_dict)  # type: ignore[no-any-return]
+        config: Config = Config.model_validate(config_dict)
+        return config
     except ValidationError as e:
         logger.error(f"✗ Configuration validation failed: {e}")
         logger.error("  Please check your configuration values")
         raise ValueError(f"Invalid configuration: {e}") from e
+
+
+def load_config(json_path: str | None, cli_args, parser: ArgumentParser) -> Config:
+    """Load JSON config, override with CLI args, return Config object."""
+    json_config = {}
+    if json_path:
+        json_config = _load_json_config(json_path)
+
+    # Build config dict with CLI args taking precedence over JSON
+    config_dict = _build_config_dict(cli_args, parser, json_config)
+
+    # Pydantic handles validation automatically
+    return _validate_and_create_config(config_dict)

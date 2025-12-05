@@ -192,6 +192,121 @@ def _find_example_suffix_match(
     return None
 
 
+def _check_validation_word_conflicts(
+    typo_pattern: str, validation_set: set[str]
+) -> tuple[bool, str | None]:
+    """Check if pattern conflicts with validation words."""
+    if typo_pattern in validation_set:
+        return False, f"Conflicts with validation word '{typo_pattern}'"
+    return True, None
+
+
+def _check_end_trigger_conflict(
+    typo_pattern: str,
+    boundary: BoundaryType,
+    validation_index: BoundaryIndex,
+    validation_set: set[str],
+) -> tuple[bool, str | None]:
+    """Check if pattern would trigger at end of validation words."""
+    # Skip this check for LEFT and BOTH boundaries (they don't match at word end)
+    if boundary in (BoundaryType.LEFT, BoundaryType.BOTH):
+        return True, None
+
+    if would_trigger_at_end(typo_pattern, validation_index):
+        example_word = _find_example_suffix_match(typo_pattern, validation_index, validation_set)
+        if example_word:
+            return False, f"Would trigger at end of validation words (e.g., '{example_word}')"
+        return False, "Would trigger at end of validation words"
+
+    return True, None
+
+
+def _check_start_trigger_conflict(
+    typo_pattern: str,
+    boundary: BoundaryType,
+    validation_index: BoundaryIndex,
+    validation_set: set[str],
+) -> tuple[bool, str | None]:
+    """Check if pattern would trigger at start of validation words."""
+    # Skip this check for RIGHT and BOTH boundaries (they don't match at word start)
+    if boundary in (BoundaryType.RIGHT, BoundaryType.BOTH):
+        return True, None
+
+    if would_trigger_at_start(typo_pattern, validation_index):
+        example_word = _find_example_prefix_match(typo_pattern, validation_index, validation_set)
+        if example_word:
+            return False, f"Would trigger at start of validation words (e.g., '{example_word}')"
+        return False, "Would trigger at start of validation words"
+
+    return True, None
+
+
+def _check_none_boundary_substring_conflict(
+    typo_pattern: str,
+    boundary: BoundaryType,
+    validation_index: BoundaryIndex,
+    validation_set: set[str],
+) -> tuple[bool, str | None]:
+    """Check if NONE boundary pattern appears as substring in validation words."""
+    if boundary != BoundaryType.NONE:
+        return True, None
+
+    if is_substring_of_any(typo_pattern, validation_index):
+        # Find an example validation word containing the pattern
+        example_word = None
+        for word in validation_set:
+            if typo_pattern in word and typo_pattern != word:
+                example_word = word
+                break
+        if example_word:
+            return False, f"Would falsely trigger on correctly spelled word '{example_word}'"
+        return False, "Would falsely trigger on correctly spelled words"
+
+    return True, None
+
+
+def _check_target_word_corruption(
+    typo_pattern: str,
+    target_words: set[str] | None,
+    match_direction: MatchDirection,
+) -> tuple[bool, str | None]:
+    """Check if pattern would corrupt target words."""
+    if not target_words:
+        return True, None
+
+    would_corrupt_target = any(
+        _cached_would_corrupt(typo_pattern, target_word, match_direction)
+        for target_word in target_words
+    )
+    if would_corrupt_target:
+        return False, "Would corrupt target words"
+
+    return True, None
+
+
+def _check_source_word_corruption(
+    typo_pattern: str,
+    source_words: set[str],
+    match_direction: MatchDirection,
+    source_word_index: "SourceWordIndex | None",
+) -> tuple[bool, str | None]:
+    """Check if pattern would corrupt source words."""
+    if source_word_index is not None:
+        # Use optimized index lookup
+        would_corrupt_source = source_word_index.would_corrupt(typo_pattern, match_direction)
+    else:
+        # Fallback to linear search (for backward compatibility or when index not available)
+        would_corrupt_source = any(
+            _cached_would_corrupt(typo_pattern, source_word, match_direction)
+            for source_word in source_words
+        )
+
+    if would_corrupt_source:
+        return False, "Would corrupt source words"
+
+    return True, None
+
+
 def check_pattern_conflicts(
     typo_pattern: str,
     validation_set: set[str],
@@ -219,70 +334,41 @@ def check_pattern_conflicts(
         Tuple of (is_safe, error_message). error_message is None if safe.
     """
     # Check if pattern conflicts with validation words
-    if typo_pattern in validation_set:
-        return False, f"Conflicts with validation word '{typo_pattern}'"
+    is_safe, error = _check_validation_word_conflicts(typo_pattern, validation_set)
+    if not is_safe:
+        return is_safe, error
 
     # Check if pattern would trigger at end of validation words
-    # Skip this check for LEFT and BOTH boundaries (they don't match at word end)
-    if boundary not in (BoundaryType.LEFT, BoundaryType.BOTH):
-        if would_trigger_at_end(typo_pattern, validation_index):
-            # Find an example validation word that ends with the pattern
-            example_word = _find_example_suffix_match(
-                typo_pattern, validation_index, validation_set
-            )
-            if example_word:
-                return False, f"Would trigger at end of validation words (e.g., '{example_word}')"
-            return False, "Would trigger at end of validation words"
+    is_safe, error = _check_end_trigger_conflict(
+        typo_pattern, boundary, validation_index, validation_set
+    )
+    if not is_safe:
+        return is_safe, error
 
     # Check if pattern would trigger at start of validation words
-    # Skip this check for RIGHT and BOTH boundaries (they don't match at word start)
-    if boundary not in (BoundaryType.RIGHT, BoundaryType.BOTH):
-        if would_trigger_at_start(typo_pattern, validation_index):
-            # Find an example validation word that starts with the pattern
-            example_word = _find_example_prefix_match(
-                typo_pattern, validation_index, validation_set
-            )
-            if example_word:
-                return False, f"Would trigger at start of validation words (e.g., '{example_word}')"
-            return False, "Would trigger at start of validation words"
+    is_safe, error = _check_start_trigger_conflict(
+        typo_pattern, boundary, validation_index, validation_set
+    )
+    if not is_safe:
+        return is_safe, error
 
     # Check if pattern appears as substring in validation words (for NONE boundary)
-    # NONE boundary matches anywhere, so it would cause false triggers if the pattern
-    # appears as a substring in any validation word
-    if boundary == BoundaryType.NONE:
-        if is_substring_of_any(typo_pattern, validation_index):
-            # Find an example validation word containing the pattern
-            example_word = None
-            for word in validation_set:
-                if typo_pattern in word and typo_pattern != word:
-                    example_word = word
-                    break
-            if example_word:
-                return False, f"Would falsely trigger on correctly spelled word '{example_word}'"
-            return False, "Would falsely trigger on correctly spelled words"
+    is_safe, error = _check_none_boundary_substring_conflict(
+        typo_pattern, boundary, validation_index, validation_set
+    )
+    if not is_safe:
+        return is_safe, error
 
-    # FIRST: Check if pattern would corrupt target words
-    # (highest priority - prevents predictive corrections)
-    # This prevents corrections that would trigger when typing the target word correctly
-    if target_words:
-        would_corrupt_target = any(
-            _cached_would_corrupt(typo_pattern, target_word, match_direction)
-            for target_word in target_words
-        )
-        if would_corrupt_target:
-            return False, "Would corrupt target words"
+    # Check if pattern would corrupt target words (highest priority)
+    is_safe, error = _check_target_word_corruption(typo_pattern, target_words, match_direction)
+    if not is_safe:
+        return is_safe, error
 
     # Check if pattern would corrupt source words
-    if source_word_index is not None:
-        # Use optimized index lookup
-        would_corrupt_source = source_word_index.would_corrupt(typo_pattern, match_direction)
-    else:
-        # Fallback to linear search (for backward compatibility or when index not available)
-        would_corrupt_source = any(
-            _cached_would_corrupt(typo_pattern, source_word, match_direction)
-            for source_word in source_words
-        )
-    if would_corrupt_source:
-        return False, "Would corrupt source words"
+    is_safe, error = _check_source_word_corruption(
+        typo_pattern, source_words, match_direction, source_word_index
+    )
+    if not is_safe:
+        return is_safe, error
 
     return True, None

@@ -10,25 +10,17 @@ from entroppy.utils.debug import DebugTypoMatcher
 from entroppy.utils.logging import setup_logger
 
 
-def main():
-    """Main entry point."""
-    parser = create_parser()
-    args = parser.parse_args()
-
-    # Load configuration
-    config = load_config(args.config, args, parser)
-
-    # Setup logging
-    setup_logger(verbose=config.verbose, debug=config.debug)
-
-    # Print startup banner
-    if config.verbose:
+def _print_startup_banner(verbose: bool) -> None:
+    """Print startup banner if verbose."""
+    if verbose:
         logger.info("=" * 60)
         logger.info("EntropPy - Autocorrect Dictionary Generator")
         logger.info("=" * 60)
         logger.info("")
 
-    # Validate
+
+def _validate_config(config, parser) -> None:
+    """Validate configuration settings."""
     if not config.top_n and not config.include:
         parser.error("Must specify either --top-n or --include (or both)")
 
@@ -43,15 +35,18 @@ def main():
         logger.warning("   Large files may cause Espanso performance issues")
         logger.warning("")
 
-    # Validate debug flags
     if (config.debug_words or config.debug_typos) and not (config.debug and config.verbose):
         parser.error("--debug-words and --debug-typos require BOTH --debug and --verbose flags")
 
-    # Create debug typo matcher (post-init)
+
+def _setup_debug_matcher(config) -> None:
+    """Create debug typo matcher if needed."""
     if config.debug_typos:
         config.debug_typo_matcher = DebugTypoMatcher.from_patterns(config.debug_typos)
 
-    # Print configuration summary
+
+def _print_config_summary(config) -> None:
+    """Print configuration summary if verbose."""
     if config.verbose:
         logger.info("Configuration:")
         logger.info(f"  Platform: {config.platform}")
@@ -66,7 +61,9 @@ def main():
         logger.info(f"  Workers: {config.jobs}")
         logger.info("")
 
-    # Run pipeline
+
+def _run_pipeline_with_error_handling(config) -> None:
+    """Run pipeline with proper error handling."""
     try:
         run_pipeline(config)
         if config.verbose:
@@ -85,6 +82,33 @@ def main():
             logger.error("✗ Processing failed")
             logger.error("=" * 60)
         raise
+
+
+def main():
+    """Main entry point."""
+    parser = create_parser()
+    args = parser.parse_args()
+
+    # Load configuration
+    config = load_config(args.config, args, parser)
+
+    # Setup logging
+    setup_logger(verbose=config.verbose, debug=config.debug)
+
+    # Print startup banner
+    _print_startup_banner(config.verbose)
+
+    # Validate configuration
+    _validate_config(config, parser)
+
+    # Setup debug matcher
+    _setup_debug_matcher(config)
+
+    # Print configuration summary
+    _print_config_summary(config)
+
+    # Run pipeline
+    _run_pipeline_with_error_handling(config)
 
 
 if __name__ == "__main__":

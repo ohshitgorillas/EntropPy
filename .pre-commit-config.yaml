@@ -26,11 +26,18 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: [types-tqdm, types-pyyaml]
-        args: ['--show-error-codes', '--ignore-missing-imports']
+        args: ['--show-error-codes', '--ignore-missing-imports', '--follow-imports=normal']
         exclude: ^(tests/|examples/|vulture_whitelist\.py)
 
   - repo: local
     hooks:
+      - id: check-file-length
+        name: check-file-length
+        entry: ./.pre-commit-hooks/check_file_length.py
+        language: system
+        types: [python]
+        pass_filenames: true
+        stages: [pre-commit]
       - id: pytest
         name: pytest
         entry: ./venv/bin/pytest
@@ -51,7 +58,7 @@ repos:
         name: xenon
         entry: ./venv/bin/xenon
         language: system
-        args: [--max-absolute=C, --max-modules=C, --max-average=C, entroppy]
+        args: [--max-absolute=B, --max-modules=B, --max-average=B, entroppy]
         exclude: ^(tests/|examples/|venv/|docs/)
         pass_filenames: false
         stages: [pre-commit]

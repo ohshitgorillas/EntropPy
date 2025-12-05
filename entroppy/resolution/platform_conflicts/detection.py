@@ -135,7 +135,7 @@ def _process_typo_conflicts(
     Returns:
         Tuple of (corrections_to_remove, conflict_pairs)
     """
-    corrections_to_remove = []
+    corrections_to_remove: list[tuple[tuple[str, str, BoundaryType], str]] = []
     conflict_pairs: dict[tuple[str, str, BoundaryType], tuple[str, str, BoundaryType]] = {}
 
     checked_shorter_typos: set[str] = set()
@@ -148,47 +148,81 @@ def _process_typo_conflicts(
 
                 # Check if shorter is a substring of current
                 if is_substring(shorter_formatted_typo, formatted_typo):
-                    # Check all combinations of corrections with early termination
-                    for correction1, _, boundary1 in shorter_corrections:
-                        if correction1 in corrections_to_remove_set:
-                            continue
-
-                        for correction2, _, boundary2 in corrections_for_typo:
-                            if correction2 in corrections_to_remove_set:
-                                continue
-
-                            # Process conflict pair
-                            result, conflict_pair = process_conflict_pair(
-                                correction1,
-                                correction2,
-                                shorter_formatted_typo,
-                                formatted_typo,
-                                boundary1,
-                                boundary2,
-                                match_direction,
-                                processed_pairs,
-                                corrections_to_remove_set,
-                                validation_index,
-                                source_index,
-                                debug_words,
-                                debug_typo_matcher,
-                            )
-
-                            if result is not None:
-                                correction_to_remove, reason = result
-                                corrections_to_remove.append((correction_to_remove, reason))
-                                if conflict_pair is not None:
-                                    removed_correction, conflicting_correction = conflict_pair
-                                    conflict_pairs[removed_correction] = conflicting_correction
-                                    corrections_to_remove_set.add(correction_to_remove)
-
-                            # Break early if all corrections for this formatted typo are marked
-                            if all(
-                                c in corrections_to_remove_set for c, _, _ in corrections_for_typo
-                            ):
-                                break
+                    all_marked = _process_conflict_combinations(
+                        shorter_corrections,
+                        corrections_for_typo,
+                        shorter_formatted_typo,
+                        formatted_typo,
+                        match_direction,
+                        processed_pairs,
+                        corrections_to_remove_set,
+                        corrections_to_remove,
+                        conflict_pairs,
+                        validation_index,
+                        source_index,
+                        debug_words,
+                        debug_typo_matcher,
+                    )
+                    if all_marked:
+                        break
 
     return corrections_to_remove, conflict_pairs
+
+
+def _process_conflict_combinations(
+    shorter_corrections: list[tuple[tuple[str, str, BoundaryType], str, BoundaryType]],
+    corrections_for_typo: list[tuple[tuple[str, str, BoundaryType], str, BoundaryType]],
+    shorter_formatted_typo: str,
+    formatted_typo: str,
+    match_direction: MatchDirection,
+    processed_pairs: set[frozenset[tuple[str, str, BoundaryType]]],
+    corrections_to_remove_set: set[tuple[str, str, BoundaryType]],
+    corrections_to_remove: list,
+    conflict_pairs: dict,
+    validation_index: BoundaryIndex | None,
+    source_index: BoundaryIndex | None,
+    debug_words: set[str] | None,
+    debug_typo_matcher: "DebugTypoMatcher | None",
+) -> bool:
+    """Process all combinations of corrections, returning True if all are marked for removal."""
+    for correction1, _, boundary1 in shorter_corrections:
+        if correction1 in corrections_to_remove_set:
+            continue
+
+        for correction2, _, boundary2 in corrections_for_typo:
+            if correction2 in corrections_to_remove_set:
+                continue
+
+            # Process conflict pair
+            result, conflict_pair = process_conflict_pair(
+                correction1,
+                correction2,
+                shorter_formatted_typo,
+                formatted_typo,
+                boundary1,
+                boundary2,
+                match_direction,
+                processed_pairs,
+                corrections_to_remove_set,
+                validation_index,
+                source_index,
+                debug_words,
+                debug_typo_matcher,
+            )
+
+            if result is not None:
+                correction_to_remove, reason = result
+                corrections_to_remove.append((correction_to_remove, reason))
+                if conflict_pair is not None:
+                    removed_correction, conflicting_correction = conflict_pair
+                    conflict_pairs[removed_correction] = conflicting_correction
+                    corrections_to_remove_set.add(correction_to_remove)
+
+            # Break early if all corrections for this formatted typo are marked
+            if all(c in corrections_to_remove_set for c, _, _ in corrections_for_typo):
+                return True
+
+    return False
 
 
 def check_bucket_conflicts(

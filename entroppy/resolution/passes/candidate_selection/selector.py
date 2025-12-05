@@ -374,20 +374,41 @@ class CandidateSelectionPass(Pass):
 
         if ratio <= self.context.collision_threshold:
             # Ambiguous collision - add all words to graveyard
-            for word in words:
-                state.add_to_graveyard(
-                    typo,
-                    word,
-                    boundary,
-                    RejectionReason.COLLISION_AMBIGUOUS,
-                    f"ratio={ratio:.2f}",
-                )
+            self._handle_ambiguous_collision_sequential(state, typo, words, boundary, ratio)
             return
 
         # Can resolve collision - use most common word
         word = most_common[0]
 
         # Try boundaries in order
+        self._try_boundaries_sequential(state, typo, word, boundary)
+
+    def _handle_ambiguous_collision_sequential(
+        self,
+        state: "DictionaryState",
+        typo: str,
+        words: list[str],
+        boundary: BoundaryType,
+        ratio: float,
+    ) -> None:
+        """Handle ambiguous collision by adding all words to graveyard."""
+        for word in words:
+            state.add_to_graveyard(
+                typo,
+                word,
+                boundary,
+                RejectionReason.COLLISION_AMBIGUOUS,
+                f"ratio={ratio:.2f}",
+            )
+
+    def _try_boundaries_sequential(
+        self,
+        state: "DictionaryState",
+        typo: str,
+        word: str,
+        boundary: BoundaryType,
+    ) -> None:
+        """Try boundaries in order to find a valid correction."""
         boundaries_to_try = _get_boundary_order(boundary)
 
         for bound in boundaries_to_try:

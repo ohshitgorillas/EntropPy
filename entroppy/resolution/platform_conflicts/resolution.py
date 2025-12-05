@@ -29,6 +29,82 @@ BOUNDARY_PRIORITY = {
 }
 
 
+def _identify_less_restrictive_boundary(
+    shorter_typo: str,
+    longer_typo: str,
+    shorter_word: str,
+    longer_word: str,
+    shorter_boundary: BoundaryType,
+    longer_boundary: BoundaryType,
+) -> tuple[str, str, BoundaryType, BoundaryType] | None:
+    """Identify which boundary is less restrictive, returning None if same priority."""
+    shorter_priority = BOUNDARY_PRIORITY.get(shorter_boundary, 0)
+    longer_priority = BOUNDARY_PRIORITY.get(longer_boundary, 0)
+
+    if shorter_priority < longer_priority:
+        return shorter_typo, shorter_word, shorter_boundary, longer_boundary
+    if longer_priority < shorter_priority:
+        return longer_typo, longer_word, longer_boundary, shorter_boundary
+    return None  # Same priority
+
+
+def _handle_same_priority_boundaries(
+    match_direction: MatchDirection,
+) -> bool:
+    """Handle case where boundaries have same priority."""
+    # Default to keeping shorter for RTL, longer for LTR
+    if match_direction == MatchDirection.RIGHT_TO_LEFT:
+        return False  # Keep shorter for RTL
+    return True  # Remove shorter for LTR
+
+
+def _check_and_prefer_less_restrictive(
+    less_restrictive_typo: str,
+    less_restrictive_word: str,
+    less_restrictive_boundary: BoundaryType,
+    _more_restrictive_boundary: BoundaryType,  # Unused but kept for API consistency
+    shorter_boundary: BoundaryType,
+    validation_index: BoundaryIndex | None,
+    source_index: BoundaryIndex | None,
+    debug_words: set[str] | None,
+    debug_typo_matcher: "DebugTypoMatcher | None",
+) -> bool | None:
+    """Check if less restrictive boundary is safe, returning decision or None if no indices."""
+    if validation_index is None or source_index is None:
+        return None
+
+    would_cause, details = _check_false_trigger_with_details(
+        less_restrictive_typo,
+        less_restrictive_boundary,
+        validation_index,
+        source_index,
+        target_word=less_restrictive_word,
+    )
+
+    # Log false trigger check if debugging
+    if debug_words is not None or debug_typo_matcher is not None:
+        reason_value = details.get("reason") if details else None
+        reason_str = reason_value if isinstance(reason_value, str) else None
+        log_false_trigger_check(
+            less_restrictive_typo,
+            less_restrictive_word,
+            less_restrictive_boundary,
+            would_cause,
+            reason_str,
+            debug_words or set(),
+            debug_typo_matcher,
+        )
+
+    if not would_cause:
+        # Less restrictive boundary doesn't trigger garbage corrections - prefer it
+        # Remove the more restrictive one
+        if less_restrictive_boundary == shorter_boundary:
+            return False  # Keep shorter (less restrictive), remove longer (more restrictive)
+        return True  # Remove shorter (more restrictive), keep longer (less restrictive)
+
+    return None  # Less restrictive would cause false triggers
+
+
 def should_remove_shorter(
     match_direction: MatchDirection,
     shorter_typo: str,
@@ -65,35 +141,28 @@ def should_remove_shorter(
     Returns:
         True if shorter should be removed, False if longer should be removed
     """
-    # Determine which boundary is less restrictive
-    shorter_priority = BOUNDARY_PRIORITY.get(shorter_boundary, 0)
-    longer_priority = BOUNDARY_PRIORITY.get(longer_boundary, 0)
-
     # Identify the less restrictive boundary
-    if shorter_priority < longer_priority:
-        less_restrictive_typo = shorter_typo
-        less_restrictive_word = shorter_word
-        less_restrictive_boundary = shorter_boundary
-        more_restrictive_boundary = longer_boundary
-    elif longer_priority < shorter_priority:
-        less_restrictive_typo = longer_typo
-        less_restrictive_word = longer_word
-        less_restrictive_boundary = longer_boundary
-        more_restrictive_boundary = shorter_boundary
-    else:
-        # Same priority (e.g., LEFT and RIGHT both have priority 1)
-        # Default to keeping shorter for RTL, longer for LTR
-        if match_direction == MatchDirection.RIGHT_TO_LEFT:
-            return False  # Keep shorter for RTL
-        return True  # Remove shorter for LTR
+    result = _identify_less_restrictive_boundary(
+        shorter_typo, longer_typo, shorter_word, longer_word, shorter_boundary, longer_boundary
+    )
+
+    if result is None:
+        # Same priority - use match direction
+        return _handle_same_priority_boundaries(match_direction)
+
+    (
+        less_restrictive_typo,
+        less_restrictive_word,
+        less_restrictive_boundary,
+        more_restrictive_boundary,
+    ) = result
 
     # Log boundary comparison if debugging
     if debug_words is not None or debug_typo_matcher is not None:
         # Determine more restrictive typo for logging
-        if less_restrictive_boundary == shorter_boundary:
-            more_restrictive_typo = longer_typo
-        else:
-            more_restrictive_typo = shorter_typo
+        more_restrictive_typo = (
+            longer_typo if less_restrictive_boundary == shorter_boundary else shorter_typo
+        )
 
         log_boundary_comparison(
             shorter_typo,
@@ -110,37 +179,21 @@ def should_remove_shorter(
             debug_typo_matcher,
         )
 
-    # If we have validation/source indices, check if the less restrictive boundary
-    # would cause false triggers. If it doesn't, prefer it over the more restrictive one.
-    if validation_index is not None and source_index is not None:
-        would_cause, details = _check_false_trigger_with_details(
-            less_restrictive_typo,
-            less_restrictive_boundary,
-            validation_index,
-            source_index,
-            target_word=less_restrictive_word,
-        )
+    # Check if less restrictive boundary is safe
+    decision = _check_and_prefer_less_restrictive(
+        less_restrictive_typo,
+        less_restrictive_word,
+        less_restrictive_boundary,
+        more_restrictive_boundary,
+        shorter_boundary,
+        validation_index,
+        source_index,
+        debug_words,
+        debug_typo_matcher,
+    )
 
-        # Log false trigger check if debugging
-        if debug_words is not None or debug_typo_matcher is not None:
-            reason_value = details.get("reason") if details else None
-            reason_str = reason_value if isinstance(reason_value, str) else None
-            log_false_trigger_check(
-                less_restrictive_typo,
-                less_restrictive_word,
-                less_restrictive_boundary,
-                would_cause,
-                reason_str,
-                debug_words or set(),
-                debug_typo_matcher,
-            )
-
-        if not would_cause:
-            # Less restrictive boundary doesn't trigger garbage corrections - prefer it
-            # Remove the more restrictive one
-            if less_restrictive_boundary == shorter_boundary:
-                return False  # Keep shorter (less restrictive), remove longer (more restrictive)
-            return True  # Remove shorter (more restrictive), keep longer (less restrictive)
+    if decision is not None:
+        return decision
 
     # Less restrictive boundary would cause false triggers, or we don't have indices
     # Fall back to keeping the more restrictive boundary (which is safer)

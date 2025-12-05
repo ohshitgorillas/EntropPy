@@ -1,14 +1,40 @@
 """Dictionary and word list loading."""
 
 import itertools
+from typing import Callable
 
-from english_words import get_english_words_set  # type: ignore[import-untyped]
+from english_words import get_english_words_set
 from loguru import logger
 from wordfreq import top_n_list
 
 from entroppy.core import Config
 from entroppy.matching import PatternMatcher
 from entroppy.utils import Constants, expand_file_path
+
+
+def _read_file_with_error_handling(
+    filepath: str, operation_name: str, processor: Callable[[str], None]
+) -> None:
+    """Read file with consistent error handling."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            for line in f:
+                processor(line)
+    except FileNotFoundError:
+        logger.error(f"✗ {operation_name} file not found: {filepath}")
+        logger.error("  Please check the file path and try again")
+        raise
+    except PermissionError:
+        logger.error(f"✗ Permission denied reading file: {filepath}")
+        logger.error("  Please check file permissions and try again")
+        raise
+    except UnicodeDecodeError as e:
+        logger.error(f"✗ Encoding error reading {filepath}: {e}")
+        logger.error("  Please ensure the file is UTF-8 encoded")
+        raise
+    except Exception as e:
+        logger.error(f"✗ Unexpected error reading {operation_name} file {filepath}: {e}")
+        raise
 
 
 def load_validation_dictionary(
@@ -25,7 +51,6 @@ def load_validation_dictionary(
         logger.info("  Loading English words dictionary...")
 
     try:
-        # type: ignore[no-any-return]
         words: set[str] = get_english_words_set(["web2", "gcide"], lower=True)
     except Exception as e:
         logger.error(f"✗ Failed to load English words dictionary: {e}")
@@ -81,31 +106,17 @@ def load_word_list(filepath: str | None, verbose: bool = False) -> list[str]:
     words = []
     invalid_count = 0
 
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip().lower()
-                if line and not line.startswith("#"):
-                    # Basic validation
-                    if any(c in line for c in ["\n", "\r", "\t", "\\"]):
-                        invalid_count += 1
-                        continue
-                    words.append(line)
-    except FileNotFoundError:
-        logger.error(f"✗ Word list file not found: {filepath}")
-        logger.error("  Please check the file path and try again")
-        raise
-    except PermissionError:
-        logger.error(f"✗ Permission denied reading file: {filepath}")
-        logger.error("  Please check file permissions and try again")
-        raise
-    except UnicodeDecodeError as e:
-        logger.error(f"✗ Encoding error reading {filepath}: {e}")
-        logger.error("  Please ensure the file is UTF-8 encoded")
-        raise
-    except Exception as e:
-        logger.error(f"✗ Unexpected error reading word list file {filepath}: {e}")
-        raise
+    def process_line(line: str) -> None:
+        nonlocal words, invalid_count
+        line = line.strip().lower()
+        if line and not line.startswith("#"):
+            # Basic validation
+            if any(c in line for c in ["\n", "\r", "\t", "\\"]):
+                invalid_count += 1
+                return
+            words.append(line)
+
+    _read_file_with_error_handling(filepath, "Word list", process_line)
 
     if verbose and invalid_count > 0:
         logger.info(f"Skipped {invalid_count} words with invalid characters")
@@ -123,27 +134,14 @@ def load_exclusions(filepath: str | None, verbose: bool = False) -> set[str]:
         return set()
 
     exclusions = set()
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    exclusions.add(line)
-    except FileNotFoundError:
-        logger.error(f"✗ Exclusions file not found: {filepath}")
-        logger.error("  Please check the file path and try again")
-        raise
-    except PermissionError:
-        logger.error(f"✗ Permission denied reading file: {filepath}")
-        logger.error("  Please check file permissions and try again")
-        raise
-    except UnicodeDecodeError as e:
-        logger.error(f"✗ Encoding error reading {filepath}: {e}")
-        logger.error("  Please ensure the file is UTF-8 encoded")
-        raise
-    except Exception as e:
-        logger.error(f"✗ Unexpected error reading exclusions file {filepath}: {e}")
-        raise
+
+    def process_line(line: str) -> None:
+        nonlocal exclusions
+        line = line.strip()
+        if line and not line.startswith("#"):
+            exclusions.add(line)
+
+    _read_file_with_error_handling(filepath, "Exclusions", process_line)
 
     if verbose:
         logger.info(f"Loaded {len(exclusions)} exclusion patterns")
@@ -161,34 +159,20 @@ def load_adjacent_letters_map(filepath: str | None, verbose: bool = False) -> di
         return None
 
     adjacent_map = {}
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if Constants.ADJACENT_MAP_SEPARATOR in line:
-                    try:
-                        key, adjacents = line.split(Constants.ADJACENT_MAP_SEPARATOR, 1)
-                        adjacent_map[key.strip()] = adjacents.strip()
-                    except ValueError:
-                        logger.warning(f"Skipping malformed line in {filepath}: {line.strip()}")
-                        continue
-    except FileNotFoundError:
-        logger.error(f"✗ Adjacent letters map file not found: {filepath}")
-        logger.error("  Please check the file path and try again")
-        raise
-    except PermissionError:
-        logger.error(f"✗ Permission denied reading file: {filepath}")
-        logger.error("  Please check file permissions and try again")
-        raise
-    except UnicodeDecodeError as e:
-        logger.error(f"✗ Encoding error reading {filepath}: {e}")
-        logger.error("  Please ensure the file is UTF-8 encoded")
-        raise
-    except Exception as e:
-        logger.error(f"✗ Unexpected error reading adjacent letters map file {filepath}: {e}")
-        raise
+
+    def process_line(line: str) -> None:
+        nonlocal adjacent_map
+        line = line.strip()
+        if not line or line.startswith("#"):
+            return
+        if Constants.ADJACENT_MAP_SEPARATOR in line:
+            try:
+                key, adjacents = line.split(Constants.ADJACENT_MAP_SEPARATOR, 1)
+                adjacent_map[key.strip()] = adjacents.strip()
+            except ValueError:
+                logger.warning(f"Skipping malformed line in {filepath}: {line.strip()}")
+
+    _read_file_with_error_handling(filepath, "Adjacent letters map", process_line)
 
     if verbose:
         logger.info(f"Loaded adjacency mapping for {len(adjacent_map)} keys")
@@ -225,6 +209,40 @@ def load_source_words(config: Config, verbose: bool = False) -> list[str]:
     return list(itertools.islice(valid_words, config.top_n))
 
 
+def _load_english_words_dict() -> set[str]:
+    """Load English words dictionary with error handling."""
+    try:
+        result: set[str] = get_english_words_set(["web2", "gcide"], lower=True)
+        return result
+    except Exception as e:
+        logger.error(f"✗ Failed to load English words dictionary: {e}")
+        logger.error("  This may indicate a problem with the 'english-words' package")
+        logger.error("  Try reinstalling: pip install english-words")
+        raise RuntimeError("Failed to load english-words dictionary") from e
+
+
+def _apply_exclusions_to_words(words: set[str], exclude_filepath: str | None) -> set[str]:
+    """Apply exclusion patterns to word set."""
+    exclusion_patterns = load_exclusions(exclude_filepath, verbose=False)
+    word_exclusion_patterns = {
+        p for p in exclusion_patterns if Constants.EXCLUSION_SEPARATOR not in p
+    }
+    if word_exclusion_patterns:
+        pattern_matcher = PatternMatcher(word_exclusion_patterns)
+        return pattern_matcher.filter_set(words)
+    return words
+
+
+def _filter_words_by_length(words: set[str], config: Config) -> list[str]:
+    """Filter words by length constraints."""
+    max_len = config.max_word_length or float("inf")
+    return [
+        word
+        for word in words
+        if config.min_word_length <= len(word) <= max_len and not any(c in word for c in "\n\r\t\\")
+    ]
+
+
 def load_all_source_words(
     config: Config,
     exclude_filepath: str | None,
@@ -247,33 +265,14 @@ def load_all_source_words(
         logger.info("  Loading ALL words from english-words dictionary...")
         logger.warning("  ⚠️  This will take a very long time!")
 
-    try:
-        # type: ignore[no-any-return]
-        words: set[str] = get_english_words_set(["web2", "gcide"], lower=True)
-    except Exception as e:
-        logger.error(f"✗ Failed to load English words dictionary: {e}")
-        logger.error("  This may indicate a problem with the 'english-words' package")
-        logger.error("  Try reinstalling: pip install english-words")
-        raise RuntimeError("Failed to load english-words dictionary") from e
-
+    words = _load_english_words_dict()
     original_word_count = len(words)
 
     # Apply exclusions
-    exclusion_patterns = load_exclusions(exclude_filepath, verbose=False)
-    word_exclusion_patterns = {
-        p for p in exclusion_patterns if Constants.EXCLUSION_SEPARATOR not in p
-    }
-    if word_exclusion_patterns:
-        pattern_matcher = PatternMatcher(word_exclusion_patterns)
-        words = pattern_matcher.filter_set(words)
+    words = _apply_exclusions_to_words(words, exclude_filepath)
 
     # Filter by length constraints
-    max_len = config.max_word_length or float("inf")
-    valid_words = [
-        word
-        for word in words
-        if config.min_word_length <= len(word) <= max_len and not any(c in word for c in "\n\r\t\\")
-    ]
+    valid_words = _filter_words_by_length(words, config)
 
     removed_count = original_word_count - len(valid_words)
     if verbose:

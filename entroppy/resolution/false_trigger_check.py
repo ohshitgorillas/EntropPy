@@ -57,6 +57,27 @@ def _collect_trigger_checks(
     )
 
 
+def _determine_none_boundary_reason(
+    would_trigger_start_target: bool,
+    would_trigger_end_target: bool,
+    is_substring_target: bool,
+    would_trigger_start_val: bool,
+    would_trigger_end_val: bool,
+    is_substring_val: bool,
+    would_trigger_start_src: bool,
+    would_trigger_end_src: bool,
+    is_substring_src: bool,
+) -> str | None:
+    """Determine reason for NONE boundary false trigger."""
+    if would_trigger_start_target or would_trigger_end_target or is_substring_target:
+        return "typo appears in target word"
+    if would_trigger_start_val or would_trigger_end_val or is_substring_val:
+        return "typo appears as substring in validation words"
+    if would_trigger_start_src or would_trigger_end_src or is_substring_src:
+        return "typo appears as substring in source words"
+    return "typo appears as substring"
+
+
 def _determine_false_trigger_for_boundary(
     boundary: BoundaryType,
     would_trigger_start: bool,
@@ -95,17 +116,21 @@ def _determine_false_trigger_for_boundary(
     if boundary == BoundaryType.NONE:
         # NONE matches anywhere, so false trigger if typo appears anywhere
         would_cause = would_trigger_start or would_trigger_end or is_substring
-        if would_cause:
-            if would_trigger_start_target or would_trigger_end_target or is_substring_target:
-                reason = "typo appears in target word"
-            elif would_trigger_start_val or would_trigger_end_val or is_substring_val:
-                reason = "typo appears as substring in validation words"
-            elif would_trigger_start_src or would_trigger_end_src or is_substring_src:
-                reason = "typo appears as substring in source words"
-            else:
-                reason = "typo appears as substring"
-        else:
-            reason = None
+        reason = (
+            _determine_none_boundary_reason(
+                would_trigger_start_target,
+                would_trigger_end_target,
+                is_substring_target,
+                would_trigger_start_val,
+                would_trigger_end_val,
+                is_substring_val,
+                would_trigger_start_src,
+                would_trigger_end_src,
+                is_substring_src,
+            )
+            if would_cause
+            else None
+        )
     elif boundary == BoundaryType.LEFT:
         # LEFT matches at word start, so false trigger if typo appears as prefix
         would_cause = would_trigger_start

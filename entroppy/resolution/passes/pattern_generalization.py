@@ -49,6 +49,28 @@ class PatternGeneralizationPass(Pass):
         """Return the name of this pass."""
         return "PatternGeneralization"
 
+    def _get_match_direction(self) -> MatchDirection:
+        """Get platform match direction."""
+        match_direction = MatchDirection.LEFT_TO_RIGHT
+        if self.context.platform:
+            constraints = self.context.platform.get_constraints()
+            match_direction = constraints.match_direction
+        return match_direction
+
+    def _process_rejected_patterns(
+        self, state: "DictionaryState", rejected_patterns: list[tuple[str, str, BoundaryType, str]]
+    ) -> None:
+        """Add rejected patterns to graveyard to prevent infinite loops."""
+        for typo_pattern, word_pattern, boundary, reason in rejected_patterns:
+            if not state.is_in_graveyard(typo_pattern, word_pattern, boundary):
+                state.add_to_graveyard(
+                    typo_pattern,
+                    word_pattern,
+                    boundary,
+                    RejectionReason.PATTERN_VALIDATION_FAILED,
+                    blocker=reason,
+                )
+
     def run(self, state: "DictionaryState") -> None:
         """Run the pattern generalization pass.
 
@@ -59,10 +81,7 @@ class PatternGeneralizationPass(Pass):
             return
 
         # Get platform match direction
-        match_direction = MatchDirection.LEFT_TO_RIGHT
-        if self.context.platform:
-            constraints = self.context.platform.get_constraints()
-            match_direction = constraints.match_direction
+        match_direction = self._get_match_direction()
 
         # Run pattern extraction and validation
         corrections_list = list(state.active_corrections)
@@ -88,23 +107,7 @@ class PatternGeneralizationPass(Pass):
             state.pattern_replacements.update(pattern_replacements)
 
             # Add rejected patterns to graveyard to prevent infinite loops
-            for typo_pattern, word_pattern, boundary, reason in rejected_patterns:
-                if not state.is_in_graveyard(typo_pattern, word_pattern, boundary):
-                    state.add_to_graveyard(
-                        typo_pattern,
-                        word_pattern,
-                        boundary,
-                        RejectionReason.PATTERN_VALIDATION_FAILED,
-                        blocker=reason,
-                    )
-                    # Log if this is a debug pattern
-                    if state.debug_typo_matcher and state.debug_typo_matcher.matches(
-                        typo_pattern, boundary
-                    ):
-                        logger.debug(
-                            f"[GRAVEYARD] Added rejected pattern to graveyard: "
-                            f"'{typo_pattern}' → '{word_pattern}' ({boundary.value}): {reason}"
-                        )
+            self._process_rejected_patterns(state, rejected_patterns)
 
             # Add validated patterns to active set
             for pattern in patterns:

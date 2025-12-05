@@ -21,23 +21,14 @@ from entroppy.processing.stages.dictionary_loading_logging import (
 )
 
 
-def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
-    """Load all dictionaries, exclusions, and source words.
-
-    Args:
-        config: Configuration object
-        verbose: Whether to print verbose output
-
-    Returns:
-        DictionaryData containing all loaded resources
-    """
-    start_time = time.time()
-
-    # Load validation dictionary
-    validation_set = load_validation_dictionary(config.exclude, config.include, verbose)
+def _load_and_filter_validation_set(
+    exclude_filepath: str | None, include_filepath: str | None, verbose: bool
+) -> tuple[set[str], set[str], set[str], ExclusionMatcher]:
+    """Load validation dictionary and apply exclusions."""
+    validation_set = load_validation_dictionary(exclude_filepath, include_filepath, verbose)
 
     # Load exclusions and create matcher
-    exclusions = load_exclusions(config.exclude, verbose)
+    exclusions = load_exclusions(exclude_filepath, verbose)
     exclusion_matcher = ExclusionMatcher(exclusions)
 
     # Filter validation set for boundary detection
@@ -48,32 +39,34 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
         removed = len(validation_set) - len(filtered_validation_set)
         logger.info(f"  Filtered {removed} words from validation set using exclusion patterns")
 
-    # Load adjacent letters mapping
-    adjacent_letters_map = load_adjacent_letters_map(config.adjacent_letters, verbose)
+    return validation_set, filtered_validation_set, exclusions, exclusion_matcher
 
-    # Load source words
-    user_words = load_word_list(config.include, verbose)
-    if verbose and user_words:
-        logger.info(f"  Loaded {len(user_words)} words from include file")
 
-    user_words_set = set(user_words)
-
+def _load_source_words(config: Config, user_words: list[str], verbose: bool) -> list[str]:
+    """Load source words based on configuration."""
     if config.hurtmycpu:
         if verbose:
             logger.info("  🚀 HURTMYCPU MODE: Generating typos for ALL english-words...")
             logger.warning("  ⚠️  This will take a very long time!")
         source_words = load_all_source_words(config, config.exclude, verbose)
-        source_words.extend(user_words)
     else:
         source_words = load_source_words(config, verbose)
-        source_words.extend(user_words)
 
+    source_words.extend(user_words)
     if verbose and user_words:
         logger.info(f"  Included {len(user_words)} user words (bypassed filters)")
 
-    source_words_set = set(source_words)
+    return source_words
 
-    # Debug logging for Stage 1
+
+def _process_debug_logging(
+    config: Config,
+    user_words_set: set[str],
+    source_words: list[str],
+    validation_set: set[str],
+    exclusion_matcher: ExclusionMatcher,
+) -> None:
+    """Process debug logging for words and typos."""
     if config.debug_words:
         for word in config.debug_words:
             log_word_loading(
@@ -88,14 +81,45 @@ def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
     if config.debug_typo_matcher:
         # Check all patterns against validation set
         # We'll check exact patterns (not wildcards) for validation
-
-        # Get all unique patterns to check
         all_patterns = config.debug_typos
         for pattern_str in all_patterns:
             # For exact patterns, check directly
             if "*" not in pattern_str and ":" not in pattern_str:
                 typo = pattern_str
                 log_typo_validation_check(typo, pattern_str, validation_set, exclusion_matcher)
+
+
+def load_dictionaries(config: Config, verbose: bool = False) -> DictionaryData:
+    """Load all dictionaries, exclusions, and source words.
+
+    Args:
+        config: Configuration object
+        verbose: Whether to print verbose output
+
+    Returns:
+        DictionaryData containing all loaded resources
+    """
+    start_time = time.time()
+
+    # Load validation dictionary and exclusions
+    validation_set, filtered_validation_set, exclusions, exclusion_matcher = (
+        _load_and_filter_validation_set(config.exclude, config.include, verbose)
+    )
+
+    # Load adjacent letters mapping
+    adjacent_letters_map = load_adjacent_letters_map(config.adjacent_letters, verbose)
+
+    # Load source words
+    user_words = load_word_list(config.include, verbose)
+    if verbose and user_words:
+        logger.info(f"  Loaded {len(user_words)} words from include file")
+
+    user_words_set = set(user_words)
+    source_words = _load_source_words(config, user_words, verbose)
+    source_words_set = set(source_words)
+
+    # Debug logging for Stage 1
+    _process_debug_logging(config, user_words_set, source_words, validation_set, exclusion_matcher)
 
     elapsed_time = time.time() - start_time
 

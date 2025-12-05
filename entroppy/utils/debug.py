@@ -1,6 +1,7 @@
 """Debug utilities for tracing words and typos through the pipeline."""
 
 from dataclasses import dataclass
+import re
 from re import Pattern
 
 from loguru import logger
@@ -40,6 +41,81 @@ class DebugTypoMatcher:
     both_wildcard_originals: tuple[str, ...]
 
     @classmethod
+    def _add_to_boundary_collection(
+        cls,
+        core: str,
+        pattern: str,
+        has_wildcard: bool,
+        boundary_collection: set[str],
+        wildcard_regexes: list,
+        wildcard_originals: list,
+    ) -> None:
+        """Add pattern to boundary-specific collection."""
+        if has_wildcard:
+            wildcard_regexes.append(compile_wildcard_regex(core))
+            wildcard_originals.append(pattern)
+        else:
+            boundary_collection.add(core)
+
+    @classmethod
+    def _categorize_pattern(
+        cls,
+        pattern: str,
+        exact: set[str],
+        wildcard_regexes: list,
+        wildcard_originals: list,
+        left_boundary: set[str],
+        right_boundary: set[str],
+        both_boundary: set[str],
+        left_wc_regexes: list,
+        left_wc_originals: list,
+        right_wc_regexes: list,
+        right_wc_originals: list,
+        both_wc_regexes: list,
+        both_wc_originals: list,
+    ) -> None:
+        """Categorize a single pattern into appropriate collections."""
+        if not pattern or pattern in (":", "::"):
+            # Skip invalid patterns
+            return
+
+        # Check for boundary markers
+        starts_with_colon = pattern.startswith(":")
+        ends_with_colon = pattern.endswith(":")
+
+        # Remove boundary markers to get core pattern
+        core = pattern.strip(":")
+
+        if not core:
+            # Empty after stripping colons
+            return
+
+        # Determine if it's a wildcard pattern
+        has_wildcard = "*" in core
+
+        # Categorize by boundary type
+        if starts_with_colon and ends_with_colon:
+            # BOTH boundary
+            cls._add_to_boundary_collection(
+                core, pattern, has_wildcard, both_boundary, both_wc_regexes, both_wc_originals
+            )
+        elif starts_with_colon:
+            # LEFT boundary
+            cls._add_to_boundary_collection(
+                core, pattern, has_wildcard, left_boundary, left_wc_regexes, left_wc_originals
+            )
+        elif ends_with_colon:
+            # RIGHT boundary
+            cls._add_to_boundary_collection(
+                core, pattern, has_wildcard, right_boundary, right_wc_regexes, right_wc_originals
+            )
+        else:
+            # No boundary markers - matches any boundary
+            cls._add_to_boundary_collection(
+                core, pattern, has_wildcard, exact, wildcard_regexes, wildcard_originals
+            )
+
+    @classmethod
     def from_patterns(cls, patterns: set[str]) -> "DebugTypoMatcher":
         """Create matcher from set of pattern strings.
 
@@ -49,69 +125,37 @@ class DebugTypoMatcher:
         Returns:
             DebugTypoMatcher instance
         """
-        exact = set()
-        wildcard_regexes = []
-        wildcard_originals = []
+        exact: set[str] = set()
+        wildcard_regexes: list[re.Pattern[str]] = []
+        wildcard_originals: list[str] = []
 
-        left_boundary = set()
-        right_boundary = set()
-        both_boundary = set()
+        left_boundary: set[str] = set()
+        right_boundary: set[str] = set()
+        both_boundary: set[str] = set()
 
-        left_wc_regexes = []
-        left_wc_originals = []
-        right_wc_regexes = []
-        right_wc_originals = []
-        both_wc_regexes = []
-        both_wc_originals = []
+        left_wc_regexes: list[re.Pattern[str]] = []
+        left_wc_originals: list[str] = []
+        right_wc_regexes: list[re.Pattern[str]] = []
+        right_wc_originals: list[str] = []
+        both_wc_regexes: list[re.Pattern[str]] = []
+        both_wc_originals: list[str] = []
 
         for pattern in patterns:
-            if not pattern or pattern in (":", "::"):
-                # Skip invalid patterns
-                continue
-
-            # Check for boundary markers
-            starts_with_colon = pattern.startswith(":")
-            ends_with_colon = pattern.endswith(":")
-
-            # Remove boundary markers to get core pattern
-            core = pattern.strip(":")
-
-            if not core:
-                # Empty after stripping colons
-                continue
-
-            # Determine if it's a wildcard pattern
-            has_wildcard = "*" in core
-
-            # Categorize by boundary type
-            if starts_with_colon and ends_with_colon:
-                # BOTH boundary
-                if has_wildcard:
-                    both_wc_regexes.append(compile_wildcard_regex(core))
-                    both_wc_originals.append(pattern)
-                else:
-                    both_boundary.add(core)
-            elif starts_with_colon:
-                # LEFT boundary
-                if has_wildcard:
-                    left_wc_regexes.append(compile_wildcard_regex(core))
-                    left_wc_originals.append(pattern)
-                else:
-                    left_boundary.add(core)
-            elif ends_with_colon:
-                # RIGHT boundary
-                if has_wildcard:
-                    right_wc_regexes.append(compile_wildcard_regex(core))
-                    right_wc_originals.append(pattern)
-                else:
-                    right_boundary.add(core)
-            else:
-                # No boundary markers - matches any boundary
-                if has_wildcard:
-                    wildcard_regexes.append(compile_wildcard_regex(core))
-                    wildcard_originals.append(pattern)
-                else:
-                    exact.add(core)
+            cls._categorize_pattern(
+                pattern,
+                exact,
+                wildcard_regexes,
+                wildcard_originals,
+                left_boundary,
+                right_boundary,
+                both_boundary,
+                left_wc_regexes,
+                left_wc_originals,
+                right_wc_regexes,
+                right_wc_originals,
+                both_wc_regexes,
+                both_wc_originals,
+            )
 
         return cls(
             exact_patterns=frozenset(exact),
@@ -127,6 +171,49 @@ class DebugTypoMatcher:
             both_wildcard_regexes=tuple(both_wc_regexes),
             both_wildcard_originals=tuple(both_wc_originals),
         )
+
+    def _check_left_boundary_patterns(self, typo: str) -> bool:
+        """Check if typo matches left boundary patterns."""
+        if typo in self.left_boundary_patterns:
+            return True
+        for regex in self.left_wildcard_regexes:
+            if regex.match(typo):
+                return True
+        return False
+
+    def _check_right_boundary_patterns(self, typo: str) -> bool:
+        """Check if typo matches right boundary patterns."""
+        if typo in self.right_boundary_patterns:
+            return True
+        for regex in self.right_wildcard_regexes:
+            if regex.match(typo):
+                return True
+        return False
+
+    def _check_both_boundary_patterns(self, typo: str) -> bool:
+        """Check if typo matches both boundary patterns."""
+        if typo in self.both_boundary_patterns:
+            return True
+        for regex in self.both_wildcard_regexes:
+            if regex.match(typo):
+                return True
+        return False
+
+    def _check_boundary_patterns(self, typo: str, boundary: BoundaryType) -> bool:
+        """Check if typo matches boundary-specific patterns."""
+        if boundary in (BoundaryType.LEFT, BoundaryType.BOTH):
+            if self._check_left_boundary_patterns(typo):
+                return True
+
+        if boundary in (BoundaryType.RIGHT, BoundaryType.BOTH):
+            if self._check_right_boundary_patterns(typo):
+                return True
+
+        if boundary == BoundaryType.BOTH:
+            if self._check_both_boundary_patterns(typo):
+                return True
+
+        return False
 
     def matches(self, typo: str, boundary: BoundaryType) -> bool:
         """Check if typo matches any debug pattern, considering boundaries.
@@ -148,28 +235,44 @@ class DebugTypoMatcher:
                 return True
 
         # Check boundary-specific patterns
+        return self._check_boundary_patterns(typo, boundary)
+
+    def _collect_left_boundary_matches(self, typo: str, matches: list[str]) -> None:
+        """Collect matching left boundary patterns."""
+        if typo in self.left_boundary_patterns:
+            matches.append(f":{typo}")
+        for i, regex in enumerate(self.left_wildcard_regexes):
+            if regex.match(typo):
+                matches.append(self.left_wildcard_originals[i])
+
+    def _collect_right_boundary_matches(self, typo: str, matches: list[str]) -> None:
+        """Collect matching right boundary patterns."""
+        if typo in self.right_boundary_patterns:
+            matches.append(f"{typo}:")
+        for i, regex in enumerate(self.right_wildcard_regexes):
+            if regex.match(typo):
+                matches.append(self.right_wildcard_originals[i])
+
+    def _collect_both_boundary_matches(self, typo: str, matches: list[str]) -> None:
+        """Collect matching both boundary patterns."""
+        if typo in self.both_boundary_patterns:
+            matches.append(f":{typo}:")
+        for i, regex in enumerate(self.both_wildcard_regexes):
+            if regex.match(typo):
+                matches.append(self.both_wildcard_originals[i])
+
+    def _collect_boundary_pattern_matches(
+        self, typo: str, boundary: BoundaryType, matches: list[str]
+    ) -> None:
+        """Collect matching boundary-specific patterns."""
         if boundary in (BoundaryType.LEFT, BoundaryType.BOTH):
-            if typo in self.left_boundary_patterns:
-                return True
-            for regex in self.left_wildcard_regexes:
-                if regex.match(typo):
-                    return True
+            self._collect_left_boundary_matches(typo, matches)
 
         if boundary in (BoundaryType.RIGHT, BoundaryType.BOTH):
-            if typo in self.right_boundary_patterns:
-                return True
-            for regex in self.right_wildcard_regexes:
-                if regex.match(typo):
-                    return True
+            self._collect_right_boundary_matches(typo, matches)
 
         if boundary == BoundaryType.BOTH:
-            if typo in self.both_boundary_patterns:
-                return True
-            for regex in self.both_wildcard_regexes:
-                if regex.match(typo):
-                    return True
-
-        return False
+            self._collect_both_boundary_matches(typo, matches)
 
     def get_matching_patterns(self, typo: str, boundary: BoundaryType) -> list[str]:
         """Get list of patterns that match the given typo.
@@ -193,26 +296,7 @@ class DebugTypoMatcher:
                 matches.append(self.wildcard_originals[i])
 
         # Check boundary-specific patterns
-        if boundary in (BoundaryType.LEFT, BoundaryType.BOTH):
-            if typo in self.left_boundary_patterns:
-                matches.append(f":{typo}")
-            for i, regex in enumerate(self.left_wildcard_regexes):
-                if regex.match(typo):
-                    matches.append(self.left_wildcard_originals[i])
-
-        if boundary in (BoundaryType.RIGHT, BoundaryType.BOTH):
-            if typo in self.right_boundary_patterns:
-                matches.append(f"{typo}:")
-            for i, regex in enumerate(self.right_wildcard_regexes):
-                if regex.match(typo):
-                    matches.append(self.right_wildcard_originals[i])
-
-        if boundary == BoundaryType.BOTH:
-            if typo in self.both_boundary_patterns:
-                matches.append(f":{typo}:")
-            for i, regex in enumerate(self.both_wildcard_regexes):
-                if regex.match(typo):
-                    matches.append(self.both_wildcard_originals[i])
+        self._collect_boundary_pattern_matches(typo, boundary, matches)
 
         return matches
 

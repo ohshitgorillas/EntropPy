@@ -26,6 +26,30 @@ class BoundaryIndex:
         word_set: Original word set for reference
     """
 
+    def _build_prefix_index(self, word: str) -> None:
+        """Build prefix index entries for a word."""
+        for i in range(1, len(word) + 1):
+            prefix = word[:i]
+            if prefix not in self.prefix_index:
+                self.prefix_index[prefix] = set()
+            self.prefix_index[prefix].add(word)
+
+    def _build_suffix_index(self, word: str) -> None:
+        """Build suffix index entries for a word."""
+        for i in range(len(word)):
+            suffix = word[i:]
+            if suffix not in self.suffix_index:
+                self.suffix_index[suffix] = set()
+            self.suffix_index[suffix].add(word)
+
+    def _build_substring_set(self, word: str) -> None:
+        """Build substring set entries for a word."""
+        for i in range(len(word)):
+            for j in range(i + 1, len(word) + 1):
+                substring = word[i:j]
+                if substring != word:  # Exclude exact matches
+                    self.substring_set.add(substring)
+
     def __init__(self, word_set: set[str] | frozenset[str]) -> None:
         """Build indexes from a word set.
 
@@ -37,26 +61,8 @@ class BoundaryIndex:
         self.suffix_index: dict[str, set[str]] = {}
         self.substring_set: set[str] = set()
 
-        # Build prefix index: for each word, add all prefixes to index
+        # Build indexes for each word
         for word in word_set:
-            for i in range(1, len(word) + 1):
-                prefix = word[:i]
-                if prefix not in self.prefix_index:
-                    self.prefix_index[prefix] = set()
-                self.prefix_index[prefix].add(word)
-
-        # Build suffix index: for each word, add all suffixes to index
-        for word in word_set:
-            for i in range(len(word)):
-                suffix = word[i:]
-                if suffix not in self.suffix_index:
-                    self.suffix_index[suffix] = set()
-                self.suffix_index[suffix].add(word)
-
-        # Build substring set: for each word, add all substrings (excluding exact match)
-        for word in word_set:
-            for i in range(len(word)):
-                for j in range(i + 1, len(word) + 1):
-                    substring = word[i:j]
-                    if substring != word:  # Exclude exact matches
-                        self.substring_set.add(substring)
+            self._build_prefix_index(word)
+            self._build_suffix_index(word)
+            self._build_substring_set(word)

@@ -24,17 +24,33 @@ def write_single_yaml_file(args: tuple) -> tuple[str, int]:
     return (os.path.basename(filename), len(chunk))
 
 
-def write_yaml_files(
+def _generate_filename(
+    letter: str,
+    first_word: str,
+    last_word: str,
+    matches_sorted: list[dict],
+    max_entries_per_file: int,
+    output_dir: str,
+    i: int,
+) -> str:
+    """Generate filename for a chunk."""
+    if letter == "symbols":
+        if len(matches_sorted) <= max_entries_per_file:
+            return os.path.join(output_dir, "typos_symbols.yml")
+        chunk_num = i // max_entries_per_file + 1
+        return os.path.join(output_dir, f"typos_symbols_{chunk_num:03d}.yml")
+    # Regular letter
+    if len(matches_sorted) <= max_entries_per_file:
+        return os.path.join(output_dir, f"typos_{letter}.yml")
+    return os.path.join(output_dir, f"typos_{first_word}_to_{last_word}.yml")
+
+
+def _create_write_tasks(
     corrections_by_letter: dict[str, list[dict]],
     output_dir: str,
-    verbose: bool,
-    max_entries_per_file: int = 500,
-    jobs: int = 1,
-) -> None:
-    """Write YAML files in parallel, splitting large files into chunks."""
-    output_dir = expand_file_path(output_dir) or output_dir
-    ensure_directory_exists(output_dir)
-
+    max_entries_per_file: int,
+) -> list[tuple[str, list[dict]]]:
+    """Create write tasks for all chunks."""
     write_tasks = []
 
     for letter, matches in sorted(corrections_by_letter.items()):
@@ -46,19 +62,27 @@ def write_yaml_files(
             first_word = chunk[0]["replace"]
             last_word = chunk[-1]["replace"]
 
-            if letter == "symbols":
-                if len(matches_sorted) <= max_entries_per_file:
-                    filename = os.path.join(output_dir, "typos_symbols.yml")
-                else:
-                    chunk_num = i // max_entries_per_file + 1
-                    filename = os.path.join(output_dir, f"typos_symbols_{chunk_num:03d}.yml")
-            else:
-                if len(matches_sorted) <= max_entries_per_file:
-                    filename = os.path.join(output_dir, f"typos_{letter}.yml")
-                else:
-                    filename = os.path.join(output_dir, f"typos_{first_word}_to_{last_word}.yml")
+            filename = _generate_filename(
+                letter, first_word, last_word, matches_sorted, max_entries_per_file, output_dir, i
+            )
 
             write_tasks.append((filename, chunk))
+
+    return write_tasks
+
+
+def write_yaml_files(
+    corrections_by_letter: dict[str, list[dict]],
+    output_dir: str,
+    verbose: bool,
+    max_entries_per_file: int = 500,
+    jobs: int = 1,
+) -> None:
+    """Write YAML files in parallel, splitting large files into chunks."""
+    output_dir = expand_file_path(output_dir) or output_dir
+    ensure_directory_exists(output_dir)
+
+    write_tasks = _create_write_tasks(corrections_by_letter, output_dir, max_entries_per_file)
 
     total_entries = 0
     total_files = 0

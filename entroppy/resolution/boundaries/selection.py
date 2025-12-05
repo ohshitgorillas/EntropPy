@@ -88,18 +88,8 @@ def choose_boundary_for_typo(
     return BoundaryType.BOTH
 
 
-def log_boundary_selection_details(
-    typo: str,
-    word: str | None,
-    boundary: BoundaryType,
-    details: dict,
-    debug_typo_matcher: DebugTypoMatcher | None,
-) -> None:
-    """Log boundary selection details for debug typos."""
-    if not debug_typo_matcher or not is_debug_typo(typo, boundary, debug_typo_matcher):
-        return
-
-    word_info = f" (word: {word})" if word else ""
+def _build_safety_details_for_boundary(boundary: BoundaryType, details: dict) -> list[str]:
+    """Build safety details explaining why boundary is safe."""
     safety_details = []
 
     if (
@@ -124,6 +114,11 @@ def log_boundary_selection_details(
                 "BOTH boundary requires standalone word, prevents all substring matches"
             )
 
+    return safety_details
+
+
+def _build_check_parts(details: dict) -> list[str]:
+    """Build list of check parts that passed."""
     check_parts = []
     if not details["would_trigger_start"]:
         check_parts.append("not a prefix")
@@ -131,6 +126,24 @@ def log_boundary_selection_details(
         check_parts.append("not a suffix")
     if not details["is_substring"]:
         check_parts.append("not a substring")
+    return check_parts
+
+
+def log_boundary_selection_details(
+    typo: str,
+    word: str | None,
+    boundary: BoundaryType,
+    details: dict,
+    debug_typo_matcher: DebugTypoMatcher | None,
+) -> None:
+    """Log boundary selection details for debug typos."""
+    if not debug_typo_matcher or not is_debug_typo(typo, boundary, debug_typo_matcher):
+        return
+
+    word_info = f" (word: {word})" if word else ""
+    safety_details = _build_safety_details_for_boundary(boundary, details)
+
+    check_parts = _build_check_parts(details)
     if check_parts:
         safety_details.append(f"checks passed: {', '.join(check_parts)}")
 

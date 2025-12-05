@@ -88,6 +88,9 @@ def get_worker_context() -> WorkerContext:
         RuntimeError: If called before init_worker
     """
     try:
-        return _worker_context.value  # type: ignore[no-any-return]
+        context = _worker_context.value
+        if not isinstance(context, WorkerContext):
+            raise RuntimeError("Invalid worker context type")
+        return context
     except AttributeError as e:
         raise RuntimeError("Worker context not initialized. Call init_worker first.") from e
