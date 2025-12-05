@@ -363,7 +363,14 @@ def _process_typo_batch_worker(
         - graveyard_entries: List of (typo, word, boundary, reason, blocker) tuples
     """
     context = get_candidate_selection_worker_context()
-    validation_index, source_index = get_candidate_worker_indexes()
+    indexes = get_candidate_worker_indexes()
+    if not isinstance(indexes, tuple) or len(indexes) != 2:
+        len_str = str(len(indexes)) if isinstance(indexes, tuple) else "unknown"
+        raise ValueError(
+            f"get_candidate_worker_indexes() returned {type(indexes)} with "
+            f"{len_str} values, expected tuple of 2: {indexes}"
+        )
+    validation_index, source_index = indexes
 
     # Recreate ExclusionMatcher in worker (not serializable due to compiled regex)
     exclusion_matcher = (
@@ -405,4 +412,5 @@ def _process_typo_batch_worker(
                 graveyard_entries,
             )
 
-    return corrections, graveyard_entries
+    # Explicitly return a tuple of exactly 2 items
+    return (corrections, graveyard_entries)

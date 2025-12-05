@@ -180,7 +180,14 @@ class CandidateSelectionPass(Pass):
                 results_wrapped_iter = results
 
             # Collect results and apply to state
-            for corrections, graveyard_entries in results_wrapped_iter:
+            for result in results_wrapped_iter:
+                # Defensive unpacking: ensure we get exactly 2 values
+                if not isinstance(result, tuple):
+                    raise ValueError(f"Worker returned non-tuple result: {type(result)} - {result}")
+                if len(result) != 2:
+                    raise ValueError(f"Worker returned {len(result)} values, expected 2: {result}")
+                corrections, graveyard_entries = result
+
                 # Add corrections
                 for typo, word, boundary in corrections:
                     state.add_correction(typo, word, boundary, self.name)
