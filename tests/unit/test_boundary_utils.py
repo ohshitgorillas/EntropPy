@@ -7,7 +7,7 @@ and focuses on behavior.
 from unittest.mock import patch
 
 from entroppy.core import BoundaryType
-from entroppy.resolution.boundary_utils import (
+from entroppy.resolution.boundaries.utils import (
     _should_skip_short_typo,
     apply_user_word_boundary_override,
     choose_strictest_boundary,
@@ -78,7 +78,7 @@ class TestApplyUserWordBoundaryOverride:
         debug_typo_matcher = None
         typo = "ti"
 
-        with patch("entroppy.resolution.boundary_utils.log_if_debug_correction"):
+        with patch("entroppy.resolution.boundaries.utils.log_if_debug_correction"):
             result = apply_user_word_boundary_override(
                 word, boundary, user_words, debug_words, debug_typo_matcher, typo
             )
@@ -124,7 +124,7 @@ class TestApplyUserWordBoundaryOverride:
         debug_typo_matcher = None
         typo = "ta"
 
-        with patch("entroppy.resolution.boundary_utils.log_if_debug_correction"):
+        with patch("entroppy.resolution.boundaries.utils.log_if_debug_correction"):
             result = apply_user_word_boundary_override(
                 word, boundary, user_words, debug_words, debug_typo_matcher, typo
             )
@@ -140,7 +140,7 @@ class TestApplyUserWordBoundaryOverride:
         debug_typo_matcher = None
         typo = "ti"
 
-        with patch("entroppy.resolution.boundary_utils.log_if_debug_correction"):
+        with patch("entroppy.resolution.boundaries.utils.log_if_debug_correction"):
             result = apply_user_word_boundary_override(
                 word, boundary, user_words, debug_words, debug_typo_matcher, typo
             )

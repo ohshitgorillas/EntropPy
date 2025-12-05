@@ -23,11 +23,11 @@ from tqdm import tqdm
 from entroppy.core.boundaries import BoundaryType
 from entroppy.core.types import MatchDirection
 from entroppy.platforms.qmk.formatting import format_boundary_markers
-from entroppy.resolution.platform_substring_conflict_detection import (
+from entroppy.resolution.platform_conflicts import (
     build_length_buckets,
     check_bucket_conflicts,
 )
-from entroppy.resolution.platform_substring_conflict_logging import (
+from entroppy.resolution.platform_conflicts.logging import (
     log_platform_substring_conflict,
 )
 from entroppy.resolution.solver import Pass

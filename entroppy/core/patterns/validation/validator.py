@@ -11,11 +11,9 @@ from entroppy.core.boundaries import (
     would_trigger_at_start,
 )
 from entroppy.core.types import MatchDirection
-from entroppy.utils.debug import log_debug_correction
 
 if TYPE_CHECKING:
-    from entroppy.core.pattern_indexes import SourceWordIndex
-    from entroppy.utils.debug import DebugTypoMatcher
+    from entroppy.core.patterns.indexes import SourceWordIndex
 
 
 # Cache for pattern validation results
@@ -119,72 +117,6 @@ def _would_corrupt_source_word(
         idx = source_word.find(typo_pattern, idx + 1)
 
     return False
-
-
-def _log_pattern_rejection(
-    typo_pattern: str,
-    word_pattern: str,
-    boundary: BoundaryType,
-    reason: str,
-    has_debug_occurrence: bool,
-    debug_words: set[str],
-    debug_typo_matcher: "DebugTypoMatcher | None",
-) -> None:
-    """Log pattern rejection for debug purposes.
-
-    Args:
-        typo_pattern: The rejected typo pattern
-        word_pattern: The rejected word pattern
-        boundary: The boundary type
-        reason: Reason for rejection
-        has_debug_occurrence: Whether any occurrences involve debug items
-        debug_words: Set of words to debug
-        debug_typo_matcher: Matcher for debug typos
-    """
-    if has_debug_occurrence:
-        pattern_correction = (typo_pattern, word_pattern, boundary)
-        log_debug_correction(
-            pattern_correction,
-            f"Pattern rejected - {reason}",
-            debug_words,
-            debug_typo_matcher,
-            "Stage 4",
-        )
-
-
-def _log_pattern_acceptance(
-    typo_pattern: str,
-    word_pattern: str,
-    boundary: BoundaryType,
-    occurrences: list[tuple[str, str, BoundaryType]],
-    has_debug_occurrence: bool,
-    debug_words: set[str],
-    debug_typo_matcher: "DebugTypoMatcher | None",
-) -> None:
-    """Log pattern acceptance for debug purposes.
-
-    Args:
-        typo_pattern: The accepted typo pattern
-        word_pattern: The accepted word pattern
-        boundary: The boundary type
-        occurrences: List of corrections this pattern replaces
-        has_debug_occurrence: Whether any occurrences involve debug items
-        debug_words: Set of words to debug
-        debug_typo_matcher: Matcher for debug typos
-    """
-    if has_debug_occurrence:
-        pattern_correction = (typo_pattern, word_pattern, boundary)
-        replaced_strs = [f"{t}→{w}" for t, w, _ in occurrences[:3]]
-        if len(occurrences) > 3:
-            replaced_strs.append(f"... and {len(occurrences) - 3} more")
-        log_debug_correction(
-            pattern_correction,
-            f"Pattern ACCEPTED - replaces {len(occurrences)} corrections: "
-            f"{', '.join(replaced_strs)}",
-            debug_words,
-            debug_typo_matcher,
-            "Stage 4",
-        )
 
 
 def validate_pattern_for_all_occurrences(

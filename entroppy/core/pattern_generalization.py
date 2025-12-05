@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING, Callable
 from loguru import logger
 
 from entroppy.core.boundaries import BoundaryType
-from entroppy.core.pattern_logging import is_debug_pattern
-from entroppy.core.pattern_validation_runner import (
-    _build_validation_indexes,
-    _extract_and_merge_patterns,
-    _extract_debug_typos,
-    _run_parallel_validation,
-    _run_single_threaded_validation,
+from entroppy.core.patterns.logging import is_debug_pattern
+from entroppy.core.patterns.validation import (
+    build_validation_indexes,
+    extract_and_merge_patterns,
+    extract_debug_typos,
+    run_parallel_validation,
+    run_single_threaded_validation,
 )
 from entroppy.core.types import Correction, MatchDirection
 
@@ -63,10 +63,10 @@ def generalize_patterns(
         debug_words = set()
 
     # Build validation indexes
-    indexes = _build_validation_indexes(validation_set, source_words, match_direction, corrections)
+    indexes = build_validation_indexes(validation_set, source_words, match_direction, corrections)
 
     # Extract debug typos for pattern extraction logging
-    debug_typos_result = _extract_debug_typos(debug_typo_matcher)
+    debug_typos_result = extract_debug_typos(debug_typo_matcher)
     if debug_typos_result:
         debug_typos_exact, debug_typos_wildcard = debug_typos_result
     else:
@@ -74,7 +74,7 @@ def generalize_patterns(
         debug_typos_wildcard = set()
 
     # Extract and merge prefix/suffix patterns
-    found_patterns = _extract_and_merge_patterns(
+    found_patterns = extract_and_merge_patterns(
         corrections,
         debug_typos_exact,
         debug_typos_wildcard,
@@ -108,7 +108,7 @@ def generalize_patterns(
 
     # Choose parallel or single-threaded validation
     if jobs > 1 and len(patterns_to_validate) > 10:
-        return _run_parallel_validation(
+        return run_parallel_validation(
             patterns_to_validate,
             validation_set,
             source_words,
@@ -123,7 +123,7 @@ def generalize_patterns(
     # False positive: Similar parameter lists are expected when calling the same function
     # from different contexts (orchestration vs validation runner). This is not duplicate
     # code that should be refactored - it's the same function call with the same parameters.
-    return _run_single_threaded_validation(
+    return run_single_threaded_validation(
         patterns_to_validate,
         min_typo_length,
         validation_set,

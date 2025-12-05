@@ -8,7 +8,7 @@ from entroppy.core.boundaries import (
     would_trigger_at_start,
 )
 
-from .boundary_utils import _check_typo_in_target_word
+from .boundaries.utils import _check_typo_in_target_word
 
 
 def _collect_trigger_checks(

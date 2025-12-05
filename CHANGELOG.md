@@ -9,7 +9,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Major code organization refactoring**: Reorganized codebase by splitting large files and consolidating related modules into logical package structures:
+  - **Pattern code consolidation**: Moved pattern-related files into `core/patterns/` package with subdirectories:
+    - `core/patterns/indexes.py` - Pattern indexing classes
+    - `core/patterns/logging.py` - Pattern logging functions
+    - `core/patterns/validation/` - Pattern validation sub-package (batch_processor, conflicts, coordinator, validator, worker)
+    - `core/patterns/extraction/` - Pattern extraction sub-package (finder, matcher, filters)
+  - **Platform conflicts consolidation**: Moved platform substring conflict code into `resolution/platform_conflicts/` package (detection, resolution, logging, debug, platform_pass)
+  - **Boundaries organization**: Split boundary code into `core/boundaries/` (detection, formatting, parsing, types) and `resolution/boundaries/` (logging, selection, utils)
+  - **Large file splits**:
+    - `correction_processing.py` (652 lines) → `resolution/processing/correction_processor.py` + `helpers.py`
+    - `pattern_extraction.py` (624 lines) → `core/patterns/extraction/finder.py` + `matcher.py` + `filters.py`
+    - `qmk/ranking.py` (527 lines) → `qmk/ranking/scorer.py` + `sorter.py` + `tiers.py`
+    - `candidate_selection.py` (495 lines) → `resolution/passes/candidate_selection/selector.py` + `filters.py` + `helpers.py`
+    - `solver.py` (487 lines) → `resolution/solver/iterative_solver.py` + `pass_context.py` + `convergence.py`
+  - All files are now under 500 lines, improving maintainability and code navigation
+  - Updated all imports to use absolute imports (TID252 compliance) for better clarity and consistency
 - **Refactored pipeline module**: Split `pipeline.py` (775 lines) into focused modules: `pipeline.py` (103 lines), `pipeline_helpers.py` (69 lines), `pipeline_reporting.py` (115 lines), and `pipeline_stages.py` (426 lines). Reduced `run_pipeline` complexity from F-rank to C-rank by extracting stage execution and reporting functions into separate modules.
+- **Reduced code complexity**: Refactored 10 D-rank functions to C-rank by extracting helper functions: `rank_corrections`, `_write_summary_by_type`, `check_pattern_would_incorrectly_match_other_corrections`, `_find_common_patterns`, `_would_cause_false_trigger`, `resolve_collisions`, `check_bucket_conflicts`, `process_conflict_pair`, `_log_boundary_rejection`, and `PlatformConstraintsPass.run`. All functions now meet complexity requirements (max-absolute=B allows C-rank).
+- **Enabled ruff rule TID252**: Added `TID252` (relative-imports) to ruff lint rules with `ban-relative-imports = "parents"` configuration to catch relative imports beyond the top-level package, similar to pylint's E0402 rule.
 
 ## [0.7.0] - 2025-12-04
 

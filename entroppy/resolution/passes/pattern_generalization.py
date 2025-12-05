@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from entroppy.core.boundaries import BoundaryType
-from entroppy.core.patterns import generalize_patterns
+from entroppy.core.pattern_generalization import generalize_patterns
 from entroppy.core.types import MatchDirection
 from entroppy.resolution.solver import Pass
 from entroppy.resolution.state import RejectionReason

@@ -6,7 +6,7 @@ from entroppy.core.boundaries import BoundaryType
 from entroppy.core.types import Correction
 
 if TYPE_CHECKING:
-    from entroppy.core.pattern_indexes import CorrectionIndex
+    from entroppy.core.patterns.indexes import CorrectionIndex
 
 
 def _check_suffix_match(

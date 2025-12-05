@@ -11,8 +11,8 @@ from entroppy.core.boundaries import BoundaryIndex
 from entroppy.matching import ExclusionMatcher
 from entroppy.utils.debug import DebugTypoMatcher
 
-from .boundary_selection import log_boundary_selection_details
-from .correction_processing import process_collision_case, process_single_word_correction
+from .boundaries.selection import log_boundary_selection_details
+from .processing import process_collision_case, process_single_word_correction
 from .worker_context import (
     CollisionResolutionContext,
     get_collision_worker_context,

@@ -6,7 +6,7 @@ assertion and focuses on behavior.
 """
 
 from entroppy.core.boundaries import BoundaryIndex, BoundaryType
-from entroppy.core.pattern_validation import (
+from entroppy.core.patterns.validation.validator import (
     _validate_pattern_result,
     _would_corrupt_source_word,
     check_pattern_conflicts,

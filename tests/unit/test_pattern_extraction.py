@@ -5,7 +5,7 @@ in typo corrections. Each test has a single assertion and focuses on behavior.
 """
 
 from entroppy.core import BoundaryType, Correction
-from entroppy.core.pattern_extraction import find_prefix_patterns, find_suffix_patterns
+from entroppy.core.patterns.extraction import find_prefix_patterns, find_suffix_patterns
 
 
 class TestFindSuffixPatterns:

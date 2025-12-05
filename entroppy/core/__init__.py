@@ -11,7 +11,7 @@ from entroppy.core.boundaries import (
 )
 
 from .config import Config, load_config
-from .patterns import generalize_patterns
+from .pattern_generalization import generalize_patterns
 from .types import Correction, MatchDirection
 from .typos import generate_all_typos
 

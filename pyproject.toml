@@ -77,6 +77,7 @@ select = [
     "RET", # refurb: catches unnecessary else after return, etc.
     "ARG", # ruff: unused function arguments
     "PLC0415", # pylint: import-outside-toplevel (catches lazy imports)
+    "TID252", # flake8-tidy-imports: relative-imports (catches relative imports beyond top-level package, similar to pylint E0402)
 ]
 ignore = [
     "PLR0913", # Too many arguments (pylint: too-many-arguments)
@@ -101,6 +102,9 @@ combine-as-imports = true
 force-sort-within-sections = true
 known-first-party = ["entroppy"]
 split-on-trailing-comma = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"  # Ban relative imports from parent modules (catches imports beyond top-level package, similar to pylint E0402)
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -140,7 +144,7 @@ exclude = [
 ]
 
 [tool.xenon]
-max_absolute = "B"  # Allow up to C complexity for individual functions
+max_absolute = "B"  # Allow up to B complexity for individual functions
 max_modules = "B"   # Allow up to B complexity for modules
 max_average = "B"   # Allow up to B average complexity
 exclude = [
