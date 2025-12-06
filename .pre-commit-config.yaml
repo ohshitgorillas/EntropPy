@@ -53,6 +53,7 @@ repos:
         args: [entroppy, vulture_whitelist.py]
         exclude: ^(tests/|examples/|venv/)
         pass_filenames: false
+        always_run: true
         stages: [pre-commit]
       - id: xenon
         name: xenon
