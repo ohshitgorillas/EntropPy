@@ -51,7 +51,12 @@ class CandidateSelectionPass(Pass):
         all_typos = [typo for typo, _ in typos_to_process]
         if all_typos:
             batch_results = batch_check_false_triggers(
-                all_typos, self.context.validation_index, self.context.source_index
+                all_typos,
+                self.context.validation_index,
+                self.context.source_index,
+                jobs=self.context.jobs if len(all_typos) > 1000 else 1,
+                verbose=self.context.verbose,
+                pass_name=self.name,
             )
             state.caching.set_batch_false_trigger_results(batch_results)
 

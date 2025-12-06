@@ -1,5 +1,9 @@
 """False trigger checking logic for boundary selection."""
 
+from typing import TYPE_CHECKING, Any
+
+from tqdm import tqdm
+
 from entroppy.core import BoundaryType
 from entroppy.core.boundaries import (
     BoundaryIndex,
@@ -9,6 +13,9 @@ from entroppy.core.boundaries import (
 )
 
 from .boundaries.utils import _check_typo_in_target_word
+
+if TYPE_CHECKING:
+    pass
 
 
 def _determine_none_boundary_reason(
@@ -200,6 +207,9 @@ def batch_check_false_triggers(
     typos: list[str],
     validation_index: BoundaryIndex,
     source_index: BoundaryIndex,
+    jobs: int = 1,
+    verbose: bool = False,
+    pass_name: str = "BatchCheck",
 ) -> dict[str, dict[str, bool]]:
     """Batch check false trigger conditions for multiple typos.
 
@@ -210,6 +220,9 @@ def batch_check_false_triggers(
         typos: List of typo strings to check
         validation_index: Boundary index for validation set
         source_index: Boundary index for source words
+        jobs: Number of parallel jobs for substring checks (1 = sequential)
+        verbose: Whether to show progress bar
+        pass_name: Name of the pass (for progress bar)
 
     Returns:
         Dict mapping typo -> dict with keys: 'start_val', 'end_val', 'substring_val',
@@ -218,10 +231,27 @@ def batch_check_false_triggers(
     # Batch check all typos at once
     start_val_results = validation_index.batch_check_start(typos)
     end_val_results = validation_index.batch_check_end(typos)
-    substring_val_results = validation_index.batch_check_substring(typos)
+
+    progress_bar: Any = None
+    if verbose and len(typos) > 1000:
+        progress_bar = tqdm(
+            total=4,
+            desc=f"    {pass_name} (batch checks)",
+            unit="check",
+            leave=False,
+        )
+        progress_bar.update(2)  # start/end checks done
+
+    substring_val_results = validation_index.batch_check_substring(typos, jobs=jobs)
+    if progress_bar:
+        progress_bar.update(1)
+
     start_src_results = source_index.batch_check_start(typos)
     end_src_results = source_index.batch_check_end(typos)
-    substring_src_results = source_index.batch_check_substring(typos)
+    substring_src_results = source_index.batch_check_substring(typos, jobs=jobs)
+    if progress_bar:
+        progress_bar.update(1)
+        progress_bar.close()
 
     # Combine results
     batch_results: dict[str, dict[str, bool]] = {}

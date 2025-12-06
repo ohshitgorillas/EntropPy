@@ -1,6 +1,20 @@
 """Boundary types and index classes."""
 
 from enum import Enum
+from multiprocessing import Pool
+
+
+def _check_typo_substring_worker(typo: str, word_list: list[str]) -> tuple[str, bool]:
+    """Worker function to check if a typo is a substring of any word.
+
+    Args:
+        typo: Typo string to check
+        word_list: List of words to check against
+
+    Returns:
+        Tuple of (typo, True if it is a substring)
+    """
+    return typo, any(typo in word and typo != word for word in word_list)
 
 
 class BoundaryType(Enum):
@@ -105,21 +119,67 @@ class BoundaryIndex:
                 results[typo] = False
         return results
 
-    def batch_check_substring(self, typos: list[str]) -> dict[str, bool]:
+    def batch_check_substring(self, typos: list[str], jobs: int = 1) -> dict[str, bool]:
         """Batch check if typos are substrings of any word.
 
         Args:
             typos: List of typo strings to check
+            jobs: Number of parallel jobs (1 = sequential)
 
         Returns:
             Dict mapping typo -> True if it is a substring (excluding exact matches)
         """
         results: dict[str, bool] = {}
+        # Pre-filter typos that are definitely in substring_set (fast path)
         for typo in typos:
-            # First check the pre-built substring_set for fast lookup
             if typo in self.substring_set:
                 results[typo] = True
-            else:
-                # Fallback: direct check against all words
-                results[typo] = any(typo in word and typo != word for word in self.word_set)
+
+        # For typos not in substring_set, check if they're substrings of any word
+        remaining_typos = [typo for typo in typos if typo not in results]
+
+        if not remaining_typos:
+            return results
+
+        # Fallback: check against word_set (O(M) per typo)
+        # Only needed for typos not in substring_set
+        if jobs > 1 and len(remaining_typos) > 100:
+            results.update(self._batch_check_substring_parallel(remaining_typos, jobs))
+        else:
+            results.update(self._batch_check_substring_sequential(remaining_typos))
+
         return results
+
+    def _batch_check_substring_sequential(self, typos: list[str]) -> dict[str, bool]:
+        """Sequential fallback check for substrings.
+
+        Args:
+            typos: List of typo strings to check
+
+        Returns:
+            Dict mapping typo -> True if it is a substring
+        """
+        results: dict[str, bool] = {}
+        word_set = self.word_set
+        for typo in typos:
+            results[typo] = any(typo in word and typo != word for word in word_set)
+        return results
+
+    def _batch_check_substring_parallel(self, typos: list[str], jobs: int) -> dict[str, bool]:
+        """Parallel fallback check for substrings.
+
+        Args:
+            typos: List of typo strings to check
+            jobs: Number of parallel jobs
+
+        Returns:
+            Dict mapping typo -> True if it is a substring
+        """
+        word_list = list(self.word_set)
+
+        with Pool(processes=jobs) as pool:
+            results_list = pool.starmap(
+                _check_typo_substring_worker, [(typo, word_list) for typo in typos]
+            )
+
+        return dict(results_list)
