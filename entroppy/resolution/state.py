@@ -1,7 +1,6 @@
 """Dictionary state management for the iterative solver."""
 
 from collections import defaultdict
-from dataclasses import dataclass
 import time
 
 from entroppy.core import BoundaryType, Correction
@@ -11,35 +10,11 @@ from entroppy.resolution.history import (
     PatternHistoryEntry,
     RejectionReason,
 )
+from entroppy.resolution.state_types import DebugTraceEntry, GraveyardEntry
 
-# Re-export RejectionReason for backward compatibility
+# Re-export for backward compatibility
 __all__ = ["DictionaryState", "DebugTraceEntry", "GraveyardEntry", "RejectionReason"]
 from entroppy.utils.debug import DebugTypoMatcher
-
-
-@dataclass
-class GraveyardEntry:
-    """A rejected correction with context."""
-
-    typo: str
-    word: str
-    boundary: BoundaryType
-    reason: RejectionReason
-    blocker: str | None = None  # What blocked this (e.g., conflicting typo/word)
-    iteration: int = 0
-
-
-@dataclass
-class DebugTraceEntry:
-    """A log entry for debug tracing."""
-
-    iteration: int
-    pass_name: str
-    action: str  # "added", "removed", "promoted_to_pattern", etc.
-    typo: str
-    word: str
-    boundary: BoundaryType
-    reason: str | None = None
 
 
 class DictionaryState:
@@ -108,6 +83,9 @@ class DictionaryState:
 
         # Track pattern replacements for reporting
         self.pattern_replacements: dict[Correction, list[Correction]] = {}
+
+        # Cache for formatted correction strings (typo with boundary markers)
+        self._formatted_cache: dict[Correction, str] = {}
 
     def is_in_graveyard(
         self,
@@ -465,6 +443,14 @@ class DictionaryState:
                 lines.append(f"    Reason: {entry.reason}")
 
         return "\n".join(lines)
+
+    def get_formatted_cache(self) -> dict[Correction, str]:
+        """Get the formatted cache for corrections.
+
+        Returns:
+            Dictionary mapping corrections to their formatted typo strings
+        """
+        return self._formatted_cache
 
     def _is_debug_target(self, typo: str, word: str, boundary: BoundaryType) -> bool:
         """Check if a correction should be tracked for debugging.
