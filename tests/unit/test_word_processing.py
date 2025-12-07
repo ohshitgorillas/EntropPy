@@ -636,3 +636,84 @@ class TestAddDebugMessage:
         )
 
         assert any("[Stage 2]" in msg for msg in debug_messages)
+
+
+class TestProcessWordPreventsDroppingValidSuffixes:
+    """Test process_word prevents dropping valid suffixes.
+
+    These tests verify that the program guards against corrections that would drop
+    legitimate grammatical suffixes. The guard checks:
+    - Does the typo end in 's', 'd', or 'r'?
+    - If 'd' or 'r', is the second-to-last letter 'e'? (for '-ed' or '-er')
+    - If 'r', is the second-to-last letter 'o'? (for '-or')
+    - Does the typo -> correction drop the last letter?
+    If all conditions are met, the correction is filtered.
+
+    Examples of bad corrections that should be filtered:
+    - keyboards -> keyboard (drops 's')
+    - depreciated -> depreciate (drops 'ed')
+    - typer -> type (drops 'er')
+    """
+
+    def test_filters_typo_that_drops_final_s_suffix(self) -> None:
+        """Guard filters typo ending in 's' when correction would drop 's'."""
+        word = "keyboard"
+        validation_set = set()
+        source_words = set()
+        typo_freq_threshold = 0.0
+        adj_letters_map = {"d": "s"}
+        exclusions = set()
+
+        corrections, _ = process_word(
+            word,
+            validation_set,
+            source_words,
+            typo_freq_threshold,
+            adj_letters_map,
+            exclusions,
+        )
+
+        typos = [typo for typo, _ in corrections]
+        assert "keyboards" not in typos
+
+    def test_filters_typo_that_drops_final_ed_suffix(self) -> None:
+        """Guard filters typo ending in 'ed' when correction would drop 'ed'."""
+        word = "depreciate"
+        validation_set = set()
+        source_words = set()
+        typo_freq_threshold = 0.0
+        adj_letters_map = {"e": "d"}
+        exclusions = set()
+
+        corrections, _ = process_word(
+            word,
+            validation_set,
+            source_words,
+            typo_freq_threshold,
+            adj_letters_map,
+            exclusions,
+        )
+
+        typos = [typo for typo, _ in corrections]
+        assert "depreciated" not in typos
+
+    def test_filters_typo_that_drops_final_er_suffix(self) -> None:
+        """Guard filters typo ending in 'er' when correction would drop 'er'."""
+        word = "type"
+        validation_set = set()
+        source_words = set()
+        typo_freq_threshold = 0.0
+        adj_letters_map = {"e": "r"}
+        exclusions = set()
+
+        corrections, _ = process_word(
+            word,
+            validation_set,
+            source_words,
+            typo_freq_threshold,
+            adj_letters_map,
+            exclusions,
+        )
+
+        typos = [typo for typo, _ in corrections]
+        assert "typer" not in typos

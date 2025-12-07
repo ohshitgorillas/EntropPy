@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Word processing now prevents dropping valid grammatical suffixes**: Fixed bug where corrections that would drop legitimate suffixes like 's' (plural), 'ed' (past tense), 'er' (comparative), or 'or' (agent noun) were not being filtered. Added guard in `process_word` to prevent corrections like "keyboards" → "keyboard", "depreciated" → "depreciate", or "typer" → "type" that would incorrectly drop valid suffixes.
+
 - **Debug logging now respects `--debug` flag**: Fixed bug where many debug log statements were only enabled when `--debug-typos` was used, not when the general `--debug` flag was enabled. Debug logging in pattern extraction, pattern finding, and related modules now checks both specific typo debugging and the global debug flag. Added `is_debug_enabled()` helper function to check if logger is configured for DEBUG level.
 
 - **Exclusion patterns now support wildcards in word part for exact typo patterns**: Fixed bug where exclusion patterns like `jst -> *` (exact typo with wildcard word) didn't work. Previously, exact typo patterns only used exact string matching for the word part, preventing wildcard matching. Now all exclusion patterns use wildcard matching for the word part, allowing patterns like `jst -> *` to exclude all corrections from "jst" to any word, while `jst -> just` still matches only the specific correction.
