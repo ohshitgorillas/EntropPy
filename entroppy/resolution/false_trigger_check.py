@@ -11,6 +11,7 @@ from entroppy.core.boundaries import (
     would_trigger_at_end,
     would_trigger_at_start,
 )
+from entroppy.core.boundaries.detection import _batch_check_substrings
 
 from .boundaries.utils import _check_typo_in_target_word
 
@@ -207,7 +208,6 @@ def batch_check_false_triggers(
     typos: list[str],
     validation_index: BoundaryIndex,
     source_index: BoundaryIndex,
-    jobs: int = 1,
     verbose: bool = False,
     pass_name: str = "BatchCheck",
 ) -> dict[str, dict[str, bool]]:
@@ -216,11 +216,12 @@ def batch_check_false_triggers(
     Pre-computes validation and source index checks for all typos at once,
     which is much faster than checking individually.
 
+    Uses suffix array for substring detection (O(log N) queries - algorithmically optimal).
+
     Args:
         typos: List of typo strings to check
         validation_index: Boundary index for validation set
         source_index: Boundary index for source words
-        jobs: Number of parallel jobs for substring checks (1 = sequential)
         verbose: Whether to show progress bar
         pass_name: Name of the pass (for progress bar)
 
@@ -242,13 +243,16 @@ def batch_check_false_triggers(
         )
         progress_bar.update(2)  # start/end checks done
 
-    substring_val_results = validation_index.batch_check_substring(typos, jobs=jobs)
+    # Get substring checks using suffix array (efficient)
+    substring_val_results, substring_src_results = _batch_check_substrings(
+        typos, validation_index, source_index
+    )
+
     if progress_bar:
         progress_bar.update(1)
 
     start_src_results = source_index.batch_check_start(typos)
     end_src_results = source_index.batch_check_end(typos)
-    substring_src_results = source_index.batch_check_substring(typos, jobs=jobs)
     if progress_bar:
         progress_bar.update(1)
         progress_bar.close()

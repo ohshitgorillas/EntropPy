@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 from tqdm import tqdm
 
-from entroppy.core.boundaries import BoundaryType
-from entroppy.core.patterns.indexes import ValidationIndexes
+from entroppy.core.boundaries import BoundaryIndex, BoundaryType
+from entroppy.core.patterns.indexes import CorrectionIndex, ValidationIndexes
 from entroppy.core.patterns.logging import (
     is_debug_pattern,
     log_pattern_candidate,
@@ -16,6 +16,9 @@ from entroppy.core.patterns.logging import (
 from entroppy.core.patterns.validation.batch_processor_helpers import (
     _handle_pattern_rejection,
     _handle_redundant_pattern,
+    _precalculate_validation_checks,
+    _precalculate_would_corrupt_patterns,
+    _process_validation_results,
     _remove_redundant_patterns_post_process,
 )
 from entroppy.core.patterns.validation.conflicts import (
@@ -363,15 +366,33 @@ def run_parallel_validation(
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)
     """
-    patterns = []
-    corrections_to_remove = set()
-    pattern_replacements = {}
-    rejected_patterns = []
+    patterns: list[Correction] = []
+    corrections_to_remove: set[Correction] = set()
+    pattern_replacements: dict[Correction, list[Correction]] = {}
+    rejected_patterns: list[tuple[str, str, BoundaryType, str]] = []
 
     if verbose:
         logger.info(f"  Using {jobs} parallel workers for pattern validation")
 
-    # Create context for workers
+    # Pre-build indexes once in main process (not in workers)
+    if verbose:
+        logger.info("  Pre-building validation indexes...")
+    validation_index = BoundaryIndex(validation_set)
+    correction_index = CorrectionIndex(corrections)  # Lightweight - just stores list
+
+    # Extract all unique typo patterns
+    all_patterns = list({typo_pattern for (typo_pattern, _, _) in patterns_to_validate.keys()})
+
+    # Pre-calculate would_corrupt checks using Rust batch function (releases GIL, parallelized)
+    would_corrupt_patterns = _precalculate_would_corrupt_patterns(
+        all_patterns, source_words, match_direction, verbose
+    )
+
+    # Pre-calculate validation checks to avoid passing expensive BoundaryIndex to workers
+    validation_checks = _precalculate_validation_checks(all_patterns, validation_index, verbose)
+
+    # Create context for workers with pre-calculated data
+    # NOTE: We do NOT pass validation_index to avoid expensive pickle/unpickle
     context = PatternValidationContext(
         validation_set=frozenset(validation_set),
         source_words=frozenset(source_words),
@@ -379,10 +400,13 @@ def run_parallel_validation(
         min_typo_length=min_typo_length,
         debug_words=frozenset(debug_words),
         corrections=tuple(corrections),
+        would_corrupt_patterns=would_corrupt_patterns,
+        validation_checks=validation_checks,
+        correction_index=correction_index,
     )
 
     if verbose:
-        logger.info("  Initializing workers and building indexes...")
+        logger.info("  Initializing workers (thin worker architecture - no index building)...")
 
     with Pool(
         processes=jobs,
@@ -404,20 +428,13 @@ def run_parallel_validation(
         else:
             results_wrapped = results_iter
 
-        for (
-            is_accepted,
-            pattern,
-            pattern_corrections_to_remove,
-            rejected_pattern,
-        ) in results_wrapped:
-            if is_accepted and pattern:
-                patterns.append(pattern)
-                pattern_key = pattern
-                pattern_replacements[pattern_key] = pattern_corrections_to_remove
-                for correction in pattern_corrections_to_remove:
-                    corrections_to_remove.add(correction)
-            elif rejected_pattern:
-                rejected_patterns.append(rejected_pattern)
+        _process_validation_results(
+            results_wrapped,
+            patterns,
+            pattern_replacements,
+            corrections_to_remove,
+            rejected_patterns,
+        )
 
     # Post-process to remove redundant patterns (parallel validation can't check during validation)
     result = _remove_redundant_patterns_post_process(
@@ -427,9 +444,4 @@ def run_parallel_validation(
         rejected_patterns,
         debug_words,
     )
-    return (
-        result[0],
-        result[1],
-        result[2],
-        result[3],
-    )
+    return result[0], result[1], result[2], result[3]

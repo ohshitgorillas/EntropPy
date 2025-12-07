@@ -150,9 +150,9 @@ class TestCrossBoundaryDeduplication:
         all_corrections = solver_result.corrections + solver_result.patterns
         pairs = [(typo, word) for typo, word, _ in all_corrections]
         unique_pairs = set(pairs)
-        assert len(pairs) == len(unique_pairs), (
-            f"Found {len(pairs) - len(unique_pairs)} duplicate pairs in output"
-        )
+        assert len(pairs) == len(
+            unique_pairs
+        ), f"Found {len(pairs) - len(unique_pairs)} duplicate pairs in output"
 
     @pytest.mark.slow
     def test_direct_corrections_present_in_output(self, tmp_path):
@@ -353,9 +353,9 @@ class TestCrossBoundaryDeduplication:
         all_corrections = solver_result.corrections + solver_result.patterns
         pairs = [(typo, word) for typo, word, _ in all_corrections]
         unique_pairs = set(pairs)
-        assert len(pairs) == len(unique_pairs), (
-            f"Found duplicates: {len(pairs)} total vs {len(unique_pairs)} unique"
-        )
+        assert len(pairs) == len(
+            unique_pairs
+        ), f"Found duplicates: {len(pairs)} total vs {len(unique_pairs)} unique"
 
     @pytest.mark.slow
     def test_same_trigger_different_boundaries_prevented(self, tmp_path):
@@ -422,6 +422,6 @@ class TestCrossBoundaryDeduplication:
                 trigger_words[typo] = word
             else:
                 # Same trigger should always map to same word
-                assert trigger_words[typo] == word, (
-                    f"Trigger '{typo}' maps to multiple words: {trigger_words[typo]} and {word}"
-                )
+                assert (
+                    trigger_words[typo] == word
+                ), f"Trigger '{typo}' maps to multiple words: {trigger_words[typo]} and {word}"

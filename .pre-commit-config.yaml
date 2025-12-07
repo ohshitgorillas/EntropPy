@@ -29,6 +29,14 @@ repos:
         args: ['--show-error-codes', '--ignore-missing-imports', '--follow-imports=normal']
         exclude: ^(tests/|examples/|vulture_whitelist\.py)
 
+  - repo: https://github.com/pylint-dev/pylint
+    rev: v3.3.3
+    hooks:
+      - id: pylint
+        additional_dependencies: [tqdm, loguru, wordfreq, pydantic, english-words, pyyaml]
+        args: [--rcfile=pyproject.toml]
+        exclude: ^(tests/|examples/|vulture_whitelist\.py)
+
   - repo: local
     hooks:
       - id: check-file-length

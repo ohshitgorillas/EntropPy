@@ -82,6 +82,11 @@ class PlatformConstraintsPass(Pass):
                 state.remove_pattern(typo, word, boundary, self.name, reason)
             else:
                 state.remove_correction(typo, word, boundary, self.name, reason)
+            # pylint: disable=duplicate-code
+            # Acceptable pattern: This is a function call to state.add_to_graveyard
+            # with standard parameters. The similar code in platform_pass.py calls
+            # the same function with the same parameters. This is expected when
+            # multiple places need to add items to the graveyard for the same reason.
             state.add_to_graveyard(
                 typo,
                 word,

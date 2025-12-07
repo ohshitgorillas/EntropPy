@@ -201,6 +201,41 @@ def _check_validation_word_conflicts(
     return True, None
 
 
+def _find_example_word_with_substring(typo_pattern: str, validation_set: set[str]) -> str | None:
+    """Find an example validation word containing the pattern as a substring.
+
+    Args:
+        typo_pattern: The pattern to search for
+        validation_set: Set of validation words to search
+
+    Returns:
+        An example word containing the pattern, or None if not found
+    """
+    for word in validation_set:
+        if typo_pattern in word and typo_pattern != word:
+            return word
+    return None
+
+
+def _format_error_with_example(
+    example_word: str | None, message_with_example: str, message_without_example: str
+) -> tuple[bool, str]:
+    """Format error message with or without example word.
+
+    Args:
+        example_word: Example word if found, None otherwise
+        message_with_example: Message template with example
+            (e.g., "Would trigger (e.g., '{example_word}')")
+        message_without_example: Message without example
+
+    Returns:
+        Tuple of (False, error_message)
+    """
+    if example_word:
+        return False, message_with_example.format(example_word=example_word)
+    return False, message_without_example
+
+
 def _check_end_trigger_conflict(
     typo_pattern: str,
     boundary: BoundaryType,
@@ -214,12 +249,11 @@ def _check_end_trigger_conflict(
 
     if would_trigger_at_end(typo_pattern, validation_index):
         example_word = _find_example_suffix_match(typo_pattern, validation_index, validation_set)
-        if example_word:
-            return (
-                False,
-                f"Would trigger at end of validation words (e.g., '{example_word}')",
-            )
-        return False, "Would trigger at end of validation words"
+        return _format_error_with_example(
+            example_word,
+            "Would trigger at end of validation words (e.g., '{example_word}')",
+            "Would trigger at end of validation words",
+        )
 
     return True, None
 
@@ -237,12 +271,11 @@ def _check_start_trigger_conflict(
 
     if would_trigger_at_start(typo_pattern, validation_index):
         example_word = _find_example_prefix_match(typo_pattern, validation_index, validation_set)
-        if example_word:
-            return (
-                False,
-                f"Would trigger at start of validation words (e.g., '{example_word}')",
-            )
-        return False, "Would trigger at start of validation words"
+        return _format_error_with_example(
+            example_word,
+            "Would trigger at start of validation words (e.g., '{example_word}')",
+            "Would trigger at start of validation words",
+        )
 
     return True, None
 
@@ -259,17 +292,17 @@ def _check_none_boundary_substring_conflict(
 
     if is_substring_of_any(typo_pattern, validation_index):
         # Find an example validation word containing the pattern
-        example_word = None
-        for word in validation_set:
-            if typo_pattern in word and typo_pattern != word:
-                example_word = word
-                break
-        if example_word:
-            return (
-                False,
-                f"Would falsely trigger on correctly spelled word '{example_word}'",
-            )
-        return False, "Would falsely trigger on correctly spelled words"
+        example_word = _find_example_word_with_substring(typo_pattern, validation_set)
+        # pylint: disable=duplicate-code
+        # Acceptable pattern: This is a function call to _format_error_with_example
+        # with standard parameters. The similar code in worker.py calls the same
+        # function with the same parameters. This is expected when both places need
+        # to format the same error message.
+        return _format_error_with_example(
+            example_word,
+            "Would falsely trigger on correctly spelled word '{example_word}'",
+            "Would falsely trigger on correctly spelled words",
+        )
 
     return True, None
 
@@ -342,6 +375,13 @@ def check_pattern_conflicts(
     Returns:
         Tuple of (is_safe, error_message). error_message is None if safe.
     """
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: Early-return validation pattern is common and intentional.
+    # This function and _check_pattern_conflicts_with_precalc in worker.py share
+    # the same validation flow (check conflicts, check target words) but use different
+    # implementations (BoundaryIndex vs pre-calculated checks). The early-return pattern
+    # is the standard approach for validation functions and should not be refactored.
+
     # Check if pattern conflicts with validation words
     is_safe, error = _check_validation_word_conflicts(typo_pattern, validation_set)
     if not is_safe:

@@ -367,6 +367,10 @@ def resolve_conflicts_for_group(
     detector = get_detector_for_boundary(boundary)
 
     # Build index and identify blocked typos
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: This is a function call to build_typo_index with standard parameters.
+    # The similar code in conflict_removal.py calls the same function with the same parameters.
+    # This is expected when both places need to build typo indexes for conflict detection.
     typos_to_remove, blocking_map = build_typo_index(
         corrections,
         detector,

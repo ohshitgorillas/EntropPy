@@ -99,6 +99,14 @@ class StateCaching:
         """
         self._batch_false_trigger_results = batch_results
 
+    def get_batch_false_trigger_results(self) -> dict[str, dict[str, bool]]:
+        """Get batch false trigger results.
+
+        Returns:
+            Dict mapping typo -> dict of batch check results
+        """
+        return self._batch_false_trigger_results
+
     def clear_false_trigger_cache(self) -> None:
         """Clear false trigger cache and batch results (called at start of each iteration)."""
         self._false_trigger_cache.clear()

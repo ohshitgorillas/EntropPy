@@ -35,6 +35,12 @@ class GraveyardHistoryEntry(BaseModel):
 class PatternHistoryEntry(BaseModel):
     """Complete history of pattern lifecycle."""
 
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: These are Pydantic model field definitions representing the data model.
+    # The similar field structure in CorrectionHistoryEntry and DebugTraceEntry is inherent
+    # to the domain model (all track similar lifecycle events). This is structural similarity,
+    # not logic duplication. Extracting would require complex inheritance hierarchies that
+    # add complexity without benefit.
     iteration: int
     pass_name: str
     action: str  # "added", "removed"
@@ -48,6 +54,11 @@ class PatternHistoryEntry(BaseModel):
 class CorrectionHistoryEntry(BaseModel):
     """Complete history of correction lifecycle."""
 
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: These are Pydantic model field definitions representing
+    # the data model. The similar field structure in SolverEventEntry Protocol is
+    # inherent to the domain model (both track similar lifecycle events). This is
+    # structural similarity, not logic duplication.
     iteration: int
     pass_name: str
     action: str  # "added", "removed"

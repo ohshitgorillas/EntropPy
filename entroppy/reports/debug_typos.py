@@ -4,8 +4,11 @@ from pathlib import Path
 import re
 from typing import TextIO
 
-from entroppy.core import format_boundary_display
-from entroppy.reports.helpers import write_report_header
+from entroppy.reports.helpers import (
+    write_report_header,
+    write_solver_events,
+    write_stage2_messages,
+)
 from entroppy.resolution.state import DebugTraceEntry
 from entroppy.utils.helpers import write_file_safely
 
@@ -105,30 +108,10 @@ def _write_typo_report(
         if typo_events:
             f.write("Stage 2: Typo Generation\n")
             f.write("-" * 70 + "\n")
-            for message in typo_events:
-                # Extract just the message part after the typo marker
-                if "[Stage 2]" in message:
-                    msg_part = message.split("[Stage 2]", 1)[1].strip()
-                    f.write(f"  {msg_part}\n")
-                else:
-                    f.write(f"  {message}\n")
-            f.write("\n")
+            write_stage2_messages(f, typo_events)
 
         # Solver events
-        if typo_solver_events:
-            f.write("Solver Lifecycle:\n")
-            f.write("-" * 70 + "\n")
-            for entry in sorted(typo_solver_events, key=lambda e: (e.iteration, e.pass_name)):
-                boundary_str = format_boundary_display(entry.boundary)
-                f.write(
-                    f"  Iter {entry.iteration} [{entry.pass_name}] {entry.action}: "
-                    f"{entry.typo} -> {entry.word} ({boundary_str})\n"
-                )
-                if entry.reason:
-                    f.write(f"    Reason: {entry.reason}\n")
-            f.write("\n")
-        else:
-            f.write("Solver Lifecycle: No events tracked\n\n")
+        write_solver_events(f, typo_solver_events)
 
     write_file_safely(filepath, write_content, f"writing debug typo report for {typo}")
 

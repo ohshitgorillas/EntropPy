@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 import threading
-from typing import cast
 
 from entroppy.core.boundaries import BoundaryIndex, BoundaryType
 
@@ -108,6 +107,10 @@ class CandidateSelectionContext:
         exclusion_set: Set of exclusion patterns (raw strings, not matcher)
         covered_typos: Set of typos already covered by active corrections/patterns
         graveyard: Set of (typo, word, boundary) tuples in graveyard
+        batch_false_trigger_results: Pre-computed batch false trigger check results
+            (typo -> dict with keys: 'start_val', 'end_val', 'substring_val',
+            'start_src', 'end_src', 'substring_src')
+        boundary_map: Pre-computed boundary determination results (typo -> BoundaryType)
     """
 
     validation_set: frozenset[str]
@@ -117,6 +120,8 @@ class CandidateSelectionContext:
     exclusion_set: frozenset[str]
     covered_typos: frozenset[str]
     graveyard: frozenset[tuple[str, str, BoundaryType]]
+    batch_false_trigger_results: dict[str, dict[str, bool]]
+    boundary_map: dict[str, BoundaryType]
 
 
 # Thread-local storage for candidate selection worker context and indexes
@@ -126,20 +131,19 @@ _candidate_worker_boundary_cache = threading.local()
 
 
 def init_candidate_selection_worker(context: "CandidateSelectionContext") -> None:
-    """Initialize worker process with context and build indexes eagerly.
+    """Initialize worker process with context.
 
     Args:
         context: CandidateSelectionContext to store in thread-local storage
     """
     _candidate_worker_context.value = context
 
-    # Build indexes eagerly during initialization
-    # This prevents the progress bar from freezing when workers start
-    _candidate_worker_indexes.validation_index = BoundaryIndex(context.validation_set)
-    _candidate_worker_indexes.source_index = BoundaryIndex(context.source_words)
-
-    # Initialize boundary cache for this worker
-    _candidate_worker_boundary_cache.value = {}
+    # Thin worker architecture: No expensive index building in workers
+    # Create minimal dummy indexes (only needed for function signatures, not actually used)
+    # All expensive operations are pre-calculated in main process via batch_results and boundary_map
+    # Create minimal empty indexes (workers use batch_results, not these indexes)
+    _candidate_worker_indexes.validation_index = BoundaryIndex(frozenset())
+    _candidate_worker_indexes.source_index = BoundaryIndex(frozenset())
 
 
 def get_candidate_selection_worker_context() -> "CandidateSelectionContext":
@@ -182,29 +186,3 @@ def get_candidate_worker_indexes() -> tuple[BoundaryIndex, BoundaryIndex]:
             "Candidate selection worker indexes not initialized. "
             "Call init_candidate_selection_worker first."
         ) from e
-
-
-def get_candidate_worker_boundary_cache() -> dict[str, BoundaryType]:
-    """Get boundary cache from thread-local storage.
-
-    Returns:
-        Dictionary mapping typo -> BoundaryType
-
-    Raises:
-        RuntimeError: If called before init_candidate_selection_worker
-    """
-    cache_dict: dict[str, BoundaryType]
-    try:
-        cache = _candidate_worker_boundary_cache.value
-        if cache is None or not isinstance(cache, dict):
-            cache_dict = {}
-            _candidate_worker_boundary_cache.value = cache_dict
-            return cache_dict
-        # Type narrowing: isinstance check ensures cache is dict
-        # Cast to proper type since thread-local storage doesn't preserve types
-        cache_dict = cast(dict[str, BoundaryType], cache)
-        return cache_dict
-    except AttributeError:
-        cache_dict = {}
-        _candidate_worker_boundary_cache.value = cache_dict
-        return cache_dict

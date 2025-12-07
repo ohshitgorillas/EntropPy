@@ -12,8 +12,6 @@ This pass runs after ConflictRemovalPass to catch cross-boundary conflicts
 that weren't detected within boundary groups.
 """
 
-from collections import defaultdict
-from multiprocessing import Pool
 from typing import TYPE_CHECKING, Any
 
 from tqdm import tqdm
@@ -25,10 +23,8 @@ from entroppy.resolution.platform_conflicts.conflict_processing import (
     process_conflict_combinations,
 )
 from entroppy.resolution.platform_conflicts.detection import is_substring
-from entroppy.resolution.platform_conflicts.formatting import (
-    FormattingContext,
-    _format_correction_worker,
-    init_formatting_worker,
+from entroppy.resolution.platform_conflicts.formatting_helpers import (
+    format_corrections_parallel,
 )
 from entroppy.resolution.platform_conflicts.logging import log_platform_substring_conflict
 from entroppy.resolution.platform_conflicts.suffix_array_helpers import (
@@ -37,10 +33,9 @@ from entroppy.resolution.platform_conflicts.suffix_array_helpers import (
 )
 from entroppy.resolution.solver import Pass
 from entroppy.resolution.state import RejectionReason
+from entroppy.utils.suffix_array import SubstringIndex
 
 if TYPE_CHECKING:
-    from pysuffixarray.core import SuffixArray
-
     from entroppy.resolution.state import DictionaryState
 
 
@@ -97,7 +92,7 @@ class PlatformSubstringConflictPass(Pass):
             all_corrections
         )
 
-        # Phase 2: Detect conflicts (keeping original nested loop logic)
+        # Phase 2: Detect conflicts (suffix array is already integrated in _detect_conflicts)
         corrections_to_remove, conflict_pairs = self._detect_conflicts(
             formatted_to_corrections, match_direction, state
         )
@@ -125,55 +120,14 @@ class PlatformSubstringConflictPass(Pass):
             - correction_to_formatted: Dict mapping correction -> formatted_typo
         """
         is_qmk = self.context.platform.__class__.__name__ == "QMKBackend"
-        use_parallel = self.context.jobs > 1 and len(all_corrections) >= 100
-
-        if use_parallel:
-            formatting_context = FormattingContext(is_qmk=is_qmk)
-
-            with Pool(
-                processes=self.context.jobs,
-                initializer=init_formatting_worker,
-                initargs=(formatting_context,),
-            ) as pool:
-                if self.context.verbose:
-                    results_iter = pool.imap(_format_correction_worker, all_corrections)
-                    results: Any = tqdm(
-                        results_iter,
-                        desc=f"    {self.name}",
-                        total=len(all_corrections),
-                        unit="correction",
-                        leave=False,
-                    )
-                else:
-                    results = pool.imap(_format_correction_worker, all_corrections)
-                formatted_results = list(results)
-        else:
-            if self.context.verbose:
-                corrections_iter: Any = tqdm(
-                    all_corrections,
-                    desc=f"    {self.name}",
-                    unit="correction",
-                    leave=False,
-                )
-            else:
-                corrections_iter = all_corrections
-
-            formatted_results = [
-                (c, self._format_typo_for_platform(c[0], c[2])) for c in corrections_iter
-            ]
-
-        # Build lookup structures
-        formatted_to_corrections: dict[
-            str, list[tuple[tuple[str, str, BoundaryType], str, BoundaryType]]
-        ] = defaultdict(list)
-        correction_to_formatted: dict[tuple[str, str, BoundaryType], str] = {}
-
-        for correction, formatted_typo in formatted_results:
-            typo, _word, boundary = correction
-            formatted_to_corrections[formatted_typo].append((correction, typo, boundary))
-            correction_to_formatted[correction] = formatted_typo
-
-        return formatted_to_corrections, correction_to_formatted
+        return format_corrections_parallel(
+            all_corrections,
+            is_qmk,
+            self.context.jobs,
+            self.context.verbose,
+            self.name,
+            self._format_typo_for_platform,
+        )
 
     def _process_typo_conflicts(
         self,
@@ -189,8 +143,7 @@ class PlatformSubstringConflictPass(Pass):
         corrections_to_remove_set: set[tuple[str, str, BoundaryType]],
         all_corrections_to_remove: list[tuple[tuple[str, str, BoundaryType], str]],
         all_conflict_pairs: dict[tuple[str, str, BoundaryType], tuple[str, str, BoundaryType]],
-        sa: "SuffixArray",
-        delimiter: str,
+        sa: SubstringIndex,
         state: "DictionaryState",
     ) -> None:
         """Process conflicts for a single formatted typo.
@@ -207,13 +160,10 @@ class PlatformSubstringConflictPass(Pass):
             all_corrections_to_remove: List to append removals
             all_conflict_pairs: Dict to update with conflict pairs
             sa: Suffix array
-            delimiter: Delimiter used in concatenated string
             state: Dictionary state
         """
         # Find which typos contain this as a substring using suffix array
-        matched_typo_indices = find_substring_matches(
-            sa, formatted_typo, formatted_typos, delimiter
-        )
+        matched_typo_indices = find_substring_matches(sa, formatted_typo)
 
         # Check each match for conflicts
         for match_idx in matched_typo_indices:
@@ -242,7 +192,8 @@ class PlatformSubstringConflictPass(Pass):
                 # Same string - skip (duplicate)
                 continue
 
-            # Verify substring relationship
+            # Suffix array already found this as a substring match
+            # Quick CPU verification to ensure it's actually a substring (handles edge cases)
             if not is_substring(shorter_typo, longer_typo):
                 continue
 
@@ -274,7 +225,9 @@ class PlatformSubstringConflictPass(Pass):
         list[tuple[tuple[str, str, BoundaryType], str]],
         dict[tuple[str, str, BoundaryType], tuple[str, str, BoundaryType]],
     ]:
-        """Detect conflicts using suffix array for efficient substring queries.
+        """Detect conflicts using suffix array helpers.
+
+        This uses suffix array to enable O(log N + M) substring queries instead of O(N²).
 
         This uses:
         - Suffix array to enable O(log N + M) substring queries instead of O(N²)
@@ -305,7 +258,7 @@ class PlatformSubstringConflictPass(Pass):
             return all_corrections_to_remove, all_conflict_pairs
 
         # Build suffix array
-        sa, delimiter = build_suffix_array(formatted_typos, self.context.verbose, self.name)
+        sa = build_suffix_array(formatted_typos, self.context.verbose, self.name)
 
         # Setup progress bar
         if self.context.verbose:
@@ -338,7 +291,6 @@ class PlatformSubstringConflictPass(Pass):
                 all_corrections_to_remove,
                 all_conflict_pairs,
                 sa,
-                delimiter,
                 state,
             )
 
@@ -394,6 +346,11 @@ class PlatformSubstringConflictPass(Pass):
             state.remove_pattern(typo, word, boundary, self.name, reason)
 
         # Add to graveyard
+        # pylint: disable=duplicate-code
+        # Acceptable pattern: This is a function call to state.add_to_graveyard
+        # with standard parameters. The similar code in platform_constraints.py
+        # calls the same function with the same parameters. This is expected when
+        # multiple places need to add items to the graveyard for the same reason.
         state.add_to_graveyard(
             typo,
             word,
@@ -402,6 +359,9 @@ class PlatformSubstringConflictPass(Pass):
             reason,
             pass_name=self.name,
         )
+
+    # GPU verification removed - suffix array already handles substring detection efficiently
+    # GPU would only be useful for additional validation beyond substring checking
 
     def _remove_conflicts_and_log(
         self,

@@ -32,12 +32,13 @@ However, different platforms have different constraints. Keyboard firmware like 
 * **Platform-Specific Optimization**: Tailored output for each platform's constraints
 * **Comprehensive Reports**: Detailed analysis of decisions and optimizations
 * **Debug Reports**: Complete lifecycle tracking for corrections, patterns, and graveyard entries with iteration/pass context
+* **High-Performance Rust Extensions**: Optional Rust extensions via PyO3 provide ~100x faster substring indexing and parallelized pattern checking. Automatically used when Rust toolchain is installed, falls back to Python implementation otherwise. See [Rust Setup Guide](docs/RUST_SETUP.md) for installation instructions.
 
 ## Documentation
 
-For a complete explanation of EntropPy's algorithms and logic, from dictionary loading to final selection, see **[Algorithms](ALGORITHMS.md)**. This document provides detailed explanations with examples of how each stage of the pipeline works.
+For a complete explanation of EntropPy's algorithms and logic, from dictionary loading to final selection, see **[Algorithms](docs/ALGORITHMS.md)**. This document provides detailed explanations with examples of how each stage of the pipeline works.
 
-For information about processing efficiency, computational complexity, and optimizations, see **[Efficiency](EFFICIENCY.md)**. This document explains the big-O complexity of each processing stage and the optimizations applied to reduce processing time.
+For information about processing efficiency, computational complexity, and optimizations, see **[Efficiency](docs/EFFICIENCY.md)**. This document explains the big-O complexity of each processing stage and the optimizations applied to reduce processing time.
 
 
 ## Setup Instructions

@@ -51,6 +51,11 @@ def _generate_reports(
 ) -> None:
     """Generate reports if enabled."""
     if config.reports and report_data is not None and report_dir is not None:
+        # pylint: disable=duplicate-code
+        # Acceptable pattern: This is a function call with standard report parameters.
+        # The similar code in pipeline_stages.py calls generate_platform_reports with
+        # similar parameters. The similarity is expected when both functions need to
+        # pass the same report data.
         run_stage_9_reports(
             platform,
             final_corrections,

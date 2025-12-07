@@ -3,6 +3,38 @@
 from entroppy.core.boundaries.types import BoundaryIndex, BoundaryType
 
 
+def _batch_check_substrings(
+    typos: list[str],
+    validation_index: BoundaryIndex,
+    source_index: BoundaryIndex,
+) -> tuple[dict[str, bool], dict[str, bool]]:
+    """Batch check substring conflicts for multiple typos using suffix arrays.
+
+    This helper function extracts the common pattern of checking substring conflicts
+    using suffix arrays for both validation and source indexes.
+
+    Args:
+        typos: List of typo strings to check
+        validation_index: Pre-built index for validation set
+        source_index: Pre-built index for source words
+
+    Returns:
+        Tuple of (substring_val_results, substring_src_results) dicts
+    """
+    val_suffix_index = validation_index.get_suffix_array_index()
+    src_suffix_index = source_index.get_suffix_array_index()
+
+    substring_val_results = {}
+    substring_src_results = {}
+    for typo in typos:
+        val_matches = val_suffix_index.find_substring_conflicts(typo)
+        src_matches = src_suffix_index.find_substring_conflicts(typo)
+        substring_val_results[typo] = len(val_matches) > 0
+        substring_src_results[typo] = len(src_matches) > 0
+
+    return substring_val_results, substring_src_results
+
+
 def _check_typo_in_wordset(
     typo: str,
     check_type: str,
@@ -117,3 +149,55 @@ def determine_boundaries(
     if appears_as_prefix and not appears_as_suffix:
         return BoundaryType.RIGHT
     return BoundaryType.BOTH
+
+
+def batch_determine_boundaries(
+    typos: list[str],
+    validation_index: BoundaryIndex,
+    source_index: BoundaryIndex,
+) -> dict[str, BoundaryType]:
+    """Batch determine boundaries for multiple typos.
+
+    Uses batch operations for efficiency instead of calling determine_boundaries
+    individually for each typo.
+
+    Args:
+        typos: List of typo strings to check
+        validation_index: Pre-built index for validation set
+        source_index: Pre-built index for source words
+
+    Returns:
+        Dict mapping typo -> BoundaryType
+    """
+    # Batch check all conditions at once
+    start_val_results = validation_index.batch_check_start(typos)
+    end_val_results = validation_index.batch_check_end(typos)
+
+    # Get substring checks using suffix array (efficient)
+    substring_val_results, substring_src_results = _batch_check_substrings(
+        typos, validation_index, source_index
+    )
+
+    # Determine boundaries for each typo
+    boundary_map: dict[str, BoundaryType] = {}
+    for typo in typos:
+        is_substring_source = substring_src_results[typo]
+        is_substring_validation = substring_val_results[typo]
+
+        if not is_substring_source and not is_substring_validation:
+            boundary_map[typo] = BoundaryType.NONE
+            continue
+
+        appears_as_prefix = start_val_results[typo]
+        appears_as_suffix = end_val_results[typo]
+
+        if not appears_as_prefix and not appears_as_suffix:
+            boundary_map[typo] = BoundaryType.BOTH
+        elif appears_as_suffix and not appears_as_prefix:
+            boundary_map[typo] = BoundaryType.LEFT
+        elif appears_as_prefix and not appears_as_suffix:
+            boundary_map[typo] = BoundaryType.RIGHT
+        else:
+            boundary_map[typo] = BoundaryType.BOTH
+
+    return boundary_map

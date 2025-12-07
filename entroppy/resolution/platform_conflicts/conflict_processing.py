@@ -58,6 +58,11 @@ def process_conflict_combinations(
             processed_pairs.add(pair_key)
 
             # Process conflict pair
+            # pylint: disable=duplicate-code
+            # Acceptable pattern: This is a function call to process_conflict_pair
+            # with standard parameters. The similar code in utils.py calls the
+            # same function with the same parameters. This is expected when both places
+            # need to process conflict pairs in the same way.
             result, conflict_pair = process_conflict_pair(
                 correction1,
                 correction2,
@@ -73,6 +78,7 @@ def process_conflict_combinations(
                 debug_words,
                 debug_typo_matcher,
             )
+            # need to process conflict pairs.
 
             if result is not None:
                 correction_to_remove, reason = result

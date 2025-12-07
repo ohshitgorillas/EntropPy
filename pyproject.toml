@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "entroppy"
@@ -141,9 +141,7 @@ python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
-ignore_missing_imports = true
 show_error_codes = true
-follow_imports = "skip"
 exclude = [
     "tests/",
     "examples/",
@@ -160,3 +158,27 @@ exclude = [
     "docs/",
     "build/",
 ]
+
+[tool.pylint]
+disable = [
+    "too-many-arguments",           # R0913
+    "too-many-branches",            # R0912
+    "too-many-return-statements",   # R0911
+    "too-many-statements",          # R0915
+    "too-many-locals",              # R0914
+    "too-many-public-methods",      # R0904
+    "too-many-instance-attributes", # R0902
+    "too-many-boolean-expressions", # R0916
+    "too-many-nested-blocks",       # R1702
+    "too-many-positional-arguments", # R0917
+    "too-few-public-methods",       # R0903
+]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "entroppy.rust_ext"
+python-source = "."
+compatibility = "linux"
+sdist-include = ["rust/**/*"]
+
+# Maturin will automatically find Cargo.toml in the rust/ directory

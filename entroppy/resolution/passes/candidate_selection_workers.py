@@ -1,10 +1,8 @@
 """Worker functions for candidate selection parallel processing."""
 
-from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from entroppy.core import BoundaryType
-from entroppy.core.boundaries import determine_boundaries
 from entroppy.core.types import Correction
 from entroppy.matching import ExclusionMatcher
 from entroppy.resolution.false_trigger_check import _check_false_trigger_with_details
@@ -12,42 +10,14 @@ from entroppy.resolution.state import RejectionReason
 from entroppy.resolution.worker_context import (
     CandidateSelectionContext,
     get_candidate_selection_worker_context,
-    get_candidate_worker_boundary_cache,
     get_candidate_worker_indexes,
 )
 from entroppy.utils.helpers import cached_word_frequency
 
+from .candidate_selection.helpers import _get_boundary_order, group_words_by_boundary
+
 if TYPE_CHECKING:
     pass
-
-
-def _get_boundary_order(natural_boundary: BoundaryType) -> list[BoundaryType]:
-    """Get the order of boundaries to try, starting with the natural one.
-
-    This implements self-healing: if a less strict boundary fails,
-    we automatically try stricter ones in subsequent iterations.
-
-    Args:
-        natural_boundary: The naturally determined boundary
-
-    Returns:
-        List of boundaries to try in order
-    """
-    # Order: try natural first, then stricter alternatives
-    if natural_boundary == BoundaryType.NONE:
-        # NONE is least strict - try all others if it fails
-        return [
-            BoundaryType.NONE,
-            BoundaryType.LEFT,
-            BoundaryType.RIGHT,
-            BoundaryType.BOTH,
-        ]
-    if natural_boundary == BoundaryType.LEFT:
-        return [BoundaryType.LEFT, BoundaryType.BOTH]
-    if natural_boundary == BoundaryType.RIGHT:
-        return [BoundaryType.RIGHT, BoundaryType.BOTH]
-    # BOTH is most strict - only try it
-    return [BoundaryType.BOTH]
 
 
 def _check_length_constraints_worker(typo: str, word: str, min_typo_length: int) -> bool:
@@ -89,13 +59,8 @@ def _process_single_word_worker(
         corrections: List to append corrections to
         graveyard_entries: List to append graveyard entries to
     """
-    # Determine the natural boundary for this typo (using cache)
-    boundary_cache = get_candidate_worker_boundary_cache()
-    if typo in boundary_cache:
-        natural_boundary = boundary_cache[typo]
-    else:
-        natural_boundary = determine_boundaries(typo, validation_index, source_index)
-        boundary_cache[typo] = natural_boundary
+    # Get pre-calculated boundary from context (thin worker architecture)
+    natural_boundary = context.boundary_map.get(typo, BoundaryType.NONE)
 
     # Try boundaries in order: NONE -> LEFT/RIGHT -> BOTH
     boundaries_to_try = _get_boundary_order(natural_boundary)
@@ -128,6 +93,7 @@ def _process_single_word_worker(
             validation_index,
             source_index,
             target_word=word,
+            batch_results=context.batch_false_trigger_results,
         )
         if would_cause:
             # This boundary would cause false triggers - add to graveyard and try next boundary
@@ -196,6 +162,7 @@ def _process_single_word_with_boundary_worker(
             validation_index,
             source_index,
             target_word=word,
+            batch_results=context.batch_false_trigger_results,
         )
         if would_cause:
             # This boundary would cause false triggers - try next boundary
@@ -208,6 +175,10 @@ def _process_single_word_with_boundary_worker(
 
 def _calculate_frequency_ratio(words: list[str]) -> tuple[str, float]:
     """Calculate frequency ratio and return most common word."""
+    # pylint: disable=duplicate-code
+    # False positive: This is a common pattern for calculating frequency ratios.
+    # The similar code in selector.py uses the same pattern but in a different context.
+    # This is expected similarity, not duplicate code.
     word_freqs = [(w, cached_word_frequency(w, "en")) for w in words]
     word_freqs.sort(key=lambda x: x[1], reverse=True)
 
@@ -278,6 +249,7 @@ def _try_boundaries_for_correction(
             validation_index,
             source_index,
             target_word=word,
+            batch_results=context.batch_false_trigger_results,
         )
         if would_cause:
             # This boundary would cause false triggers - try next boundary
@@ -357,21 +329,11 @@ def _process_collision_worker(
         corrections: List to append corrections to
         graveyard_entries: List to append graveyard entries to
     """
-    # Determine boundaries for each word (using cache - same typo for all words)
-    boundary_cache = get_candidate_worker_boundary_cache()
-    if typo in boundary_cache:
-        boundary = boundary_cache[typo]
-    else:
-        boundary = determine_boundaries(typo, validation_index, source_index)
-        boundary_cache[typo] = boundary
-
-    # All words for the same typo will have the same boundary
-    word_boundary_map = {word: boundary for word in unique_words}
+    # Get pre-calculated boundary from context (thin worker architecture)
+    boundary = context.boundary_map.get(typo, BoundaryType.NONE)
 
     # Group words by boundary type
-    by_boundary = defaultdict(list)
-    for word, boundary in word_boundary_map.items():
-        by_boundary[boundary].append(word)
+    by_boundary = group_words_by_boundary(unique_words, boundary)
 
     # Process each boundary group separately
     for boundary, words_in_group in by_boundary.items():

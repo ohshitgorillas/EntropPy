@@ -65,6 +65,7 @@ def run_iterative_solver(
         collision_threshold=config.freq_ratio,
         jobs=config.jobs,
         verbose=verbose,
+        use_gpu=config.use_gpu,
     )
 
     # Create passes
@@ -276,6 +277,7 @@ def run_stage_3_6_solver(
             collision_threshold=config.freq_ratio,
             jobs=config.jobs,
             verbose=verbose,
+            use_gpu=config.use_gpu,
         )
 
         # Extract data from graveyard for reporting
@@ -430,6 +432,10 @@ def run_stage_9_reports(
     )
 
     # Generate platform-specific reports
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: This is a function call with standard report parameters.
+    # The similar code in pipeline.py calls run_stage_9_reports with similar parameters.
+    # The similarity is expected when both functions need to pass the same report data.
     generate_platform_reports(
         platform,
         final_corrections,

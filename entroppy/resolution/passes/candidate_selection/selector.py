@@ -1,6 +1,5 @@
 """Candidate Selection Pass - promotes raw typos to active corrections."""
 
-from collections import defaultdict
 from multiprocessing import Pool
 from typing import TYPE_CHECKING, Any
 
@@ -8,6 +7,7 @@ from loguru import logger
 from tqdm import tqdm
 
 from entroppy.core import BoundaryType
+from entroppy.core.boundaries import batch_determine_boundaries
 from entroppy.resolution.false_trigger_check import batch_check_false_triggers
 from entroppy.resolution.passes.candidate_selection_workers import _process_typo_batch_worker
 from entroppy.resolution.solver import Pass
@@ -19,7 +19,7 @@ from entroppy.resolution.worker_context import (
 from entroppy.utils.helpers import cached_word_frequency
 
 from .filters import _check_length_constraints, _is_excluded
-from .helpers import _get_boundary_order
+from .helpers import _get_boundary_order, group_words_by_boundary
 
 if TYPE_CHECKING:
     from entroppy.resolution.state import DictionaryState
@@ -54,15 +54,23 @@ class CandidateSelectionPass(Pass):
                 all_typos,
                 self.context.validation_index,
                 self.context.source_index,
-                jobs=self.context.jobs if len(all_typos) > 1000 else 1,
                 verbose=self.context.verbose,
                 pass_name=self.name,
             )
             state.caching.set_batch_false_trigger_results(batch_results)
 
+            # Batch determine boundaries for all typos (optimization)
+            boundary_map = batch_determine_boundaries(
+                all_typos,
+                self.context.validation_index,
+                self.context.source_index,
+            )
+        else:
+            boundary_map = {}
+
         # Use multiprocessing if jobs > 1 and we have enough work
         if self.context.jobs > 1 and len(typos_to_process) > 100:
-            self._run_parallel(state, typos_to_process)
+            self._run_parallel(state, typos_to_process, boundary_map)
         else:
             self._run_sequential(state, typos_to_process)
 
@@ -125,13 +133,17 @@ class CandidateSelectionPass(Pass):
                 self._process_collision(state, typo, unique_words)
 
     def _run_parallel(
-        self, state: "DictionaryState", typos_to_process: list[tuple[str, list[str]]]
+        self,
+        state: "DictionaryState",
+        typos_to_process: list[tuple[str, list[str]]],
+        boundary_map: dict[str, BoundaryType],
     ) -> None:
         """Run candidate selection in parallel.
 
         Args:
             state: The dictionary state to modify
             typos_to_process: List of (typo, word_list) tuples to process
+            boundary_map: Pre-calculated boundary map (typo -> BoundaryType)
         """
         # Build coverage and graveyard sets for workers
         covered_typos = frozenset(
@@ -142,6 +154,9 @@ class CandidateSelectionPass(Pass):
         # Create worker context
         exclusion_set = frozenset(self.context.exclusion_set)
 
+        # Retrieve batch false trigger results from state caching
+        batch_results = state.caching.get_batch_false_trigger_results()
+
         worker_context = CandidateSelectionContext(
             validation_set=frozenset(self.context.filtered_validation_set),
             source_words=frozenset(self.context.source_words_set),
@@ -150,6 +165,8 @@ class CandidateSelectionPass(Pass):
             exclusion_set=exclusion_set,
             covered_typos=covered_typos,
             graveyard=graveyard_set,
+            batch_false_trigger_results=batch_results,
+            boundary_map=boundary_map,
         )
 
         # Calculate optimal chunk size based on workload
@@ -343,13 +360,8 @@ class CandidateSelectionPass(Pass):
             self.context.validation_index,
             self.context.source_index,
         )
-        # All words for the same typo will have the same boundary
-        word_boundary_map = {word: boundary for word in unique_words}
-
         # Group words by boundary type
-        by_boundary = defaultdict(list)
-        for word, boundary in word_boundary_map.items():
-            by_boundary[boundary].append(word)
+        by_boundary = group_words_by_boundary(unique_words, boundary)
 
         # Process each boundary group separately
         for boundary, words_in_group in by_boundary.items():
@@ -399,6 +411,10 @@ class CandidateSelectionPass(Pass):
             boundary: The boundary type for this group
         """
         # Get frequencies for all words
+        # pylint: disable=duplicate-code
+        # False positive: This is a common pattern for calculating frequency ratios.
+        # The similar code in candidate_selection_workers.py uses the same pattern
+        # but is in a separate function. This is expected similarity, not duplicate code.
         word_freqs = [(w, cached_word_frequency(w, "en")) for w in words]
         word_freqs.sort(key=lambda x: x[1], reverse=True)
 

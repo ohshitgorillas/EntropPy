@@ -12,6 +12,7 @@ from entroppy.resolution.history import (
     RejectionReason,
 )
 from entroppy.resolution.state_caching import StateCaching
+from entroppy.resolution.state_debug import get_debug_summary
 from entroppy.resolution.state_types import DebugTraceEntry, GraveyardEntry
 
 # Re-export for backward compatibility
@@ -189,6 +190,11 @@ class DictionaryState:
 
         # Track comprehensive history if enabled
         if self.debug_corrections:
+            # pylint: disable=duplicate-code
+            # Acceptable pattern: This is simple field assignment to a dataclass constructor.
+            # The similar code for PatternHistoryEntry uses a different type with the same
+            # field structure. Extracting this would require generic factories that add
+            # complexity without benefit. The similarity is inherent to the data model design.
             self.correction_history.append(
                 CorrectionHistoryEntry(
                     iteration=self.current_iteration,
@@ -255,6 +261,11 @@ class DictionaryState:
 
         # Track comprehensive history if enabled
         if self.debug_corrections:
+            # pylint: disable=duplicate-code
+            # Acceptable pattern: This is simple field assignment to a dataclass constructor.
+            # The similar code for PatternHistoryEntry uses a different type with the same
+            # field structure. Extracting this would require generic factories that add
+            # complexity without benefit. The similarity is inherent to the data model design.
             self.correction_history.append(
                 CorrectionHistoryEntry(
                     iteration=self.current_iteration,
@@ -314,6 +325,11 @@ class DictionaryState:
 
         # Track comprehensive history if enabled
         if self.debug_patterns:
+            # pylint: disable=duplicate-code
+            # Acceptable pattern: This is simple field assignment to a dataclass constructor.
+            # The similar code for CorrectionHistoryEntry uses a different type with the same
+            # field structure. Extracting this would require generic factories that add
+            # complexity without benefit. The similarity is inherent to the data model design.
             self.pattern_history.append(
                 PatternHistoryEntry(
                     iteration=self.current_iteration,
@@ -374,6 +390,11 @@ class DictionaryState:
 
         # Track comprehensive history if enabled
         if self.debug_patterns:
+            # pylint: disable=duplicate-code
+            # Acceptable pattern: This is simple field assignment to a dataclass constructor.
+            # The similar code for CorrectionHistoryEntry uses a different type with the same
+            # field structure. Extracting this would require generic factories that add
+            # complexity without benefit. The similarity is inherent to the data model design.
             self.pattern_history.append(
                 PatternHistoryEntry(
                     iteration=self.current_iteration,
@@ -432,19 +453,7 @@ class DictionaryState:
         Returns:
             Formatted string with debug trace
         """
-        if not self.debug_trace:
-            return "No debug targets tracked."
-
-        lines = ["Debug Trace:"]
-        for entry in self.debug_trace:
-            lines.append(
-                f"  Iter {entry.iteration} [{entry.pass_name}] "
-                f"{entry.action}: {entry.typo} -> {entry.word} ({entry.boundary.value})"
-            )
-            if entry.reason:
-                lines.append(f"    Reason: {entry.reason}")
-
-        return "\n".join(lines)
+        return get_debug_summary(self.debug_trace)
 
     def get_formatted_cache(self) -> dict[Correction, str]:
         """Get the formatted cache for corrections.

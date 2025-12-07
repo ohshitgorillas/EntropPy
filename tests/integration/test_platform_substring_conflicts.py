@@ -106,9 +106,9 @@ class TestPlatformSubstringConflicts:
         has_aemr = "aemr ->" in output_content or "aemr\t" in output_content
         has_colon_aemr = ":aemr ->" in output_content or ":aemr\t" in output_content
 
-        assert not (has_aemr and has_colon_aemr), (
-            "Output should not contain both 'aemr' and ':aemr'"
-        )
+        assert not (
+            has_aemr and has_colon_aemr
+        ), "Output should not contain both 'aemr' and ':aemr'"
 
     @pytest.mark.slow
     def test_qmk_prefers_less_restrictive_boundary_when_safe(self, tmp_path):
@@ -378,9 +378,9 @@ class TestPlatformSubstringConflicts:
                 # Check if one is a substring of the other
                 shorter, longer = (typo1, typo2) if len(typo1) < len(typo2) else (typo2, typo1)
                 if shorter in longer and shorter != longer:
-                    assert False, (
-                        f"Substring conflict found: '{shorter}' is substring of '{longer}'"
-                    )
+                    assert (
+                        False
+                    ), f"Substring conflict found: '{shorter}' is substring of '{longer}'"
 
     @pytest.mark.slow
     def test_qmk_handles_suffix_boundary_conflicts(self, tmp_path):
@@ -483,9 +483,9 @@ class TestPlatformSubstringConflicts:
                 if typo1.endswith(":") and not typo2.endswith(":"):
                     core1 = typo1[:-1]  # Remove trailing ':'
                     if core1 == typo2:
-                        assert False, (
-                            f"Substring conflict: '{typo2}' and '{typo1}' should not both exist"
-                        )
+                        assert (
+                            False
+                        ), f"Substring conflict: '{typo2}' and '{typo1}' should not both exist"
 
     @pytest.mark.slow
     def test_qmk_handles_both_boundary_conflicts(self, tmp_path):
@@ -589,6 +589,6 @@ class TestPlatformSubstringConflicts:
                 if has_both_boundaries and has_no_boundaries:
                     core1 = typo1.strip(":")  # Remove both colons
                     if core1 == typo2:
-                        assert False, (
-                            f"Substring conflict: '{typo2}' and '{typo1}' should not both exist"
-                        )
+                        assert (
+                            False
+                        ), f"Substring conflict: '{typo2}' and '{typo1}' should not both exist"

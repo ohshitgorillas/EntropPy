@@ -6,15 +6,21 @@ This document explains how EntropPy works, from loading dictionaries to generati
 
 ## Overview: The Complete Pipeline
 
-EntropPy processes words through seven main stages:
+EntropPy processes words through eight main stages:
 
 1. **Dictionary Loading** - Loads source words and validation dictionaries
 2. **Typo Generation** - Creates typos from each word using five error types
-3. **Collision Resolution** - Resolves when multiple words map to the same typo
-4. **Pattern Generalization** - Finds common patterns to reduce dictionary size
-5. **Conflict Removal** - Removes corrections that would interfere with each other
-6. **Platform Filtering** - Applies platform-specific constraints
-7. **Final Selection** - Ranks and selects the best corrections
+3-6. **Iterative Solver** - Runs multiple passes iteratively until convergence:
+   - **Stage 3: Candidate Selection** - Resolves collisions and selects corrections
+   - **Stage 4: Pattern Generalization** - Finds common patterns to reduce dictionary size
+   - **Stage 5: Conflict Removal** - Removes corrections that would interfere with each other
+   - **Stage 5.5: Platform Substring Conflict Detection** - Detects cross-boundary conflicts
+   - **Stage 6: Platform Constraints** - Applies platform-specific constraints (character set, length limits)
+7. **Platform Ranking** - Ranks and selects the best corrections for the platform
+8. **Output Generation** - Generates platform-specific output files
+9. **Report Generation** (optional) - Generates detailed reports if `--reports` is specified
+
+The iterative solver (stages 3-6) runs multiple passes in a loop until no changes occur (convergence) or the maximum iteration limit is reached. This allows the system to self-heal: when conflicts are detected, corrections are added to a "graveyard" and retried with stricter boundaries on the next iteration.
 
 Let's walk through each stage in detail.
 
@@ -182,7 +188,9 @@ Notice that some typos map to multiple words - this is a **collision** that need
 
 ---
 
-## Stage 3: Collision Resolution
+## Stage 3: Candidate Selection (Collision Resolution)
+
+**Note**: This is the first pass in the iterative solver (stages 3-6). The solver runs all passes in sequence, then checks for convergence. If changes occurred, it runs another iteration.
 
 ### What Happens
 
@@ -266,6 +274,8 @@ For each typo, EntropPy selects the **least restrictive boundary** that doesn't 
 ---
 
 ## Stage 4: Pattern Generalization
+
+**Note**: This is the second pass in the iterative solver. It runs after Candidate Selection on each iteration.
 
 ### What Happens
 
@@ -426,6 +436,8 @@ After pattern validation, if a pattern's (typo, word) pair already exists as a d
 
 ## Stage 5: Conflict Removal
 
+**Note**: This is the third pass in the iterative solver. It runs after Pattern Generalization on each iteration.
+
 ### What Happens
 
 EntropPy removes corrections and patterns where one typo is a substring of another **with the same boundary**. This prevents shorter corrections from blocking longer ones. Both direct corrections and patterns are checked for conflicts, and patterns can conflict with each other or with direct corrections.
@@ -470,13 +482,11 @@ The algorithm uses character-based indexing for efficiency, checking only typos 
   - `abaolute` (blocked by `aolu`)
   - `abdolute` (blocked by `abdol`)
 
-### Pattern Updates from Conflicts
-
-When a shorter correction blocks a longer one during conflict removal (Stage 5), the shorter correction becomes a **pattern** (if it wasn't already), and the blocked correction is added to its replacements. This also happens during platform filtering (Stage 6) when QMK-specific conflicts are detected (suffix conflicts and substring conflicts). Corrections with BOTH boundaries are skipped from pattern updates since they can't block other corrections (they only match standalone words).
-
 ---
 
 ## Stage 5.5: Platform Substring Conflict Detection
+
+**Note**: This is the fourth pass in the iterative solver. It runs after Conflict Removal on each iteration.
 
 ### What Happens
 
@@ -533,11 +543,13 @@ When QMK's compiler sees both `"aemr"` and `":aemr"`, it detects that `"aemr"` i
 
 ---
 
-## Stage 6: Platform-Specific Filtering and Ranking
+## Stage 6: Platform Constraints
+
+**Note**: This is the fifth and final pass in the iterative solver. It runs after Platform Substring Conflict Detection on each iteration.
 
 ### What Happens
 
-Each platform (Espanso, QMK) has different constraints and capabilities. This stage applies platform-specific filtering and ranks corrections by usefulness.
+This pass enforces platform-specific constraints and limits that corrections must satisfy. Corrections that violate constraints are removed and added to the graveyard.
 
 ### Platform Constraints
 
@@ -553,26 +565,23 @@ Each platform (Espanso, QMK) has different constraints and capabilities. This st
 - **Supports boundaries** - Via ':' notation (:typo, typo:, :typo:)
 - **Right-to-left matching** - Matches from end of word
 
-### Platform Filtering
+### Constraint Validation
 
-#### QMK Filtering
+The Platform Constraints pass checks each correction and pattern against:
 
-QMK filtering applies one essential step:
+1. **Character Set Restrictions** - For QMK, removes corrections containing characters other than a-z and apostrophe. Both typo and word are checked, and both are converted to lowercase.
+2. **Length Limits** - Removes corrections where typo or word exceeds platform-specific maximum lengths (if specified).
+3. **Boundary Support** - Removes corrections with boundaries if the platform doesn't support them.
 
-**1. Character Set Filtering** - Removes corrections containing characters other than a-z and apostrophe. Both typo and word are checked, and both are converted to lowercase.
+**Note**: From actual runs, character set violations are rare (often 0), meaning most corrections pass this filter.
 
-**Note**: From the actual run, 0 character set violations were found, meaning all corrections passed this filter.
+---
 
-**Note:** Same-typo conflict resolution, suffix, and substring conflict detection were removed because:
-- QMK DOES support boundaries (via ':' notation), so all boundary variants should be kept
-- The iterative solver (ConflictRemovalPass) already handles conflicts within boundary groups
-- The previous logic was removing good corrections (like "teh" -> "the") and keeping bad ones (like "geou" -> "grou")
-- QMK's compiler will reject any remaining substring conflicts anyway, so pre-filtering is unnecessary
-- The "garbage correction removal" logic was flawed and could restore invalid corrections that had been properly rejected earlier
+## Stage 7: Platform Ranking
 
-#### Espanso Filtering
+### What Happens
 
-Espanso has minimal filtering - it accepts all corrections passed from earlier stages (passthrough). The only processing is organizing corrections by starting letter and splitting into multiple YAML files if they exceed the `max_entries_per_file` limit.
+After the iterative solver converges, this stage ranks corrections by usefulness for the specific platform. The ranking algorithm varies by platform.
 
 ### Platform Ranking
 
@@ -614,14 +623,13 @@ Within each tier, corrections are sorted by score (descending). The final ranked
 
 Espanso uses no ranking - corrections are passed through in their original order (passthrough). They are sorted alphabetically by word, then by typo, for output organization only.
 
-
 ---
 
-## Stage 7: Final Selection and Output
+## Stage 8: Output Generation
 
 ### What Happens
 
-The final stage applies platform limits and generates output files.
+This stage applies platform limits (if any) and generates platform-specific output files.
 
 ### Applying Limits
 
@@ -641,14 +649,26 @@ If the platform has a `max_corrections` limit, truncate the ranked list to that 
 
 Generates YAML files with corrections, including boundary markers (`:` for boundaries) and splitting into multiple files if needed.
 
-
 #### QMK Output
 
 Generates a text file with corrections in the format `typo word`, one per line.
 
-### Report Generation
+---
 
-If `--reports` is specified, generates detailed reports including summaries, collision resolutions, patterns, conflicts, statistics, and platform-specific analysis.
+## Stage 9: Report Generation (Optional)
+
+### What Happens
+
+If `--reports` is specified, this stage generates detailed reports including:
+- Summary statistics (word counts, typo counts, correction counts)
+- Collision resolution details
+- Pattern information and replacements
+- Conflict detection results
+- Platform-specific analysis
+- Graveyard entries (rejected corrections with reasons)
+- Debug traces (if debug options were enabled)
+
+Reports are written to the specified reports directory and organized by report type.
 
 ---
 
@@ -686,13 +706,15 @@ If `--reports` is specified, generates detailed reports including summaries, col
 
 ## Conclusion
 
-EntropPy's pipeline transforms a list of words into an optimized autocorrect dictionary through seven carefully designed stages. Each stage addresses specific challenges:
+EntropPy's pipeline transforms a list of words into an optimized autocorrect dictionary through eight carefully designed stages. Each stage addresses specific challenges:
 
+- **Stage 1** loads dictionaries and configuration
 - **Stage 2** generates realistic typos
-- **Stage 3** resolves ambiguities
-- **Stage 4** reduces dictionary size
-- **Stage 5** prevents interference
-- **Stage 6** optimizes for platform constraints
-- **Stage 7** produces final output
+- **Stages 3-6** (Iterative Solver) work together to resolve ambiguities, find patterns, remove conflicts, and apply constraints through multiple iterations until convergence
+- **Stage 7** ranks corrections by usefulness
+- **Stage 8** generates platform-specific output
+- **Stage 9** (optional) generates detailed reports
+
+The iterative solver (stages 3-6) is key to the system's self-healing capability: when conflicts are detected, corrections are added to a graveyard and retried with stricter boundaries on subsequent iterations, allowing the system to converge to an optimal solution.
 
 The result is a high-quality autocorrect dictionary tailored to your platform's capabilities and constraints.

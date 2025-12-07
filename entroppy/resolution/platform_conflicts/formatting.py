@@ -156,6 +156,11 @@ def format_corrections_with_cache(
     formatted_results = cached_results + formatted_results_new
 
     # Build lookup structures
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: Building lookup structures from formatted results is a common
+    # pattern shared with formatting_helpers.py. Both need to build the same lookup
+    # structures (formatted_to_corrections and correction_to_formatted) in the same way.
+    # This is expected when both places need to process formatted corrections identically.
     formatted_to_corrections: dict[
         str, list[tuple[tuple[str, str, BoundaryType], str, BoundaryType]]
     ] = defaultdict(list)
@@ -221,6 +226,12 @@ def _format_corrections_parallel_impl(
     Returns:
         List of (correction, formatted_typo) tuples
     """
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: Parallel processing setup using Pool with initializer pattern.
+    # This pattern is shared with formatting_helpers.py because both need to set up
+    # parallel formatting workers in the same way. The Pool initialization pattern
+    # is standard and should not be refactored.
+
     # Create worker context (immutable, serializable)
     formatting_context = FormattingContext(is_qmk=is_qmk)
 

@@ -1,5 +1,6 @@
 mypy
 ruff
+pylint
 types-tqdm
 types-pyyaml
 pre-commit
@@ -8,3 +9,4 @@ xenon
 sphinx
 sphinx-rtd-theme
 myst-parser
+maturin

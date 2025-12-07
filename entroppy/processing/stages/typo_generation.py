@@ -86,7 +86,7 @@ def _process_multiprocessing(
         else:
             results_wrapped_iter = results
 
-        for word, corrections, debug_messages in results_wrapped_iter:
+        for _word, corrections, debug_messages in results_wrapped_iter:
             for typo, correction_word in corrections:
                 typo_map[typo].append(correction_word)
             # Collect debug messages from workers

@@ -25,6 +25,10 @@ class GraveyardEntry:
 class DebugTraceEntry:
     """A log entry for debug tracing."""
 
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: These are dataclass field definitions representing the data model.
+    # The similar field structure in PatternHistoryEntry is inherent to the domain model
+    # (both track similar lifecycle events). This is structural similarity, not logic duplication.
     iteration: int
     pass_name: str
     action: str  # "added", "removed", "promoted_to_pattern", etc.

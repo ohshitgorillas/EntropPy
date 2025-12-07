@@ -4,8 +4,11 @@ from pathlib import Path
 import re
 from typing import TextIO
 
-from entroppy.core import format_boundary_display
-from entroppy.reports.helpers import write_report_header
+from entroppy.reports.helpers import (
+    write_report_header,
+    write_solver_events,
+    write_stage2_messages,
+)
 from entroppy.resolution.state import DebugTraceEntry
 from entroppy.utils.helpers import write_file_safely
 
@@ -73,7 +76,7 @@ def generate_debug_words_report(
         sanitized_word = _sanitize_filename(word)
         filepath = report_dir / f"debug_word_{sanitized_word}.txt"
 
-        def write_content(f: TextIO) -> None:
+        def write_content(f: TextIO, word=word) -> None:
             write_report_header(f, f"DEBUG WORD LIFECYCLE REPORT: {word}")
 
             f.write(f'Word: "{word}"\n\n')
@@ -82,31 +85,10 @@ def generate_debug_words_report(
             if word in word_events:
                 f.write("Stage 2: Typo Generation\n")
                 f.write("-" * 70 + "\n")
-                for message in word_events[word]:
-                    # Extract just the message part after the word marker
-                    if "[Stage 2]" in message:
-                        msg_part = message.split("[Stage 2]", 1)[1].strip()
-                        f.write(f"  {msg_part}\n")
-                    else:
-                        f.write(f"  {message}\n")
-                f.write("\n")
+                write_stage2_messages(f, word_events[word])
 
             # Solver events
-            if word in word_solver_events:
-                f.write("Solver Lifecycle:\n")
-                f.write("-" * 70 + "\n")
-                for entry in sorted(
-                    word_solver_events[word], key=lambda e: (e.iteration, e.pass_name)
-                ):
-                    boundary_str = format_boundary_display(entry.boundary)
-                    f.write(
-                        f"  Iter {entry.iteration} [{entry.pass_name}] {entry.action}: "
-                        f"{entry.typo} -> {entry.word} ({boundary_str})\n"
-                    )
-                    if entry.reason:
-                        f.write(f"    Reason: {entry.reason}\n")
-                f.write("\n")
-            else:
-                f.write("Solver Lifecycle: No events tracked\n\n")
+            solver_events = word_solver_events.get(word, [])
+            write_solver_events(f, solver_events)
 
         write_file_safely(filepath, write_content, f"writing debug word report for {word}")

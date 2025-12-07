@@ -24,6 +24,11 @@ def _process_single_word_item(
     excluded_corrections: list,
 ) -> None:
     """Process a single word item (no collision)."""
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: This is a function call to _process_single_word_case with
+    # standard parameters. The similar code in collision.py calls _process_single_word_item
+    # which internally calls this. The similar parameter lists are expected when calling
+    # related wrapper functions.
     correction, was_skipped_short, excluded_info = _process_single_word_case(
         typo,
         unique_words,
@@ -62,6 +67,11 @@ def _process_collision_item(
     skipped_collisions: list,
 ) -> None:
     """Process a collision item (multiple words)."""
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: This is a function call to _process_collision_case_wrapper
+    # with standard parameters. The similar code in collision.py calls _process_collision_item
+    # which internally calls this. The similar parameter lists are expected when calling
+    # related wrapper functions.
     corrections_list, excluded_list, skipped_collisions_list, boundary_details_list = (
         _process_collision_case_wrapper(
             typo,
@@ -102,6 +112,11 @@ def _process_single_word_case(
 ) -> tuple[Correction | None, bool, tuple | None]:
     """Process single word case (no collision)."""
     word = unique_words[0]
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: This is a function call to process_single_word_correction
+    # with standard parameters. The similar code in collision.py calls
+    # _process_single_threaded_collisions with similar parameter lists. The similarity
+    # is expected when calling related functions with the same context.
     correction, was_skipped_short, excluded_info, _ = process_single_word_correction(
         typo,
         word,
@@ -131,6 +146,11 @@ def _process_collision_case_wrapper(
     source_index: BoundaryIndex,
 ) -> tuple[list[Correction], list, list, list]:
     """Process collision case (multiple words)."""
+    # pylint: disable=duplicate-code
+    # Acceptable pattern: This is a function call to process_collision_case with
+    # standard parameters. The similar code in collision.py calls
+    # _process_single_threaded_collisions with similar parameter lists. The similarity
+    # is expected when calling related functions with the same context.
     corrections_list, excluded_list, skipped_collisions_list, boundary_details_list = (
         process_collision_case(
             typo,

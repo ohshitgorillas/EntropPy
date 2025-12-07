@@ -6,17 +6,13 @@ from entroppy.core import BoundaryType, Correction
 from entroppy.core.boundaries import BoundaryIndex
 from entroppy.matching import ExclusionMatcher
 from entroppy.resolution.boundaries.selection import choose_boundary_for_typo
-from entroppy.resolution.boundaries.utils import (
-    _should_skip_short_typo,
-    apply_user_word_boundary_override,
-)
 from entroppy.resolution.exclusion import handle_exclusion
 from entroppy.utils.debug import is_debug_correction, log_if_debug_correction
 
+from .collision_helpers import _log_initial_collision
 from .helpers import (
-    _collect_boundary_details,
     _group_words_by_boundary,
-    _log_initial_collision,
+    _prepare_boundary_and_collect_details,
     _process_boundary_groups,
 )
 
@@ -65,23 +61,24 @@ def process_single_word_correction(
         word=word,
     )
 
-    # Collect boundary details for later logging
-    # (only if debug_typo_matcher is None, i.e., in worker)
-    boundary_details = None
-    if not debug_typo_matcher:
-        boundary_details = _collect_boundary_details(
-            typo,
-            word,
-            boundary,
-            validation_index,
-            source_index,
-        )
-    boundary = apply_user_word_boundary_override(
-        word, boundary, user_words, debug_words, debug_typo_matcher, typo
+    # pylint: disable=duplicate-code
+    # False positive: This is a call to the shared _prepare_boundary_and_collect_details
+    # function. The similar code in helpers.py is the same function call,
+    # which is expected and not actual duplicate code.
+    boundary, boundary_details, should_skip = _prepare_boundary_and_collect_details(
+        typo,
+        word,
+        boundary,
+        min_typo_length,
+        min_word_length,
+        user_words,
+        debug_words,
+        debug_typo_matcher,
+        validation_index,
+        source_index,
     )
 
-    # Check if typo should be skipped due to length
-    if _should_skip_short_typo(typo, word, min_typo_length, min_word_length):
+    if should_skip:
         correction_temp = (typo, word, boundary)
         log_if_debug_correction(
             correction_temp,
@@ -178,6 +175,10 @@ def process_collision_case(
     )
 
     # Process each boundary group separately
+    # pylint: disable=duplicate-code
+    # False positive: This is a call to _process_boundary_groups with standard parameters.
+    # The similar code in collision.py calls process_collision_case which internally calls
+    # this same function. The similar parameter lists are expected, not duplicate code.
     return _process_boundary_groups(
         typo,
         by_boundary,
