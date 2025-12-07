@@ -26,32 +26,52 @@ def extract_collision_data(
             report_data.skipped_collisions.append((entry.typo, words, ratio, entry.boundary))
 
 
-def find_blocking_word(blocking_typo: str, state: DictionaryState) -> str | None:
+def find_blocking_word(
+    blocking_typo: str,
+    state: DictionaryState,
+    active_map: dict[str, str] | None = None,
+    graveyard_map: dict[str, str] | None = None,
+) -> str | None:
     """Find the word for a blocking typo.
 
     Args:
         blocking_typo: The blocking typo string
         state: Dictionary state
+        active_map: Optional pre-calculated map of active typo -> word
+        graveyard_map: Optional pre-calculated map of graveyard typo -> word
 
     Returns:
         The blocking word if found, None otherwise
     """
-    # Try to find the blocking correction in active corrections
-    for correction in state.active_corrections:
-        corr_typo, corr_word, _ = correction
-        if corr_typo == blocking_typo:
-            return corr_word
+    # Use optimized lookups if provided
+    if active_map is not None:
+        if blocking_typo in active_map:
+            return active_map[blocking_typo]
+    else:
+        # Fallback to linear scan
+        for correction in state.active_corrections:
+            corr_typo, corr_word, _ = correction
+            if corr_typo == blocking_typo:
+                return corr_word
 
-    # Check graveyard
-    for grave_entry in state.graveyard.values():
-        if grave_entry.typo == blocking_typo:
-            return grave_entry.word
+    if graveyard_map is not None:
+        if blocking_typo in graveyard_map:
+            return graveyard_map[blocking_typo]
+    else:
+        # Fallback to linear scan
+        for grave_entry in state.graveyard.values():
+            if grave_entry.typo == blocking_typo:
+                return grave_entry.word
 
     return None
 
 
 def extract_conflict_data(
-    entry: GraveyardEntry, state: DictionaryState, report_data: ReportData
+    entry: GraveyardEntry,
+    state: DictionaryState,
+    report_data: ReportData,
+    active_map: dict[str, str] | None = None,
+    graveyard_map: dict[str, str] | None = None,
 ) -> None:
     """Extract conflict data from graveyard entry.
 
@@ -59,9 +79,13 @@ def extract_conflict_data(
         entry: Graveyard entry
         state: Dictionary state
         report_data: Report data to populate
+        active_map: Optional pre-calculated map of active typo -> word
+        graveyard_map: Optional pre-calculated map of graveyard typo -> word
     """
     if entry.blocker:
-        blocking_word = find_blocking_word(entry.blocker, state)
+        blocking_word = find_blocking_word(
+            entry.blocker, state, active_map=active_map, graveyard_map=graveyard_map
+        )
         if blocking_word:
             report_data.removed_conflicts.append(
                 (entry.typo, entry.word, entry.blocker, blocking_word, entry.boundary)
@@ -73,12 +97,16 @@ def _extract_rejection_data(
     state: DictionaryState,
     report_data: ReportData,
     pass_context: PassContext,
+    active_map: dict[str, str] | None = None,
+    graveyard_map: dict[str, str] | None = None,
 ) -> None:
     """Extract data for a single graveyard entry based on rejection reason."""
     if entry.reason == RejectionReason.COLLISION_AMBIGUOUS:
         extract_collision_data(entry, state, report_data)
     elif entry.reason == RejectionReason.BLOCKED_BY_CONFLICT:
-        extract_conflict_data(entry, state, report_data)
+        extract_conflict_data(
+            entry, state, report_data, active_map=active_map, graveyard_map=graveyard_map
+        )
     elif entry.reason == RejectionReason.EXCLUDED_BY_PATTERN:
         report_data.excluded_corrections.append(
             (entry.typo, entry.word, entry.blocker or "exclusion pattern")
@@ -107,8 +135,20 @@ def extract_graveyard_data_for_reporting(
         report_data: Report data to populate
         pass_context: Pass context for accessing configuration
     """
+    # Pre-calculate lookups for performance optimization
+    # This avoids O(N^2) behavior in conflict resolution reporting
+    active_map = {c[0]: c[1] for c in state.active_corrections}
+    graveyard_map = {entry.typo: entry.word for entry in state.graveyard.values()}
+
     for entry in state.graveyard.values():
-        _extract_rejection_data(entry, state, report_data, pass_context)
+        _extract_rejection_data(
+            entry,
+            state,
+            report_data,
+            pass_context,
+            active_map=active_map,
+            graveyard_map=graveyard_map,
+        )
 
     # Extract pattern data
     for pattern in state.active_patterns:
