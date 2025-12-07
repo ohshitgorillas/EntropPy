@@ -4,7 +4,7 @@ pylint
 types-tqdm
 types-pyyaml
 pre-commit
-bumpver
+bump-my-version
 xenon
 sphinx
 sphinx-rtd-theme
