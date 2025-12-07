@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Exclusion patterns now support wildcards in word part for exact typo patterns**: Fixed bug where exclusion patterns like `jst -> *` (exact typo with wildcard word) didn't work. Previously, exact typo patterns only used exact string matching for the word part, preventing wildcard matching. Now all exclusion patterns use wildcard matching for the word part, allowing patterns like `jst -> *` to exclude all corrections from "jst" to any word, while `jst -> just` still matches only the specific correction.
 
 ## [0.8.0] - 2025-12-06
 

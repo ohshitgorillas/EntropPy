@@ -63,7 +63,7 @@ class ExclusionMatcher:
         exact_match = self.exact_typo_map.get(typo)
         if exact_match:
             word_pat, required_boundary = exact_match
-            if word == word_pat:
+            if self._match_wildcard(word, word_pat):
                 if required_boundary is None or required_boundary == boundary:
                     return True
 
@@ -82,8 +82,10 @@ class ExclusionMatcher:
 
         # Check for exact typo -> word match
         exact_match = self.exact_typo_map.get(typo)
-        if exact_match and exact_match[0] == word:
-            return f"{typo} -> {word}"
+        if exact_match:
+            word_pat, _ = exact_match
+            if self._match_wildcard(word, word_pat):
+                return f"{typo} -> {word_pat}"
 
         # Check for wildcard typo -> word match
         for typo_re, word_pat, _ in self.wildcard_typo_map:

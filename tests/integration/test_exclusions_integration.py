@@ -236,6 +236,78 @@ class TestExclusionMatcherIntegration:
 
         assert "teh" in rule and "the" in rule
 
+    def test_exclusion_matcher_exact_typo_with_wildcard_word_matches_just(self) -> None:
+        """Verify exact typo with wildcard word pattern matches 'just'."""
+        exclusions = {"jst -> *"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "just", BoundaryType.BOTH)
+        assert matcher.should_exclude(correction) is True
+
+    def test_exclusion_matcher_exact_typo_with_wildcard_word_matches_any(self) -> None:
+        """Verify exact typo with wildcard word pattern matches any word."""
+        exclusions = {"jst -> *"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "jest", BoundaryType.BOTH)
+        assert matcher.should_exclude(correction) is True
+
+    def test_exclusion_matcher_exact_typo_with_exact_word_matches(self) -> None:
+        """Verify exact typo with exact word matches correctly."""
+        exclusions = {"jst -> just"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "just", BoundaryType.BOTH)
+        assert matcher.should_exclude(correction) is True
+
+    def test_exclusion_matcher_exact_typo_with_exact_word_does_not_match_other(self) -> None:
+        """Verify exact typo with exact word does not match other words."""
+        exclusions = {"jst -> just"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "jest", BoundaryType.BOTH)
+        assert matcher.should_exclude(correction) is False
+
+    def test_exclusion_matcher_exact_typo_matches_none_boundary(self) -> None:
+        """Verify exact typo pattern matches NONE boundary."""
+        exclusions = {"jst -> just"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "just", BoundaryType.NONE)
+        assert matcher.should_exclude(correction) is True
+
+    def test_exclusion_matcher_exact_typo_matches_left_boundary(self) -> None:
+        """Verify exact typo pattern matches LEFT boundary."""
+        exclusions = {"jst -> just"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "just", BoundaryType.LEFT)
+        assert matcher.should_exclude(correction) is True
+
+    def test_exclusion_matcher_exact_typo_matches_right_boundary(self) -> None:
+        """Verify exact typo pattern matches RIGHT boundary."""
+        exclusions = {"jst -> just"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "just", BoundaryType.RIGHT)
+        assert matcher.should_exclude(correction) is True
+
+    def test_exclusion_matcher_exact_typo_matches_both_boundary(self) -> None:
+        """Verify exact typo pattern matches BOTH boundary."""
+        exclusions = {"jst -> just"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "just", BoundaryType.BOTH)
+        assert matcher.should_exclude(correction) is True
+
+    def test_exclusion_matcher_exact_typo_with_wildcard_word_matches_any_boundary(self) -> None:
+        """Verify exact typo with wildcard word matches any boundary."""
+        exclusions = {"jst -> *"}
+        matcher = ExclusionMatcher(exclusions)
+
+        correction = ("jst", "just", BoundaryType.LEFT)
+        assert matcher.should_exclude(correction) is True
+
 
 class TestRealWorldPatterns:
     """Test with real patterns from examples/exclude.txt."""
