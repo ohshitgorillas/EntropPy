@@ -36,9 +36,7 @@ However, different platforms have different constraints. Keyboard firmware like 
 
 ## Documentation
 
-For a complete explanation of EntropPy's algorithms and logic, from dictionary loading to final selection, see **[Algorithms](docs/ALGORITHMS.md)**. This document provides detailed explanations with examples of how each stage of the pipeline works.
-
-For information about processing efficiency, computational complexity, and optimizations, see **[Efficiency](docs/EFFICIENCY.md)**. This document explains the big-O complexity of each processing stage and the optimizations applied to reduce processing time.
+For a complete explanation of EntropPy's algorithms and logic, from dictionary loading to final selection, see **[Algorithms](docs/ALGORITHMS.md)**. This document provides detailed explanations with examples of how each stage of the pipeline investigworks.
 
 
 ## Setup Instructions
