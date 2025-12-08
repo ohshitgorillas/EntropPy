@@ -1,12 +1,16 @@
 """Filtering functions for pattern extraction."""
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
 from entroppy.core.boundaries import BoundaryType
+from entroppy.core.patterns.data_collection import record_pattern_extraction
 from entroppy.core.types import Correction
-from entroppy.utils.logging import is_debug_enabled
+
+if TYPE_CHECKING:
+    from entroppy.resolution.state import DictionaryState
 
 # Minimum length for the non-pattern part when extracting patterns
 # This prevents extracting nonsensical patterns that are too short
@@ -19,8 +23,10 @@ def _filter_corrections_by_boundary(
 ) -> list[Correction]:
     """Filter corrections by boundary type.
 
-    For suffix patterns (RIGHT), include RIGHT and NONE boundaries.
-    For prefix patterns (LEFT), include LEFT and NONE boundaries.
+    For suffix patterns (RIGHT), include RIGHT, BOTH, and NONE boundaries.
+    BOTH is included because it includes RIGHT (matches at word end).
+    For prefix patterns (LEFT), include LEFT, BOTH, and NONE boundaries.
+    BOTH is included because it includes LEFT (matches at word start).
 
     Args:
         corrections: List of corrections to filter
@@ -29,11 +35,21 @@ def _filter_corrections_by_boundary(
     Returns:
         Filtered list of corrections
     """
-    return [
-        (typo, word, boundary)
-        for typo, word, boundary in corrections
-        if boundary in (boundary_type, BoundaryType.NONE)
-    ]
+    if boundary_type == BoundaryType.RIGHT:
+        # For suffix patterns, include RIGHT, BOTH (includes RIGHT), and NONE
+        allowed: tuple[BoundaryType, ...] = (
+            BoundaryType.RIGHT,
+            BoundaryType.BOTH,
+            BoundaryType.NONE,
+        )
+    elif boundary_type == BoundaryType.LEFT:
+        # For prefix patterns, include LEFT, BOTH (includes LEFT), and NONE
+        allowed = (BoundaryType.LEFT, BoundaryType.BOTH, BoundaryType.NONE)
+    else:
+        # Fallback to original behavior for other boundary types
+        allowed = (boundary_type, BoundaryType.NONE)
+
+    return [(typo, word, boundary) for typo, word, boundary in corrections if boundary in allowed]
 
 
 def _check_exact_and_wildcard_patterns(
@@ -206,6 +222,7 @@ def _log_pattern_found(
         boundary: The boundary type
         unique_matches: List of unique matches for this pattern
     """
+    # Generate log message
     logger.debug(
         f"[PATTERN EXTRACTION] ✓ PATTERN FOUND: "
         f"'{typo_pattern}' → '{word_pattern}' "
@@ -221,6 +238,7 @@ def _find_common_patterns(
     debug_enabled: bool,
     debug_typos_exact: set[str] | None = None,
     debug_typos_wildcard: set[str] | None = None,
+    state: "DictionaryState | None" = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find patterns that have 2+ occurrences.
 
@@ -232,6 +250,7 @@ def _find_common_patterns(
             (for exact matching)
         debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
             (for substring matching)
+        state: Optional dictionary state for storing structured debug data
 
     Returns:
         Dict mapping (typo_pattern, word_pattern, boundary) to list of
@@ -259,40 +278,9 @@ def _find_common_patterns(
                         debug_typos_wildcard,
                     ):
                         _log_pattern_found(typo_pattern, word_pattern, boundary, unique_matches)
+                        # Record structured data separately from logging
+                        record_pattern_extraction(
+                            typo_pattern, word_pattern, boundary, unique_matches, state
+                        )
 
     return patterns
-
-
-def _log_debug_summary(
-    pattern_candidates: dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]],
-    patterns: dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]],
-    debug_corrections: dict[tuple[str, str, BoundaryType], list[tuple[int, str, str, str]]],
-) -> None:
-    """Log debug summary information.
-
-    Args:
-        pattern_candidates: Dict of pattern candidates
-        patterns: Dict of final patterns
-        debug_corrections: Dict of debug corrections
-    """
-    # Enable debug logging if either specific corrections are being debugged
-    # OR global debug is enabled
-    debug_enabled = len(debug_corrections) > 0 or is_debug_enabled()
-
-    if debug_enabled:
-        logger.debug(
-            f"[PATTERN EXTRACTION] Found {len(pattern_candidates)} unique pattern candidates"
-        )
-
-    if debug_enabled:
-        logger.debug(f"[PATTERN EXTRACTION] Final: {len(patterns)} patterns with 2+ occurrences")
-        # Show debug corrections summary (only if specific corrections are being debugged)
-        if len(debug_corrections) > 0:
-            for (typo, word, _), candidates in debug_corrections.items():
-                if candidates:
-                    logger.debug(
-                        f"[PATTERN EXTRACTION] '{typo}' → '{word}': "
-                        f"{len(candidates)} valid pattern candidates"
-                    )
-                    for length, tp, wp, op in candidates:
-                        logger.debug(f"  - Length {length}: '{tp}'→'{wp}' (other_part='{op}')")

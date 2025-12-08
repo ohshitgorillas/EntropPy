@@ -16,6 +16,7 @@ from entroppy.core.patterns.validation import (
 from entroppy.core.types import Correction, MatchDirection
 
 if TYPE_CHECKING:
+    from entroppy.resolution.state import DictionaryState
     from entroppy.utils.debug import DebugTypoMatcher
 
 
@@ -72,6 +73,7 @@ def _run_validation(
     debug_typo_matcher: "DebugTypoMatcher | None",
     jobs: int,
     verbose: bool,
+    state: "DictionaryState | None" = None,
 ) -> tuple[
     list[Correction],
     set[Correction],
@@ -90,6 +92,8 @@ def _run_validation(
             corrections,
             jobs,
             verbose,
+            debug_typo_matcher,
+            state,
         )
     # pylint: disable=duplicate-code
     # False positive: Similar parameter lists are expected when calling the same function
@@ -106,6 +110,7 @@ def _run_validation(
         debug_words,
         debug_typo_matcher,
         verbose,
+        state,
     )
 
 
@@ -127,6 +132,7 @@ def generalize_patterns(
         ]
         | None
     ) = None,
+    state: "DictionaryState | None" = None,
 ) -> tuple[
     list[Correction],
     set[Correction],
@@ -148,6 +154,7 @@ def generalize_patterns(
         is_in_graveyard: Optional function to check if a pattern is in graveyard
             (prevents infinite loops by skipping already-rejected patterns)
         pattern_cache: Optional cache for pattern extraction results
+        state: Optional dictionary state for storing structured debug data
 
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)
@@ -170,10 +177,19 @@ def generalize_patterns(
         verbose,
         is_in_graveyard,
         pattern_cache,
+        state,
     )
 
     # Filter out patterns with only one occurrence before validation
     patterns_to_validate = {k: v for k, v in found_patterns.items() if len(v) >= 2}
+
+    # Filter out patterns that are too short before validation (performance optimization)
+    # This avoids sending patterns to validation that will definitely be rejected
+    patterns_to_validate = {
+        (typo, word, boundary): occurrences
+        for (typo, word, boundary), occurrences in patterns_to_validate.items()
+        if len(typo) >= min_typo_length
+    }
 
     # Filter out patterns already in graveyard to prevent infinite loops
     patterns_to_validate = _filter_graveyard_patterns(
@@ -193,4 +209,5 @@ def generalize_patterns(
         debug_typo_matcher,
         jobs,
         verbose,
+        state,
     )

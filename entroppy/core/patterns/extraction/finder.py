@@ -1,9 +1,8 @@
 """Main pattern finding functions."""
 
 from collections import defaultdict
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
-from loguru import logger
 from tqdm import tqdm
 
 from entroppy.core.boundaries import BoundaryType
@@ -13,10 +12,12 @@ from entroppy.utils.logging import is_debug_enabled
 from .filters import (
     _filter_corrections_by_boundary,
     _find_common_patterns,
-    _log_debug_summary,
     _setup_debug_tracking,
 )
 from .matcher import _extract_patterns_from_correction, _process_cached_patterns
+
+if TYPE_CHECKING:
+    from entroppy.resolution.state import DictionaryState
 
 
 def _find_patterns(
@@ -35,6 +36,7 @@ def _find_patterns(
     ) = None,
     debug_typos_exact: set[str] | None = None,
     debug_typos_wildcard: set[str] | None = None,
+    state: "DictionaryState | None" = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common patterns (prefix or suffix) in corrections.
 
@@ -52,6 +54,7 @@ def _find_patterns(
         debug_typos_exact: Optional set of exact debug typo patterns (for exact matching)
         debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
             (for substring matching)
+        state: Optional dictionary state for storing structured debug data
 
     Returns:
         Dict mapping (typo_pattern, word_pattern, boundary) to list of
@@ -65,12 +68,6 @@ def _find_patterns(
 
     if not filtered_corrections:
         return defaultdict(list)
-
-    if debug_enabled:
-        logger.debug(
-            f"[PATTERN EXTRACTION] Processing {len(filtered_corrections)} corrections "
-            f"with boundary {boundary_type.value} (suffix={is_suffix})"
-        )
 
     # Group directly by (typo_pattern, word_pattern, boundary) across ALL corrections
     # This finds patterns even when corrections have different "other parts"
@@ -126,22 +123,14 @@ def _find_patterns(
         )
 
     # Find common patterns (2+ occurrences)
-    patterns = _find_common_patterns(
+    return _find_common_patterns(
         pattern_candidates,
         debug_typos,
         debug_enabled,
         debug_typos_exact,
         debug_typos_wildcard,
+        state,
     )
-
-    # Log debug summary
-    _log_debug_summary(
-        pattern_candidates=pattern_candidates,
-        patterns=patterns,
-        debug_corrections=debug_corrections,
-    )
-
-    return patterns
 
 
 def find_suffix_patterns(
@@ -158,6 +147,7 @@ def find_suffix_patterns(
     ) = None,
     debug_typos_exact: set[str] | None = None,
     debug_typos_wildcard: set[str] | None = None,
+    state: "DictionaryState | None" = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common suffix patterns (for RIGHT boundaries).
 
@@ -174,6 +164,7 @@ def find_suffix_patterns(
             (for exact matching)
         debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
             (for substring matching)
+        state: Optional dictionary state for storing structured debug data
     """
     return _find_patterns(
         corrections,
@@ -185,6 +176,7 @@ def find_suffix_patterns(
         pattern_cache=pattern_cache,
         debug_typos_exact=debug_typos_exact,
         debug_typos_wildcard=debug_typos_wildcard,
+        state=state,
     )
 
 
@@ -202,6 +194,7 @@ def find_prefix_patterns(
     ) = None,
     debug_typos_exact: set[str] | None = None,
     debug_typos_wildcard: set[str] | None = None,
+    state: "DictionaryState | None" = None,
 ) -> dict[tuple[str, str, BoundaryType], list[tuple[str, str, BoundaryType]]]:
     """Find common prefix patterns (for LEFT boundaries).
 
@@ -218,6 +211,7 @@ def find_prefix_patterns(
             (for exact matching)
         debug_typos_wildcard: Optional set of wildcard debug typo pattern cores
             (for substring matching)
+        state: Optional dictionary state for storing structured debug data
     """
     return _find_patterns(
         corrections,
@@ -229,4 +223,5 @@ def find_prefix_patterns(
         pattern_cache=pattern_cache,
         debug_typos_exact=debug_typos_exact,
         debug_typos_wildcard=debug_typos_wildcard,
+        state=state,
     )
