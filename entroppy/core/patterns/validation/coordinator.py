@@ -11,6 +11,7 @@ from entroppy.core.patterns.indexes import CorrectionIndex, SourceWordIndex, Val
 from entroppy.core.types import Correction, MatchDirection
 
 if TYPE_CHECKING:
+    from entroppy.resolution.state import DictionaryState
     from entroppy.utils.debug import DebugTypoMatcher
 
 
@@ -86,6 +87,7 @@ def extract_and_merge_patterns(
         ]
         | None
     ) = None,
+    state: "DictionaryState | None" = None,
 ) -> dict[tuple[str, str, BoundaryType], list[Correction]]:
     """Extract prefix and suffix patterns and merge them.
 
@@ -97,6 +99,7 @@ def extract_and_merge_patterns(
         is_in_graveyard: Optional function to check if a pattern is in graveyard
             (prevents infinite loops by skipping already-rejected patterns)
         pattern_cache: Optional cache for pattern extraction results
+        state: Optional dictionary state for storing structured debug data
 
     Returns:
         Dictionary mapping pattern keys to their occurrences
@@ -120,6 +123,7 @@ def extract_and_merge_patterns(
         verbose=verbose,
         is_in_graveyard=is_in_graveyard,
         pattern_cache=pattern_cache,
+        state=state,
     )
     suffix_patterns = find_suffix_patterns(
         corrections,
@@ -129,6 +133,7 @@ def extract_and_merge_patterns(
         verbose=verbose,
         is_in_graveyard=is_in_graveyard,
         pattern_cache=pattern_cache,
+        state=state,
     )
 
     # Combine both pattern types into single dict

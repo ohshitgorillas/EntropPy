@@ -9,6 +9,7 @@ from entroppy.core.pattern_generalization import generalize_patterns
 from entroppy.core.types import MatchDirection
 from entroppy.resolution.solver import Pass
 from entroppy.resolution.state import RejectionReason
+from entroppy.utils.debug import log_if_debug_correction
 
 if TYPE_CHECKING:
     from entroppy.resolution.solver import PassContext
@@ -90,6 +91,17 @@ class PatternGeneralizationPass(Pass):
         # Run pattern extraction and validation
         corrections_list = list(state.active_corrections)
 
+        # Log when processing corrections that contain debug words/typos
+        # This ensures debug logging appears even if no patterns are created
+        for correction in corrections_list:
+            log_if_debug_correction(
+                correction,
+                "Processing in pattern generalization",
+                state.debug_words,
+                state.debug_typo_matcher,
+                "Stage 4",
+            )
+
         try:
             patterns, corrections_to_remove, pattern_replacements, rejected_patterns = (
                 generalize_patterns(
@@ -104,6 +116,7 @@ class PatternGeneralizationPass(Pass):
                     jobs=self.context.jobs,
                     is_in_graveyard=state.is_in_graveyard,
                     pattern_cache=self._pattern_cache,
+                    state=state,
                 )
             )
 

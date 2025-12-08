@@ -50,6 +50,7 @@ class RankingInfo(BaseModel):
 
     typo: str
     word: str
+    boundary: str
     classification: str  # "Pattern" | "Direct Correction" | "User"
     tier: int
     score: float | None = None

@@ -140,6 +140,30 @@ def record_word_processing_start(
     state.stage2_word_events.append(event)
 
 
+def create_typo_generated_event(
+    word: str,
+    typo: str,
+    matched_patterns: list[str] | None,
+) -> TypoGeneratedEvent:
+    """Create a TypoGeneratedEvent object.
+
+    Args:
+        word: The word being processed
+        typo: The typo that was generated
+        matched_patterns: Optional list of matched debug typo patterns
+
+    Returns:
+        TypoGeneratedEvent object
+    """
+    return TypoGeneratedEvent(
+        word=word,
+        event_type="typo_generated",
+        typo=typo,
+        matched_patterns=matched_patterns,
+        iteration=0,
+    )
+
+
 def record_typo_generated(
     word: str,
     typo: str,
@@ -157,13 +181,7 @@ def record_typo_generated(
     if state is None:
         return
 
-    event = TypoGeneratedEvent(
-        word=word,
-        event_type="typo_generated",
-        typo=typo,
-        matched_patterns=matched_patterns,
-        iteration=0,
-    )
+    event = create_typo_generated_event(word, typo, matched_patterns)
     state.stage2_word_events.append(event)
 
 

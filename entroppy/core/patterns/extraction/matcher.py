@@ -86,7 +86,10 @@ def _extract_single_pattern(
             f"(other_part='{other_part_typo}')"
         )
 
-    return (typo_pattern, word_pattern, boundary, length)
+    # patterns cannot have BOTH boundaries - that would make them useless
+    # we use NONE instead, which is the least restrictive boundary
+    # and let the solver decide which boundary to use
+    return (typo_pattern, word_pattern, BoundaryType.NONE, length)
 
 
 def _extract_patterns_from_correction(
@@ -125,12 +128,6 @@ def _extract_patterns_from_correction(
 
     if max_pattern_length < 2:
         return [], False
-
-    if is_debug:
-        logger.debug(
-            f"[PATTERN EXTRACTION] Analyzing correction: '{typo}' → '{word}' "
-            f"(boundary={boundary.value}, max_pattern_length={max_pattern_length})"
-        )
 
     # Check cache first
     cache_key = (typo, word, boundary, is_suffix)

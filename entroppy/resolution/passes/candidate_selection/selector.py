@@ -265,6 +265,12 @@ class CandidateSelectionPass(Pass):
         if state.is_in_graveyard(typo, word, boundary):
             return False
 
+        # Check if this typo+word was rejected for platform constraints
+        # Platform constraint rejections (like substring conflicts) apply to ALL boundaries,
+        # so we should never retry with a different boundary
+        if state.is_rejected_for_platform_constraint(typo, word):
+            return False
+
         # Check length constraints
         if not _check_length_constraints(typo, word, self.context.min_typo_length):
             state.add_to_graveyard(

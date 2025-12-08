@@ -37,6 +37,7 @@ from entroppy.core.types import Correction, MatchDirection
 from entroppy.utils.debug import is_debug_correction
 
 if TYPE_CHECKING:
+    from entroppy.resolution.state import DictionaryState
     from entroppy.utils.debug import DebugTypoMatcher
 
 
@@ -96,6 +97,7 @@ def _validate_single_pattern_single_threaded(
         indexes: Validation indexes
         debug_typo_matcher: Matcher for debug typos
         verbose: Whether to print verbose output
+        state: Optional dictionary state for storing structured debug data
 
     Returns:
         Tuple of (is_valid, error_message). is_valid is True if pattern passes,
@@ -162,6 +164,7 @@ def run_single_threaded_validation(
     debug_words: set[str],
     debug_typo_matcher: "DebugTypoMatcher | None",
     verbose: bool,
+    state: "DictionaryState | None" = None,
 ) -> tuple[
     list[Correction],
     set[Correction],
@@ -181,6 +184,7 @@ def run_single_threaded_validation(
         debug_words: Set of words to debug
         debug_typo_matcher: Matcher for debug typos
         verbose: Whether to print verbose output
+        state: Optional dictionary state for storing structured debug data
 
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)
@@ -216,6 +220,7 @@ def run_single_threaded_validation(
         pattern_replacements,
         corrections_to_remove,
         rejected_patterns,
+        state,
     )
 
     return patterns, corrections_to_remove, pattern_replacements, rejected_patterns
@@ -235,6 +240,7 @@ def _process_patterns_single_threaded(
     pattern_replacements: dict[Correction, list[Correction]],
     corrections_to_remove: set[Correction],
     rejected_patterns: list[tuple[str, str, BoundaryType, str]],
+    state: "DictionaryState | None" = None,
 ) -> None:
     """Process patterns in single-threaded validation loop.
 
@@ -252,6 +258,7 @@ def _process_patterns_single_threaded(
         pattern_replacements: Dict to store pattern replacements
         corrections_to_remove: Set to add corrections to remove to
         rejected_patterns: List to append rejected patterns to
+        state: Optional dictionary state for storing structured debug data
     """
     for (typo_pattern, word_pattern, boundary), occurrences in patterns_iter:
         # Check if any of the occurrences involve debug items (for logging)
@@ -297,6 +304,7 @@ def _process_patterns_single_threaded(
                 debug_words,
                 debug_typo_matcher,
                 rejected_patterns,
+                state,
             ):
                 continue
 
@@ -312,6 +320,7 @@ def _process_patterns_single_threaded(
             debug_words,
             debug_typo_matcher,
             rejected_patterns,
+            state,
         ):
             continue
 
@@ -331,6 +340,7 @@ def _process_patterns_single_threaded(
             patterns,
             pattern_replacements,
             corrections_to_remove,
+            state,
         )
 
 
@@ -344,6 +354,8 @@ def run_parallel_validation(
     corrections: list[Correction],
     jobs: int,
     verbose: bool,
+    debug_typo_matcher: "DebugTypoMatcher | None" = None,
+    state: "DictionaryState | None" = None,
 ) -> tuple[
     list[Correction],
     set[Correction],
@@ -362,6 +374,8 @@ def run_parallel_validation(
         corrections: All corrections to check against
         jobs: Number of parallel workers
         verbose: Whether to print verbose output
+        debug_typo_matcher: Optional matcher for debug typos
+        state: Optional dictionary state for storing structured debug data
 
     Returns:
         Tuple of (patterns, corrections_to_remove, pattern_replacements, rejected_patterns)
@@ -430,10 +444,14 @@ def run_parallel_validation(
 
         _process_validation_results(
             results_wrapped,
-            patterns,
-            pattern_replacements,
-            corrections_to_remove,
-            rejected_patterns,
+            patterns=patterns,
+            pattern_replacements=pattern_replacements,
+            corrections_to_remove=corrections_to_remove,
+            rejected_patterns=rejected_patterns,
+            patterns_to_validate=patterns_to_validate,
+            debug_words=debug_words,
+            debug_typo_matcher=debug_typo_matcher,
+            state=state,
         )
 
     # Post-process to remove redundant patterns (parallel validation can't check during validation)
@@ -443,5 +461,6 @@ def run_parallel_validation(
         corrections_to_remove,
         rejected_patterns,
         debug_words,
+        debug_typo_matcher,
     )
     return result[0], result[1], result[2], result[3]
