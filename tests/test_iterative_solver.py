@@ -63,7 +63,89 @@ class TestIterativeSolver:
 
         # Verify convergence
         assert result.converged, "Solver should converge"
+
+    @pytest.mark.slow
+    def test_solver_runs_at_least_one_iteration(self):
+        """Test that the solver runs at least one iteration."""
+        typo_map = {
+            "teh": ["the"],
+            "tehm": ["them"],
+        }
+
+        validation_set = {"the", "them", "other"}
+        source_words_set = {"the", "them"}
+
+        state = DictionaryState(typo_map)
+
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            ConflictRemovalPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=5)
+        result = solver.solve(state)
+
         assert result.iterations > 0, "Should run at least one iteration"
+
+    @pytest.mark.slow
+    def test_solver_produces_corrections(self):
+        """Test that the solver produces corrections."""
+        typo_map = {
+            "teh": ["the"],
+            "tehm": ["them"],
+        }
+
+        validation_set = {"the", "them", "other"}
+        source_words_set = {"the", "them"}
+
+        state = DictionaryState(typo_map)
+
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            ConflictRemovalPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=5)
+        result = solver.solve(state)
+
         assert len(result.corrections) > 0, "Should have corrections"
 
     @pytest.mark.slow
@@ -123,12 +205,174 @@ class TestIterativeSolver:
 
         # Verify results
         assert result.converged, "Solver should converge"
+
+    @pytest.mark.slow
+    def test_self_healing_produces_both_corrections(self):
+        """Test that self-healing produces both corrections."""
+        typo_map = {
+            "teh": ["the"],
+            "tehir": ["their"],
+        }
+
+        validation_set = {"the", "their", "other"}
+        source_words_set = {"the", "their"}
+
+        state = DictionaryState(typo_map)
+
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            ConflictRemovalPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=10)
+        result = solver.solve(state)
+
         assert len(result.corrections) == 2, "Both corrections should be present"
 
-        # Check that we have both corrections (with appropriate boundaries)
+    @pytest.mark.slow
+    def test_self_healing_includes_teh_correction(self):
+        """Test that self-healing includes 'teh' correction."""
+        typo_map = {
+            "teh": ["the"],
+            "tehir": ["their"],
+        }
+
+        validation_set = {"the", "their", "other"}
+        source_words_set = {"the", "their"}
+
+        state = DictionaryState(typo_map)
+
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            ConflictRemovalPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=10)
+        result = solver.solve(state)
+
         typos = {c[0] for c in result.corrections}
         assert "teh" in typos, "'teh' should be in corrections"
+
+    @pytest.mark.slow
+    def test_self_healing_includes_tehir_correction(self):
+        """Test that self-healing includes 'tehir' correction."""
+        typo_map = {
+            "teh": ["the"],
+            "tehir": ["their"],
+        }
+
+        validation_set = {"the", "their", "other"}
+        source_words_set = {"the", "their"}
+
+        state = DictionaryState(typo_map)
+
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            ConflictRemovalPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=10)
+        result = solver.solve(state)
+
+        typos = {c[0] for c in result.corrections}
         assert "tehir" in typos, "'tehir' should be in corrections"
+
+    @pytest.mark.slow
+    def test_self_healing_creates_graveyard_entries(self):
+        """Test that self-healing creates graveyard entries from conflicts."""
+        typo_map = {
+            "teh": ["the"],
+            "tehir": ["their"],
+        }
+
+        validation_set = {"the", "their", "other"}
+        source_words_set = {"the", "their"}
+
+        state = DictionaryState(typo_map)
+
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            ConflictRemovalPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=10)
+        result = solver.solve(state)
 
         # Verify that graveyard has entries (from the conflict)
         assert result.graveyard_size > 0, "Graveyard should have rejected corrections"
@@ -183,7 +427,92 @@ class TestIterativeSolver:
 
         # Verify convergence
         assert result.converged, "Solver should converge"
+
+    @pytest.mark.slow
+    def test_multiple_iterations_runs_at_least_one(self):
+        """Test that multiple iterations runs at least one iteration."""
+        typo_map = {
+            "aer": ["are"],
+            "ehr": ["her"],
+            "oer": ["ore"],
+        }
+
+        validation_set = {"are", "her", "ore", "other"}
+        source_words_set = {"are", "her", "ore"}
+
+        state = DictionaryState(typo_map)
+
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=10)
+        result = solver.solve(state)
+
         assert result.iterations > 0, "Should run at least one iteration"
+
+    @pytest.mark.slow
+    def test_multiple_iterations_produces_rules(self):
+        """Test that multiple iterations produces corrections or patterns."""
+        typo_map = {
+            "aer": ["are"],
+            "ehr": ["her"],
+            "oer": ["ore"],
+        }
+
+        validation_set = {"are", "her", "ore", "other"}
+        source_words_set = {"are", "her", "ore"}
+
+        state = DictionaryState(typo_map)
+
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=10)
+        result = solver.solve(state)
 
         # Should have either corrections or patterns
         total_rules = len(result.corrections) + len(result.patterns)

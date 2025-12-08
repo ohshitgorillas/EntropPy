@@ -251,6 +251,16 @@ class TestBehaviorConsistency:
         result_reversed, _ = resolve_conflicts_for_group(corrections_reversed, BoundaryType.NONE)
 
         assert ("teh", "the", BoundaryType.NONE) in result_normal
+
+    def test_shorter_kept_when_reversed_order(self) -> None:
+        """Shorter correction is kept when it comes last in input."""
+        corrections_reversed = [
+            ("tehir", "their", BoundaryType.NONE),
+            ("teh", "the", BoundaryType.NONE),
+        ]
+
+        result_reversed, _ = resolve_conflicts_for_group(corrections_reversed, BoundaryType.NONE)
+
         assert ("teh", "the", BoundaryType.NONE) in result_reversed
 
     def test_longer_blocked_regardless_of_input_order(self) -> None:
@@ -268,6 +278,16 @@ class TestBehaviorConsistency:
         result_reversed, _ = resolve_conflicts_for_group(corrections_reversed, BoundaryType.NONE)
 
         assert ("tehir", "their", BoundaryType.NONE) not in result_normal
+
+    def test_longer_blocked_when_reversed_order(self) -> None:
+        """Longer correction is blocked when it comes first in input."""
+        corrections_reversed = [
+            ("tehir", "their", BoundaryType.NONE),
+            ("teh", "the", BoundaryType.NONE),
+        ]
+
+        result_reversed, _ = resolve_conflicts_for_group(corrections_reversed, BoundaryType.NONE)
+
         assert ("tehir", "their", BoundaryType.NONE) not in result_reversed
 
     def test_first_non_conflicting_correction_preserved(self) -> None:

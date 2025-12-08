@@ -20,6 +20,7 @@ from entroppy.resolution.state import DictionaryState
 class TestDictionaryLoading:
     """Tests for dictionary loading stage behavior."""
 
+    @pytest.mark.slow
     def test_includes_user_words_in_source_words(self, tmp_path):
         """User-provided words from include file are added to source words."""
         exclude_file = tmp_path / "exclude.txt"
@@ -42,6 +43,7 @@ class TestDictionaryLoading:
 
         assert "myspecialword" in result.source_words
 
+    @pytest.mark.slow
     def test_tracks_user_words_separately(self, tmp_path):
         """User-provided words are tracked in user_words_set."""
         exclude_file = tmp_path / "exclude.txt"
@@ -64,6 +66,7 @@ class TestDictionaryLoading:
 
         assert "myspecialword" in result.user_words_set
 
+    @pytest.mark.slow
     def test_filters_validation_set_with_exclusion_patterns(self, tmp_path):
         """Exclusion patterns remove matching words from validation set."""
         exclude_file = tmp_path / "exclude.txt"
@@ -527,6 +530,60 @@ class TestConflictRemoval:
 
         # Solver should converge and produce results
         assert solver_result.converged
+
+    @pytest.mark.slow
+    def test_solver_produces_results(self, tmp_path):
+        """Solver produces corrections or patterns."""
+        exclude_file = tmp_path / "exclude.txt"
+        exclude_file.write_text("")
+
+        include_file = tmp_path / "include.txt"
+        include_file.write_text("word\n")
+
+        adjacent_file = tmp_path / "adjacent.txt"
+        adjacent_file.write_text("w -> q\n")
+
+        output_dir = tmp_path / "output"
+
+        config = Config(
+            exclude=str(exclude_file),
+            include=str(include_file),
+            adjacent_letters=str(adjacent_file),
+            output=str(output_dir),
+            jobs=1,
+            max_iterations=5,  # Need at least 5 iterations for this case to converge
+        )
+
+        dict_data = load_dictionaries(config, verbose=False)
+        typo_result = generate_typos(dict_data, config, verbose=False)
+
+        platform = get_platform_backend(config.platform)
+        pass_context = PassContext.from_dictionary_data(
+            dictionary_data=dict_data,
+            platform=platform,
+            min_typo_length=config.min_typo_length,
+            collision_threshold=config.freq_ratio,
+            jobs=config.jobs,
+            verbose=False,
+        )
+
+        state = DictionaryState(
+            raw_typo_map=typo_result.typo_map,
+            debug_words=config.debug_words,
+            debug_typo_matcher=config.debug_typo_matcher,
+        )
+
+        passes = [
+            CandidateSelectionPass(pass_context),
+            PatternGeneralizationPass(pass_context),
+            ConflictRemovalPass(pass_context),
+            PlatformSubstringConflictPass(pass_context),
+            PlatformConstraintsPass(pass_context),
+        ]
+
+        solver = IterativeSolver(passes, max_iterations=config.max_iterations)
+        solver_result = solver.solve(state)
+
         assert len(solver_result.corrections) > 0 or len(solver_result.patterns) > 0
 
 

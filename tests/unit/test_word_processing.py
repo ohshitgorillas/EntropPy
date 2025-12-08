@@ -53,8 +53,47 @@ class TestProcessWordGeneratesCorrections:
             )
 
         assert len(corrections) > 0
-        typo, correction_word = corrections[0]
+
+    def test_correction_typo_is_string(self) -> None:
+        """When correction is generated, typo is a string."""
+        word = "test"
+        validation_set = set()
+        source_words = set()
+        typo_freq_threshold = 0.0
+        adj_letters_map = None
+        exclusions = set()
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
+            corrections, _ = process_word(
+                word,
+                validation_set,
+                source_words,
+                typo_freq_threshold,
+                adj_letters_map,
+                exclusions,
+            )
+
+        typo, _ = corrections[0]
         assert isinstance(typo, str)
+
+    def test_correction_word_is_string(self) -> None:
+        """When correction is generated, correction word is a string."""
+        word = "test"
+        validation_set = set()
+        source_words = set()
+        typo_freq_threshold = 0.0
+        adj_letters_map = None
+        exclusions = set()
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
+            corrections, _ = process_word(
+                word,
+                validation_set,
+                source_words,
+                typo_freq_threshold,
+                adj_letters_map,
+                exclusions,
+            )
+
+        _, correction_word = corrections[0]
         assert isinstance(correction_word, str)
 
     def test_returns_empty_list_when_no_valid_typos(self) -> None:
@@ -354,8 +393,47 @@ class TestProcessWordDeterminesBoundaries:
             )
 
         assert len(corrections) > 0
-        typo, correction_word = corrections[0]
+
+    def test_first_correction_typo_is_string(self) -> None:
+        """When corrections are generated, first typo is a string."""
+        word = "test"
+        validation_set = set()
+        source_words = set()
+        typo_freq_threshold = 0.0
+        adj_letters_map = None
+        exclusions = set()
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
+            corrections, _ = process_word(
+                word,
+                validation_set,
+                source_words,
+                typo_freq_threshold,
+                adj_letters_map,
+                exclusions,
+            )
+
+        typo, _ = corrections[0]
         assert isinstance(typo, str)
+
+    def test_first_correction_word_is_string(self) -> None:
+        """When corrections are generated, first correction word is a string."""
+        word = "test"
+        validation_set = set()
+        source_words = set()
+        typo_freq_threshold = 0.0
+        adj_letters_map = None
+        exclusions = set()
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
+            corrections, _ = process_word(
+                word,
+                validation_set,
+                source_words,
+                typo_freq_threshold,
+                adj_letters_map,
+                exclusions,
+            )
+
+        _, correction_word = corrections[0]
         assert isinstance(correction_word, str)
 
     def test_all_corrections_are_tuples(self) -> None:
@@ -378,6 +456,25 @@ class TestProcessWordDeterminesBoundaries:
 
         # All corrections must be (typo, word) tuples
         assert all(isinstance(c, tuple) and len(c) == 2 for c in corrections)
+
+    def test_all_correction_elements_are_strings(self) -> None:
+        """When corrections are returned, all typo and word elements are strings."""
+        word = "test"
+        validation_set = set()
+        source_words = set()
+        typo_freq_threshold = 0.0
+        adj_letters_map = None
+        exclusions = set()
+        with patch("entroppy.utils.helpers.cached_word_frequency", return_value=0.0):
+            corrections, _ = process_word(
+                word,
+                validation_set,
+                source_words,
+                typo_freq_threshold,
+                adj_letters_map,
+                exclusions,
+            )
+
         assert all(isinstance(typo, str) and isinstance(word, str) for typo, word in corrections)
 
 

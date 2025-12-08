@@ -201,6 +201,38 @@ class TestFalseTriggerGraveyarding:
 
         graveyard_entry = state.graveyard.get(("alway", "always", BoundaryType.NONE))
         assert graveyard_entry is not None
+
+    def test_false_trigger_graveyard_has_correct_reason(self) -> None:
+        """Graveyard entry for false trigger has correct reason."""
+        typo_map = {"alway": ["always"]}
+        validation_set = {"other", "words"}
+        source_words_set = set()
+
+        state = DictionaryState(typo_map)
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        pass_obj = CandidateSelectionPass(pass_context)
+        state.start_iteration()
+        pass_obj.run(state)
+
+        graveyard_entry = state.graveyard.get(("alway", "always", BoundaryType.NONE))
         assert graveyard_entry.reason == RejectionReason.FALSE_TRIGGER
 
 
@@ -242,3 +274,81 @@ class TestPatternSubstringFalseTriggers:
 
         simet_patterns = [p for p in state.active_patterns if p[0] == "simet"]
         assert len(simet_patterns) == 0
+
+
+class TestTehPrefixFalseTrigger:
+    """Test that 'teh' -> 'the' with NONE boundary is rejected when 'teh' is prefix of 'Tehran'."""
+
+    @pytest.mark.slow
+    def test_teh_prefix_of_tehran_rejects_none_boundary(self) -> None:
+        """When 'teh' is a prefix of 'tehran', RIGHT boundary is used (not NONE)."""
+        # Use a validation set where 'teh' appears as prefix of 'tehran' in validation words
+        # This makes natural boundary RIGHT (not NONE), so RIGHT is tried and succeeds
+        typo_map = {"teh": ["the"]}
+        validation_set = {"tehran", "the", "other"}
+        source_words_set = {"the"}
+
+        state = DictionaryState(typo_map)
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        pass_obj = CandidateSelectionPass(pass_context)
+        state.start_iteration()
+        pass_obj.run(state)
+
+        # Verify RIGHT boundary is used (safe - only matches at word end, so 'tehran' won't match)
+        # NONE boundary would cause false triggers, but it's never tried because RIGHT works
+        corrections = [c for c in state.active_corrections if c[0] == "teh" and c[1] == "the"]
+        assert corrections == [("teh", "the", BoundaryType.RIGHT)]
+
+    @pytest.mark.slow
+    def test_teh_prefix_of_tehran_rejects_left_boundary(self) -> None:
+        """When 'teh' is a prefix of 'tehran', RIGHT boundary is used (not LEFT)."""
+        typo_map = {"teh": ["the"]}
+        validation_set = {"tehran", "the", "other"}
+        source_words_set = {"the"}  # 'teh' is not a substring of 'the'
+
+        state = DictionaryState(typo_map)
+        validation_index = BoundaryIndex(validation_set)
+        source_index = BoundaryIndex(source_words_set)
+
+        pass_context = PassContext(
+            validation_set=validation_set,
+            filtered_validation_set=validation_set,
+            source_words_set=source_words_set,
+            user_words_set=set(),
+            exclusion_matcher=None,
+            exclusion_set=set(),
+            validation_index=validation_index,
+            source_index=source_index,
+            platform=None,
+            min_typo_length=2,
+            collision_threshold=2.0,
+            jobs=1,
+            verbose=False,
+        )
+
+        pass_obj = CandidateSelectionPass(pass_context)
+        state.start_iteration()
+        pass_obj.run(state)
+
+        # Verify RIGHT boundary is used (safe - only matches at word end, so 'tehran' won't match)
+        # LEFT boundary would cause false triggers, but it's never tried because RIGHT works
+        corrections = [c for c in state.active_corrections if c[0] == "teh" and c[1] == "the"]
+        assert corrections == [("teh", "the", BoundaryType.RIGHT)]

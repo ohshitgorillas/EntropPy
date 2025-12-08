@@ -308,6 +308,75 @@ class TestExclusionMatcherIntegration:
         correction = ("jst", "just", BoundaryType.LEFT)
         assert matcher.should_exclude(correction) is True
 
+    def test_exclusion_matcher_excludes_substring_pattern(self) -> None:
+        """Verify that a pattern is excluded when it is a substring of another pattern."""
+        # If "*test*" matches words containing "test", both "test" and "testing" should be excluded
+        exclusions = {"*test*"}
+        matcher = ExclusionMatcher(exclusions)
+
+        validation_set = {"testing", "test", "hello"}
+        filtered = matcher.filter_validation_set(validation_set)
+
+        # "testing" should be excluded (contains "test", matches "*test*")
+        assert "testing" not in filtered
+
+    def test_exclusion_matcher_excludes_exact_match(self) -> None:
+        """Verify that exact match is excluded when pattern matches."""
+        exclusions = {"*test*"}
+        matcher = ExclusionMatcher(exclusions)
+
+        validation_set = {"testing", "test", "hello"}
+        filtered = matcher.filter_validation_set(validation_set)
+
+        # "test" should also be excluded (matches "*test*")
+        assert "test" not in filtered
+
+    def test_exclusion_matcher_keeps_non_matching_words(self) -> None:
+        """Verify that words not matching pattern are kept."""
+        exclusions = {"*test*"}
+        matcher = ExclusionMatcher(exclusions)
+
+        validation_set = {"testing", "test", "hello"}
+        filtered = matcher.filter_validation_set(validation_set)
+
+        # "hello" should remain (doesn't match pattern)
+        assert "hello" in filtered
+
+    def test_exclusion_matcher_exact_exclusion_only_matches_exact(self) -> None:
+        """Verify that exact exclusion patterns only match exact words, not substrings."""
+        # If "the" is in the exclusion list (exact, no wildcards), then "the" is excluded
+        # but "theirs" is NOT excluded (because "the" is an exact match, not "*the*")
+        exclusions = {"the"}
+        matcher = ExclusionMatcher(exclusions)
+
+        validation_set = {"the", "theirs", "hello"}
+        filtered = matcher.filter_validation_set(validation_set)
+
+        # "the" should be excluded (exact match)
+        assert "the" not in filtered
+
+    def test_exclusion_matcher_exact_exclusion_keeps_substrings(self) -> None:
+        """Verify that exact exclusion patterns do not exclude substrings."""
+        exclusions = {"the"}
+        matcher = ExclusionMatcher(exclusions)
+
+        validation_set = {"the", "theirs", "hello"}
+        filtered = matcher.filter_validation_set(validation_set)
+
+        # "theirs" should NOT be excluded (contains "the" but doesn't match exact pattern)
+        assert "theirs" in filtered
+
+    def test_exclusion_matcher_exact_exclusion_keeps_unrelated_words(self) -> None:
+        """Verify that exact exclusion patterns keep unrelated words."""
+        exclusions = {"the"}
+        matcher = ExclusionMatcher(exclusions)
+
+        validation_set = {"the", "theirs", "hello"}
+        filtered = matcher.filter_validation_set(validation_set)
+
+        # "hello" should remain (doesn't match pattern)
+        assert "hello" in filtered
+
 
 class TestRealWorldPatterns:
     """Test with real patterns from examples/exclude.txt."""
