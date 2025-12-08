@@ -15,7 +15,83 @@ from entroppy.core.patterns.validation.validator import (
     _format_error_with_example,
     validate_pattern_for_all_occurrences,
 )
-from entroppy.core.types import Correction, MatchDirection
+from entroppy.core.types import Correction, MatchDirection, PatternType
+
+
+def _determine_pattern_type(typo_pattern: str, occurrences: list[Correction]) -> PatternType | None:
+    """Determine if pattern is prefix, suffix, or substring from occurrences.
+
+    Args:
+        typo_pattern: The typo pattern
+        occurrences: List of corrections that match this pattern
+
+    Returns:
+        PatternType.PREFIX if pattern appears at start of all typos,
+        PatternType.SUFFIX if pattern appears at end of all typos,
+        PatternType.SUBSTRING if pattern appears in middle (true substring),
+        None if inconsistent
+    """
+    if not occurrences:
+        return None
+
+    all_start = True
+    all_end = True
+
+    for typo, _, _ in occurrences:
+        starts_with = typo.startswith(typo_pattern)
+        ends_with = typo.endswith(typo_pattern)
+
+        if not starts_with:
+            all_start = False
+        if not ends_with:
+            all_end = False
+
+        # If pattern is in middle (not start and not end), it's a substring
+        if not starts_with and not ends_with:
+            return PatternType.SUBSTRING
+
+    if all_start:
+        return PatternType.PREFIX
+    if all_end:
+        return PatternType.SUFFIX
+    return PatternType.SUBSTRING  # Mixed or inconsistent
+
+
+def _get_pattern_boundary_order(
+    natural_boundary: BoundaryType, pattern_type: PatternType | None
+) -> list[BoundaryType]:
+    """Get the order of boundaries to try for a pattern.
+
+    Prefix patterns can only have LEFT boundaries.
+    Suffix patterns can only have RIGHT boundaries.
+    Patterns should NEVER have BOTH boundaries.
+    If NONE fails for a true substring, reject it.
+
+    Args:
+        natural_boundary: The naturally determined boundary (should be NONE)
+        pattern_type: PatternType indicating if pattern is prefix, suffix, or substring
+
+    Returns:
+        List of boundaries to try in order
+    """
+    # Always start with NONE
+    if natural_boundary != BoundaryType.NONE:
+        # Shouldn't happen, but handle it
+        return [natural_boundary]
+
+    if pattern_type == PatternType.PREFIX:
+        # Prefix patterns: try NONE, then LEFT
+        return [BoundaryType.NONE, BoundaryType.LEFT]
+    if pattern_type == PatternType.SUFFIX:
+        # Suffix patterns: try NONE, then RIGHT
+        return [BoundaryType.NONE, BoundaryType.RIGHT]
+    if pattern_type == PatternType.SUBSTRING:
+        # True substring: only try NONE, reject if it fails
+        return [BoundaryType.NONE]
+
+    # Unknown pattern type: only try NONE
+    return [BoundaryType.NONE]
+
 
 # Thread-local storage for pattern validation worker context
 _pattern_worker_context = threading.local()
@@ -192,56 +268,59 @@ def _validate_single_pattern_worker(
     # Extract target words from occurrences
     target_words = {word for _, word, _ in occurrences}
 
-    # Check validation and conflicts
-    is_safe, error_message = _check_pattern_validation_and_conflicts(
-        typo_pattern,
-        word_pattern,
-        boundary,
-        occurrences,
-        context,
-        target_words,
-    )
-    if not is_safe:
-        # error_message should never be None from _check_pattern_validation_and_conflicts,
-        # but ensure type safety
-        rejected_pattern_conflict: tuple[str, str, BoundaryType, str] = (
+    # Determine pattern type (prefix, suffix, or substring)
+    pattern_type = _determine_pattern_type(typo_pattern, occurrences)
+
+    # Try different boundaries based on pattern type
+    # Prefix patterns can only have LEFT, suffix patterns can only have RIGHT
+    # Patterns should NEVER have BOTH boundaries
+    boundaries_to_try = _get_pattern_boundary_order(boundary, pattern_type)
+    last_error_message: str | None = None
+
+    for boundary_to_try in boundaries_to_try:
+        # Check validation and conflicts with this boundary
+        is_safe, error_message = _check_pattern_validation_and_conflicts(
             typo_pattern,
             word_pattern,
-            boundary,
-            error_message or "Validation failed",
+            boundary_to_try,
+            occurrences,
+            context,
+            target_words,
         )
-        return (
-            False,
-            None,
-            empty_corrections,
-            rejected_pattern_conflict,
-        )
+        if not is_safe:
+            last_error_message = error_message or "Validation failed"
+            continue  # Try next boundary
 
-    # Check if pattern would incorrectly match other corrections
-    is_safe, incorrect_match_error = check_pattern_would_incorrectly_match_other_corrections(
+        # Check if pattern would incorrectly match other corrections
+        is_safe, incorrect_match_error = check_pattern_would_incorrectly_match_other_corrections(
+            typo_pattern,
+            word_pattern,
+            list(context.corrections),
+            occurrences,
+            correction_index=correction_index,
+        )
+        if not is_safe:
+            last_error_message = incorrect_match_error or "Incorrect match"
+            continue  # Try next boundary
+
+        # Pattern passed all checks with this boundary - accept it
+        pattern = (typo_pattern, word_pattern, boundary_to_try)
+        corrections_to_remove = list(occurrences)
+        return True, pattern, corrections_to_remove, None
+
+    # All boundaries failed - reject pattern
+    rejected_pattern_conflict: tuple[str, str, BoundaryType, str] = (
         typo_pattern,
         word_pattern,
-        list(context.corrections),
-        occurrences,
-        correction_index=correction_index,
+        boundary,  # Return original boundary for reporting
+        last_error_message or "Validation failed",
     )
-    if not is_safe:
-        return (
-            False,
-            None,
-            empty_corrections,
-            (
-                typo_pattern,
-                word_pattern,
-                boundary,
-                incorrect_match_error or "Incorrect match",
-            ),
-        )
-
-    # Pattern passed all checks - accept it
-    pattern = (typo_pattern, word_pattern, boundary)
-    corrections_to_remove = list(occurrences)
-    return True, pattern, corrections_to_remove, None
+    return (
+        False,
+        None,
+        empty_corrections,
+        rejected_pattern_conflict,
+    )
 
 
 def _check_end_boundary_conflict(
